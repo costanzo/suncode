@@ -1,7 +1,7 @@
 # Desktop Native Menus
 
 - Date: 2026-10-23
-- Status: In progress
+- Status: Implemented; runtime verification pending
 - Related features: `avalonia-desktop-phase-1`
 - Related specifications: `DESIGN.md`, Desktop Workspace design-system routes
 - Related decisions: None
@@ -45,4 +45,4 @@ The Avalonia client has a small application menu and a project-specific menu lab
 - ProjectHub and project windows use consistent file/navigation/window/help terminology.
 - Existing menu shortcuts match the shortcuts shown in Settings.
 - Design-system specimen covers menu hierarchy and enabled, checked, and empty states.
-- Focused Avalonia tests, desktop build, design-system build, `git diff --check`, and visual review pass.
+- Focused Avalonia tests, desktop build, design-system build, `git diff --check`, and design-system visual review pass. Native macOS click-through remains pending because the automated UI session could not attach to the isolated app instance.

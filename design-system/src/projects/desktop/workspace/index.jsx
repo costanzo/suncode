@@ -2,6 +2,7 @@ import { ModuleLink, PageHeader, Section } from "../../../shared/PagePrimitives.
 import { Icon } from "../../../shared/Icon.jsx";
 import { McpLoadingStatus, RemoteServerStatus, WorkspaceWindow } from "./shell/index.js";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
+import { NativeMenuSpecimen } from "./shell/NativeMenuSpecimen.jsx";
 
 export function WorkspacePage() {
   return (
@@ -64,6 +65,13 @@ export function WorkspacePage() {
           </div>
         </div>
         <p className="workspace-tabs-note">Window menu: Merge All Windows</p>
+      </Section>
+      <Section
+        id="workspace-native-menu"
+        title="Native IDE menu bar"
+        description="Project windows expose existing SunCode actions through a native menu bar. Menus refresh when opened so session, model, checkpoint, and pane state stays truthful."
+      >
+        <NativeMenuSpecimen />
       </Section>
       <Section id="workspace-modules" title="Focused workspace surfaces">
         <div className="module-card-grid">

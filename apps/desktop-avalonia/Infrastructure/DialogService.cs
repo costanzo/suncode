@@ -27,7 +27,7 @@ internal sealed class DialogService
         _setOtherWindowsEnabled = setOtherWindowsEnabled;
     }
 
-    public void ShowSettings(Window owner, Control? source = null)
+    public void ShowSettings(Window owner, Control? source = null, SettingsPage? page = null)
     {
         var viewModel = owner.DataContext switch
         {
@@ -38,12 +38,13 @@ internal sealed class DialogService
         if (viewModel is null) return;
         if (_settingsWindow is not null)
         {
+            if (page is { } selectedPage) _settingsWindow.NavigateTo(selectedPage);
             _settingsWindow.Activate();
             return;
         }
         SuspendSettingsTooltip(source);
 
-        _settingsWindow = new SettingsWindow { DataContext = viewModel };
+        _settingsWindow = new SettingsWindow { DataContext = viewModel, InitialPage = page };
         _setOtherWindowsEnabled(owner, false);
         _settingsWindow.Closed += (_, _) =>
         {

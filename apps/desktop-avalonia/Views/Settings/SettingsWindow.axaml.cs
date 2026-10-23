@@ -23,6 +23,9 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
 
     private readonly SingletonWindow<McpServerEditorWindow> _mcpEditor = new();
     private SettingsWindowViewModel? _settings;
+    internal SettingsPage? InitialPage { get; init; }
+
+    internal void NavigateTo(SettingsPage page) => _settings?.Navigation.Navigate(page);
 
     public SettingsWindow()
     {
@@ -40,7 +43,11 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         Opened += async (_, _) =>
         {
             Rebind();
-            if (_settings is not null) await _settings.OpenAsync();
+            if (_settings is not null)
+            {
+                await _settings.OpenAsync();
+                if (InitialPage is { } page) NavigateTo(page);
+            }
         };
         Closed += (_, _) =>
         {

@@ -19,6 +19,42 @@
         <StackPanel Classes="settings-shortcut-list">
           <Border Classes="settings-shortcut-row">
             <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocMenuOpenProject}" />
+              <StackPanel Grid.Column="1" Classes="settings-key-chord">
+                <Border Classes="settings-keycap"><TextBlock x:Name="OpenProjectModifier" Classes="mono" Text="⌘" /></Border>
+                <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="O" /></Border>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocMenuNewSession}" />
+              <StackPanel Grid.Column="1" Classes="settings-key-chord">
+                <Border Classes="settings-keycap"><TextBlock x:Name="NewSessionModifier" Classes="mono" Text="⌘" /></Border>
+                <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="N" /></Border>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocMenuCloseWindow}" />
+              <StackPanel Grid.Column="1" Classes="settings-key-chord">
+                <Border Classes="settings-keycap"><TextBlock x:Name="CloseWindowModifier" Classes="mono" Text="⌘" /></Border>
+                <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="W" /></Border>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocMenuMinimize}" />
+              <StackPanel Grid.Column="1" Classes="settings-key-chord">
+                <Border Classes="settings-keycap"><TextBlock x:Name="MinimizeWindowModifier" Classes="mono" Text="⌘" /></Border>
+                <Border Classes="settings-keycap"><TextBlock Classes="mono" Text="M" /></Border>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="settings-shortcut-row">
+            <Grid ColumnDefinitions="*,Auto">
             <TextBlock Classes="settings-shortcut-action" Text="{DynamicResource LocOpenSettings}" />
             <StackPanel Grid.Column="1" Classes="settings-key-chord">
               <Border Classes="settings-keycap"><TextBlock x:Name="OpenSettingsModifier" Classes="mono" Text="⌘" /></Border>

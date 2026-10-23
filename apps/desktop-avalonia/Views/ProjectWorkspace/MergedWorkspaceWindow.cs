@@ -14,6 +14,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     private bool _suppressCloseNotification;
 
     internal override bool IsMergedHost => true;
+    internal override ProjectWorkspace ActiveWorkspace => _content.Content as ProjectWorkspace ?? Workspace;
     internal event Action<string, PixelPoint>? ProjectTornOff;
     internal event Action<string>? ProjectCloseRequested;
     internal event Action<MergedWorkspaceWindow>? HostClosed;

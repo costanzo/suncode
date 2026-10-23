@@ -12,12 +12,16 @@ namespace SunCode.Desktop.Views.ProjectHub;
 public sealed partial class ProjectHubWindow : Window
 {
     private bool _initialized;
+    private readonly DesktopMenuController _desktopMenus;
 
     public ProjectHubWindow()
     {
         InitializeComponent();
         WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
         Icon = AppIcon.Window;
+        _desktopMenus = new DesktopMenuController(() => this, () => (DataContext as ProjectHubViewModel)?.Services,
+            () => null, OpenProjectPickerAsync);
+        NativeMenu.SetMenu(this, _desktopMenus.Menu);
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Opened += OnOpened;
     }
@@ -30,6 +34,7 @@ public sealed partial class ProjectHubWindow : Window
         _initialized = true;
         await ViewModel.InitializeAsync();
         ViewModel.UpdateLayoutWidth(Bounds.Width);
+        _desktopMenus.Refresh();
     }
 
     private async void OpenProject(object? sender, RoutedEventArgs e) => await OpenProjectPickerAsync();

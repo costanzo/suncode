@@ -21,9 +21,7 @@ public partial class WorkspaceWindow : Window
     private PixelPoint _windowDragStartPosition;
     private bool _isFullScreen;
     private bool _isFullScreenTransition;
-    private NativeMenuItem? _toggleNavigationMenuItem;
-    private NativeMenuItem? _mergeWindowsMenuItem;
-    private NativeMenu? _recentProjectsMenu;
+    private DesktopMenuController? _desktopMenus;
     private bool _restoringWindowGeometry;
     
     internal Window? OriginWindow { get; set; }
@@ -59,6 +57,7 @@ public partial class WorkspaceWindow : Window
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
     internal ProjectWorkspace Workspace => ProjectWorkspaceView;
+    internal virtual ProjectWorkspace ActiveWorkspace => Workspace;
     internal virtual bool IsMergedHost => false;
 
     private async void OnOpened(object? sender, EventArgs e)
@@ -218,83 +217,22 @@ public partial class WorkspaceWindow : Window
 
     private void ConfigureNativeProjectMenu()
     {
-        var projectActions = new NativeMenu();
-
-        var openProject = new NativeMenuItem { Header = "Open Project…" };
-        openProject.Click += (_, _) => _ = OpenProjectPickerAsync();
-        projectActions.Items.Add(openProject);
-
-        var backToProjects = new NativeMenuItem { Header = "Back to Projects" };
-        backToProjects.Click += (_, _) => Close();
-        projectActions.Items.Add(backToProjects);
-
-        _recentProjectsMenu = new NativeMenu();
-        projectActions.Items.Add(new NativeMenuItem
-        {
-            Header = "Open Recent Project",
-            Menu = _recentProjectsMenu
-        });
-
-        _toggleNavigationMenuItem = new NativeMenuItem { Header = "Hide Project Navigation" };
-        _toggleNavigationMenuItem.Click += (_, _) => ViewModel.Layout.NavigationVisible = !ViewModel.Layout.NavigationVisible;
-        projectActions.Items.Add(_toggleNavigationMenuItem);
-        projectActions.Items.Add(new NativeMenuItemSeparator());
-
-        var settings = new NativeMenuItem
-        {
-            Header = "Settings…",
-            Gesture = new KeyGesture(Key.OemComma, OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control)
-        };
-        settings.Click += (_, _) => ShowSettings();
-        projectActions.Items.Add(settings);
-
-        var closeWindow = new NativeMenuItem { Header = "Close Window" };
-        closeWindow.Click += (_, _) => Close();
-        projectActions.Items.Add(closeWindow);
-
-        var menu = new NativeMenu();
-        menu.Items.Add(new NativeMenuItem { Header = "Project actions", Menu = projectActions });
-        var windowActions = new NativeMenu();
-        _mergeWindowsMenuItem = new NativeMenuItem { Header = "Merge All Windows" };
-        _mergeWindowsMenuItem.Click += (_, _) =>
-        {
-            if (Application.Current is App app) _ = app.MergeAllProjectWindowsAsync();
-        };
-        windowActions.Items.Add(_mergeWindowsMenuItem);
-        menu.Items.Add(new NativeMenuItem { Header = "Window", Menu = windowActions });
-        menu.NeedsUpdate += (_, _) => UpdateNativeProjectMenu();
-        NativeMenu.SetMenu(this, menu);
+        _desktopMenus = new DesktopMenuController(
+            () => this,
+            () => DataContext as DesktopViewModel,
+            () => ActiveWorkspace,
+            OpenProjectPickerAsync);
+        NativeMenu.SetMenu(this, _desktopMenus.Menu);
     }
 
-    private void UpdateNativeProjectMenu()
-    {
-        if (_mergeWindowsMenuItem is not null)
-            _mergeWindowsMenuItem.IsEnabled = Application.Current is App app && app.CanMergeWindows;
-        if (_toggleNavigationMenuItem is not null)
-            _toggleNavigationMenuItem.Header = ViewModel.Layout.NavigationVisible ? "Hide Project Navigation" : "Show Project Navigation";
-        if (_recentProjectsMenu is null) return;
-
-        _recentProjectsMenu.Items.Clear();
-        foreach (var project in ViewModel.Projects)
-        {
-            var recent = new NativeMenuItem
-            {
-                Header = string.IsNullOrWhiteSpace(project.DisplayName) ? project.CanonicalRoot : project.DisplayName
-            };
-            recent.Click += (_, _) =>
-            {
-                if (Application.Current is App current) _ = current.OpenProjectWindowAsync(project);
-            };
-            _recentProjectsMenu.Items.Add(recent);
-        }
-    }
+    private void UpdateNativeProjectMenu() => _desktopMenus?.Refresh();
 
     private void SessionEntered() =>
-        ProjectWorkspaceView.ScrollConversationToEndForSessionEntry();
+        ActiveWorkspace.ScrollConversationToEndForSessionEntry();
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && ProjectWorkspaceView.HandleEscape())
+        if (e.Key == Key.Escape && ActiveWorkspace.HandleEscape())
         {
             e.Handled = true;
             return;
@@ -318,7 +256,7 @@ public partial class WorkspaceWindow : Window
         if (ViewModel.Git.IsAvailable && IsToggleGitViewerShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
-            ProjectWorkspaceView.ToggleGitViewer();
+            ActiveWorkspace.ToggleGitViewer();
         }
     }
 

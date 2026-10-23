@@ -17,6 +17,14 @@ public sealed partial class AgentSidebar : UserControl
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
+    internal void FocusPendingRequest(bool approval)
+    {
+        if (approval ? !ViewModel.HasPendingApproval : !ViewModel.HasPendingQuestion) return;
+        var card = approval ? PendingApprovalCard : PendingQuestionCard;
+        card.Focus();
+        card.BringIntoView();
+    }
+
     private async void ApproveOnce(object? sender, RoutedEventArgs e) =>
         await ViewModel.ResolveApprovalAsync("allow_once");
 

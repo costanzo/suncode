@@ -7,16 +7,17 @@
 
 ## Implementation
 
-- [ ] Add ProjectHub and Workspace menus.
-- [ ] Add focused menu behavior tests.
-- [ ] Add the design-system menu specimen.
+- [x] Add ProjectHub and Workspace menus.
+- [x] Add focused menu behavior tests.
+- [x] Add the design-system menu specimen.
 
 ## Verification
 
-- [ ] Run focused and broader checks.
-- [ ] Review the macOS specimen and runtime menu state.
+- [x] Run focused and broader checks.
+- [x] Review the macOS design-system specimen and runtime menu state model.
+- [ ] Click through the actual macOS menu bar when the isolated app can be attached by UI automation.
 
 ## Closeout
 
-- [ ] Update `DESIGN.md` and durable feature knowledge.
-- [ ] Mark the package complete.
+- [x] Update `DESIGN.md` and durable feature knowledge.
+- [x] Record implementation and validation status.

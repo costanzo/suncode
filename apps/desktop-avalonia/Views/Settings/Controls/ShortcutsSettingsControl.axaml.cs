@@ -8,6 +8,10 @@ public sealed partial class ShortcutsSettingsControl : UserControl
     {
         InitializeComponent();
         var modifier = OperatingSystem.IsMacOS() ? "⌘" : "Ctrl";
+        OpenProjectModifier.Text = modifier;
+        NewSessionModifier.Text = modifier;
+        CloseWindowModifier.Text = modifier;
+        MinimizeWindowModifier.Text = modifier;
         OpenSettingsModifier.Text = modifier;
         ToggleNavigationModifier.Text = modifier;
         ToggleGitModifier.Text = modifier;

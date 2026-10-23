@@ -9,6 +9,7 @@ using SvgControl = Avalonia.Svg.Skia.Svg;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
+using SunCode.Desktop.Views.ProjectWorkspace.Review;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace;
 
@@ -50,6 +51,56 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ScrollConversationToEndForSessionEntry() =>
         ChatArea.ScrollConversationToEndForSessionEntry();
+
+    internal bool HasMenuBlockingOverlay => ExpandedComposerModal.IsOpen || LongUserMessageModal.IsOpen;
+
+    internal async Task FocusConversationAsync()
+    {
+        if (ViewModel.SelectedSession is not { } session) return;
+        await ViewModel.SelectSessionAsync(session);
+        if (ViewModel.SelectedSession?.SessionId == session.SessionId)
+            Dispatcher.UIThread.Post(() => ChatArea.FocusComposer(), DispatcherPriority.Input);
+    }
+
+    internal void ToggleSessionsPanel() => Layout.ToggleSessions();
+
+    internal async Task ToggleExplorerPanelAsync()
+    {
+        if (Layout.ToggleExplorer()) await ViewModel.Explorer.LoadRootsAsync();
+    }
+
+    internal void ToggleReviewPanel() => Layout.ToggleReview();
+    internal void ToggleBrowserPanel() => Layout.PreviewVisible = !Layout.PreviewVisible;
+
+    internal async Task ToggleChildSessionsPanelAsync()
+    {
+        Layout.ToggleChildSessions();
+        if (Layout.ChildSessionsVisible) await ViewModel.LoadChildSessionsAsync();
+    }
+
+    internal async Task ToggleProviderTracePanelAsync()
+    {
+        if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ProviderTrace)) await ViewModel.ProviderTrace.RefreshAsync();
+    }
+
+    internal void ToggleToolActivityPanel() => Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ToolActivity);
+
+    internal Task ShowPendingApprovalAsync() => ShowPendingRequestAsync(approval: true);
+    internal Task ShowPendingQuestionAsync() => ShowPendingRequestAsync(approval: false);
+
+    private async Task ShowPendingRequestAsync(bool approval)
+    {
+        var sessionId = ViewModel.SelectedSession?.SessionId;
+        await FocusConversationAsync();
+        if (sessionId is null || ViewModel.SelectedSession?.SessionId != sessionId) return;
+        Layout.PreviewVisible = false;
+        if (!Layout.ReviewVisible) Layout.ToggleReview();
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (ViewModel.SelectedSession?.SessionId == sessionId)
+                this.GetVisualDescendants().OfType<AgentSidebar>().FirstOrDefault()?.FocusPendingRequest(approval);
+        }, DispatcherPriority.Loaded);
+    }
 
     internal void SetMergedTabs(Control? tabs)
     {
@@ -144,16 +195,16 @@ public sealed partial class ProjectWorkspace : UserControl
             size: new Size(480, 320));
     }
 
-    private void ToggleNavigation(object? sender, RoutedEventArgs e) => Layout.ToggleSessions();
+    private void ToggleNavigation(object? sender, RoutedEventArgs e) => ToggleSessionsPanel();
 
     private async void ToggleExplorer(object? sender, RoutedEventArgs e)
     {
-        if (Layout.ToggleExplorer()) await ViewModel.Explorer.LoadRootsAsync();
+        await ToggleExplorerPanelAsync();
     }
 
-    private void ToggleReview(object? sender, RoutedEventArgs e) => Layout.ToggleReview();
+    private void ToggleReview(object? sender, RoutedEventArgs e) => ToggleReviewPanel();
 
-    private void TogglePreview(object? sender, RoutedEventArgs e) => Layout.PreviewVisible = !Layout.PreviewVisible;
+    private void TogglePreview(object? sender, RoutedEventArgs e) => ToggleBrowserPanel();
 
     internal void ClosePreview()
     {
@@ -167,11 +218,7 @@ public sealed partial class ProjectWorkspace : UserControl
         BrowserPreview.EnsureBrowserUsePage(initialized);
     }
 
-    private void ToggleChildSessions(object? sender, RoutedEventArgs e)
-    {
-        Layout.ToggleChildSessions();
-        if (Layout.ChildSessionsVisible) _ = ViewModel.LoadChildSessionsAsync();
-    }
+    private async void ToggleChildSessions(object? sender, RoutedEventArgs e) => await ToggleChildSessionsPanelAsync();
 
     internal void ToggleGitViewer()
     {
@@ -181,13 +228,10 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleGit(object? sender, RoutedEventArgs e) => ToggleGitViewer();
 
-    private void ToggleProviderTrace(object? sender, RoutedEventArgs e)
-    {
-        if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ProviderTrace)) _ = ViewModel.ProviderTrace.RefreshAsync();
-    }
+    private async void ToggleProviderTrace(object? sender, RoutedEventArgs e) => await ToggleProviderTracePanelAsync();
 
     private void ToggleToolActivity(object? sender, RoutedEventArgs e) =>
-        Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.ToolActivity);
+        ToggleToolActivityPanel();
 
     // Resize handles share the Border.resize-handle style; their Tag names
     // the layout region they resize. Handlers are attached once at the

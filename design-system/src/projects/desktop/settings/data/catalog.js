@@ -103,6 +103,10 @@ export const navItems = [
 ];
 
 export const shortcutCatalog = [
+  { action: "Open Project", keys: ["⌘", "O"], ariaLabel: "Command O" },
+  { action: "New Session", keys: ["⌘", "N"], ariaLabel: "Command N" },
+  { action: "Close Window", keys: ["⌘", "W"], ariaLabel: "Command W" },
+  { action: "Minimize", keys: ["⌘", "M"], ariaLabel: "Command M" },
   { action: "Open Settings", keys: ["⌘", ","], ariaLabel: "Command comma" },
   { action: "Toggle project navigation", keys: ["⌘", "1"], ariaLabel: "Command 1" },
   { action: "Toggle Git viewer", keys: ["⌘", "9"], ariaLabel: "Command 9" },

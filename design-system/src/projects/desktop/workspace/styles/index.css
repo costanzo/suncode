@@ -4,6 +4,7 @@
 @import "./animations.css";
 @import "./base.css";
 @import "./shell.css";
+@import "./menu-bar.css";
 @import "./sessions.css";
 @import "./editor.css";
 @import "./conversation.css";

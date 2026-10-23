@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Input;
 using Avalonia.Styling;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
@@ -127,7 +128,15 @@ public sealed partial class App : Application
         return Task.CompletedTask;
     }
 
-    internal void ShowSettings(Window owner, Control? source = null) => _dialogs?.ShowSettings(owner, source);
+    internal void ShowSettings(Window owner, Control? source = null, SettingsPage? page = null) => _dialogs?.ShowSettings(owner, source, page);
+
+    internal void ShowProjectHub()
+    {
+        if (_hubWindow is null) return;
+        _hubWindow.Show();
+        if (_hubWindow.WindowState == WindowState.Minimized) _hubWindow.WindowState = WindowState.Normal;
+        _hubWindow.Activate();
+    }
 
     internal void ShowAbout(Window owner) => _dialogs?.ShowAbout(owner);
 
@@ -242,21 +251,33 @@ public sealed partial class App : Application
         var about = new NativeMenuItem { Header = $"About {AppInfo.ProductName}" };
         about.Click += (_, _) =>
         {
-            if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return;
-            var owner = desktop.Windows.FirstOrDefault(window => window.IsActive)
-                ?? desktop.Windows.FirstOrDefault(window => window.IsVisible)
-                ?? _hubWindow;
-            if (owner is not null) ShowAbout(owner);
+            if (ResolveMenuOwner() is { } owner) ShowAbout(owner);
         };
         menu.Items.Add(about);
-        var windowActions = new NativeMenu();
-        var mergeWindows = new NativeMenuItem { Header = "Merge All Windows", IsEnabled = CanMergeWindows };
-        mergeWindows.Click += (_, _) => _windows?.MergeAllProjectWindows();
-        windowActions.Items.Add(mergeWindows);
-        var windowMenu = new NativeMenuItem { Header = "Window", Menu = windowActions };
-        windowMenu.Menu!.NeedsUpdate += (_, _) => mergeWindows.IsEnabled = CanMergeWindows;
-        menu.Items.Add(windowMenu);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        var settings = new NativeMenuItem { Header = "Settings…", Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Meta) };
+        settings.Click += (_, _) =>
+        {
+            if (ResolveMenuOwner() is { } owner) ShowSettings(owner);
+        };
+        menu.Items.Add(settings);
+        menu.NeedsUpdate += (_, _) =>
+        {
+            about.Header = LocalizationService.GetString("LocAboutSunCode", $"About {AppInfo.ProductName}");
+            settings.Header = LocalizationService.GetString("LocMenuSettings", "Settings…");
+            settings.IsEnabled = ResolveMenuOwner() is not null;
+            about.IsEnabled = ResolveMenuOwner() is not null;
+        };
         NativeMenu.SetMenu(this, menu);
+    }
+
+    private Window? ResolveMenuOwner()
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop) return null;
+        var active = desktop.Windows.FirstOrDefault(window => window.IsActive && window.IsVisible);
+        return active is { IsEnabled: true } &&
+               (active is ProjectHubWindow or SunCode.Desktop.Views.ProjectWorkspace.WorkspaceWindow)
+            ? active : null;
     }
 
     private void SetOtherWindowsEnabled(Window owner, bool enabled)
