@@ -5,7 +5,7 @@
 //! before routing, so this provider only sees prefixed names.
 
 use crate::runtime::{computer_tool_definitions, is_known_member, ComputerRuntime};
-use crate::{ActionOutcome, ComputerAction};
+use crate::{AccessibilityQuery, ActionOutcome, ComputerAction, Truncation};
 use serde_json::{json, Value};
 use suncode_common::tool::{
     ApprovalTarget, BoxFuture, CatalogContext, Risk, ToolContext, ToolDefinition, ToolImage,
@@ -14,6 +14,7 @@ use suncode_common::tool::{
 use suncode_common::BusinessError;
 
 const PREFIX: &str = "computer_";
+const ACCESSIBILITY_TOOL: &str = "computer_accessibility_tree";
 /// Approval and failure-halt batch shared by consecutive computer calls.
 const BATCH: &str = "computer";
 
@@ -33,16 +34,24 @@ impl ToolProvider for ComputerRuntime {
         context: &'a CatalogContext<'a>,
     ) -> BoxFuture<'a, Vec<ToolDefinition>> {
         Box::pin(async move {
-            if self.advertises_tools(context.computer_use) {
-                computer_tool_definitions()
-            } else {
-                Vec::new()
+            if !self.advertises_tools(context.computer_use) {
+                return Vec::new();
             }
+            let accessibility = self.advertises_accessibility();
+            computer_tool_definitions()
+                .into_iter()
+                .filter(|tool| accessibility || tool.name != ACCESSIBILITY_TOOL)
+                .collect()
         })
     }
 
     fn validate(&self, name: &str, arguments: &Value) -> Result<(), BusinessError> {
         let member = member(name).ok_or_else(|| BusinessError::invalid("unknown computer tool"))?;
+        if member == "accessibility_tree" {
+            return AccessibilityQuery::from_input(arguments)
+                .map(|_| ())
+                .map_err(|error| BusinessError::invalid(error.to_string()));
+        }
         ComputerAction::from_member(member, arguments)
             .map(|_| ())
             .map_err(|error| BusinessError::invalid(error.to_string()))
@@ -50,9 +59,8 @@ impl ToolProvider for ComputerRuntime {
 
     fn risk(&self, name: &str) -> Option<Risk> {
         match member(name)? {
-            "screenshot" | "zoom" | "cursor_position" | "wait" | "mouse_move" => {
-                Some(Risk::ComputerObserve)
-            }
+            "screenshot" | "zoom" | "cursor_position" | "wait" | "mouse_move"
+            | "accessibility_tree" => Some(Risk::ComputerObserve),
             "left_click" | "right_click" | "middle_click" | "double_click" | "triple_click"
             | "left_click_drag" | "left_mouse_down" | "left_mouse_up" | "scroll" | "type"
             | "key" | "hold_key" => Some(Risk::ComputerInput),
@@ -106,6 +114,21 @@ impl ComputerRuntime {
     /// attached to the model message as an image.
     fn tool_result(&self, outcome: ActionOutcome) -> Result<ToolResult, BusinessError> {
         match outcome {
+            ActionOutcome::Accessibility { report, duration } => Ok(ToolResult {
+                // Only redacted facts reach history, events, and SQLite.
+                value: json!({
+                    "type":"computer_accessibility",
+                    "scope":report.scope.name(),
+                    "nodeCount":report.node_count,
+                    "truncated":report.truncation.is_some(),
+                    "truncationReason":report.truncation.map(Truncation::name),
+                    "inaccessible":report.inaccessible,
+                    "displayGeneration":report.display_generation,
+                    "durationMs":u64::try_from(duration.as_millis()).unwrap_or(u64::MAX),
+                }),
+                model_text: Some(report.text),
+                image: None,
+            }),
             ActionOutcome::Text(text) => Ok(ToolResult {
                 value: json!({"type":"computer_text","text":text}),
                 model_text: Some(text),
@@ -336,5 +359,193 @@ mod tests {
         let image = result.image.unwrap();
         assert_eq!(image.mime_type, "image/png");
         assert!(image.bytes.starts_with(b"\x89PNG"));
+    }
+
+    struct FakeTree {
+        delay: std::time::Duration,
+        password: &'static str,
+    }
+
+    impl crate::AccessibilityBackend for FakeTree {
+        fn runtime_info(&self) -> crate::AccessibilityRuntimeInfo {
+            crate::AccessibilityRuntimeInfo {
+                available: true,
+                permission: crate::PermissionState::Allowed,
+            }
+        }
+
+        fn snapshot(
+            &self,
+            request: &crate::AccessibilityRequest,
+            cancelled: &dyn Fn() -> bool,
+        ) -> ComputerResult<crate::AccessibilitySnapshot> {
+            let until = std::time::Instant::now() + self.delay;
+            while std::time::Instant::now() < until {
+                if cancelled() {
+                    return Err(crate::ComputerError::Cancelled);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            assert_eq!(request.target, crate::AccessibilityTarget::FocusedWindow);
+            let mut password = crate::AccessibilityNode {
+                depth: 1,
+                role: crate::Role::TextField,
+                name: Some("Password".into()),
+                value: Some(self.password.into()),
+                description: None,
+                states: crate::StateFlags::PASSWORD,
+                bounds: Some(crate::InputRect {
+                    x: 1.0,
+                    y: 0.5,
+                    width: 2.0,
+                    height: 1.0,
+                }),
+            };
+            password.states.insert(crate::StateFlags::FOCUSED);
+            Ok(crate::AccessibilitySnapshot {
+                application: Some("Fixture".into()),
+                window: Some("Login".into()),
+                nodes: vec![
+                    crate::AccessibilityNode {
+                        depth: 0,
+                        role: crate::Role::Window,
+                        name: Some("Login".into()),
+                        value: None,
+                        description: None,
+                        states: crate::StateFlags::empty(),
+                        bounds: None,
+                    },
+                    password,
+                ],
+                truncation: None,
+                inaccessible: false,
+            })
+        }
+    }
+
+    fn tree_runtime(data: &std::path::Path, delay_ms: u64) -> ComputerRuntime {
+        let runtime = runtime(data);
+        runtime
+            .install_accessibility_backend(Box::new(FakeTree {
+                delay: std::time::Duration::from_millis(delay_ms),
+                password: "hunter2",
+            }))
+            .unwrap();
+        runtime
+    }
+
+    fn call(
+        runtime: &ComputerRuntime,
+        name: &'static str,
+        arguments: Value,
+    ) -> Result<ToolResult, BusinessError> {
+        let project = tempfile::tempdir().unwrap();
+        block_on(runtime.execute(
+            ToolInvocation {
+                name,
+                arguments,
+                approval_pin: None,
+            },
+            ToolContext {
+                project_id: "p",
+                project_root: project.path(),
+                call_key: "turn:call",
+                timeout_ceiling: None,
+                paths: &Paths,
+                documents: &NoDocuments,
+                output: Arc::new(Sink),
+                cancellation: &Never,
+            },
+        ))
+    }
+
+    #[test]
+    fn accessibility_tool_needs_a_backend_and_observe_risk() {
+        let data = tempfile::tempdir().unwrap();
+        let supported = CatalogContext {
+            project_id: "p",
+            computer_use: true,
+        };
+        let plain = runtime(data.path());
+        assert!(!block_on(plain.catalog(&supported))
+            .iter()
+            .any(|tool| tool.name == ACCESSIBILITY_TOOL));
+        let tree = tree_runtime(data.path(), 0);
+        assert_eq!(block_on(tree.catalog(&supported)).len(), 18);
+        assert_eq!(tree.risk(ACCESSIBILITY_TOOL), Some(Risk::ComputerObserve));
+        assert!(tree
+            .validate(ACCESSIBILITY_TOOL, &json!({"scope":"point"}))
+            .is_err());
+        assert!(tree
+            .validate(ACCESSIBILITY_TOOL, &json!({"coordinate":[1,1]}))
+            .is_err());
+        assert!(tree
+            .validate(ACCESSIBILITY_TOOL, &json!({"max_nodes":0}))
+            .is_err());
+        assert!(tree
+            .validate(
+                ACCESSIBILITY_TOOL,
+                &json!({"scope":"point","coordinate":[1,1]})
+            )
+            .is_ok());
+        assert!(tree
+            .validate(ACCESSIBILITY_TOOL, &json!({"extra":1}))
+            .is_err());
+    }
+
+    #[test]
+    fn accessibility_tree_requires_a_screenshot_and_redacts_history() {
+        let data = tempfile::tempdir().unwrap();
+        let runtime = tree_runtime(data.path(), 0);
+        let error = call(&runtime, ACCESSIBILITY_TOOL, json!({})).unwrap_err();
+        assert_eq!(error.code, "computer_frame_required");
+
+        call(&runtime, "computer_screenshot", json!({})).unwrap();
+        let result = call(&runtime, ACCESSIBILITY_TOOL, json!({})).unwrap();
+        let text = result.model_text.unwrap();
+        assert!(text.starts_with(crate::OUTLINE_MARKER));
+        // Boxes use the inverse of the screenshot's endpoint mapping
+        // (input 0..3 onto pixels 0..7).
+        assert!(
+            text.contains("text_field \"Password\" focused password value=<redacted> [2,1,5,3]"),
+            "{text}"
+        );
+        assert!(!text.contains("hunter2"));
+        assert!(result.image.is_none());
+        let value = result.value.to_string();
+        assert_eq!(result.value["type"], "computer_accessibility");
+        assert_eq!(result.value["nodeCount"], 2);
+        for secret in ["hunter2", "Password", "Fixture", "Login"] {
+            assert!(!value.contains(secret), "{secret} leaked into {value}");
+        }
+    }
+
+    #[test]
+    fn takeover_during_collection_returns_promptly() {
+        let data = tempfile::tempdir().unwrap();
+        let runtime = tree_runtime(data.path(), 10_000);
+        call(&runtime, "computer_screenshot", json!({})).unwrap();
+        let background = runtime.clone();
+        let started = std::time::Instant::now();
+        let handle = std::thread::spawn(move || call(&background, ACCESSIBILITY_TOOL, json!({})));
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        // Must not wait behind the collector for the executor lock.
+        runtime.take_user_control().unwrap();
+        let error = handle.join().unwrap().unwrap_err();
+        assert_eq!(error.code, "computer_control_unavailable");
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+    }
+
+    #[test]
+    fn a_new_screenshot_during_collection_discards_the_tree() {
+        let data = tempfile::tempdir().unwrap();
+        let runtime = tree_runtime(data.path(), 300);
+        call(&runtime, "computer_screenshot", json!({})).unwrap();
+        let background = runtime.clone();
+        let handle = std::thread::spawn(move || call(&background, ACCESSIBILITY_TOOL, json!({})));
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        call(&runtime, "computer_screenshot", json!({})).unwrap();
+        let error = handle.join().unwrap().unwrap_err();
+        assert_eq!(error.code, "computer_frame_stale");
     }
 }

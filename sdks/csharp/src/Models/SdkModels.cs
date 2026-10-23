@@ -170,7 +170,9 @@ public sealed record ComputerRuntimeInfo(
     string CapturePermission,
     string InputPermission,
     string ControlOwner,
-    string? Error);
+    string? Error,
+    bool AccessibilityAvailable = false,
+    string AccessibilityPermission = "unsupported");
 
 public sealed record McpServer(
     string McpServerId,

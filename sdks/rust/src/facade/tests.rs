@@ -234,6 +234,11 @@ async fn host_capability_ceiling_disables_browser_and_computer_without_mutating_
     assert_eq!(computer.capture_permission, "unsupported");
     assert_eq!(computer.input_permission, "unsupported");
     assert_eq!(computer.control_owner, "user");
+    assert!(!computer.accessibility_available);
+    assert_eq!(computer.accessibility_permission, "unsupported");
+    let json = serde_json::to_value(&computer).unwrap();
+    assert_eq!(json["accessibilityAvailable"], false);
+    assert_eq!(json["accessibilityPermission"], "unsupported");
 
     let browser_error = sdk.set_browser_use_enabled(false).await.unwrap_err();
     assert_eq!(browser_error.code, "browser_host_unavailable");

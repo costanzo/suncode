@@ -9,6 +9,8 @@ export function ComputerUsePanel({ onSave }) {
   const [enabled, setEnabled] = useState(false);
   const [capturePermission, setCapturePermission] = useState("denied");
   const [inputPermission, setInputPermission] = useState("allowed");
+  // "allowed", "denied" (macOS trust or the Linux accessibility bus is off), or "unsupported".
+  const [accessibilityPermission] = useState("allowed");
   const [controlOwner, setControlOwner] = useState("user");
 
   const toggleEnabled = (nextEnabled) => {
@@ -109,6 +111,23 @@ export function ComputerUsePanel({ onSave }) {
           <span className={`computer-inline-status is-${inputPermission}`}>
             <span className="settings-status-dot" />
             {inputPermission === "allowed" ? "Allowed" : "Permission needed"}
+          </span>
+        </SettingRow>
+        <SettingRow
+          label="Accessibility tree"
+          hint="Read-only control names, states, and boxes that complement screenshots. Uses the input control permission on macOS."
+        >
+          <span
+            className={`computer-inline-status is-${
+              accessibilityPermission === "allowed" ? "ready" : accessibilityPermission
+            }`}
+          >
+            <span className="settings-status-dot" />
+            {accessibilityPermission === "allowed"
+              ? "Available"
+              : accessibilityPermission === "denied"
+                ? "Permission needed"
+                : "Unavailable"}
           </span>
         </SettingRow>
         <SettingRow

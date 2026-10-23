@@ -2,7 +2,7 @@
 
 **Status:** Partially implemented and focused-tested. Platform conformance is incomplete.
 
-Computer Use is a first-party Rust capability that observes and operates the user's primary display. It is separate from Browser Use and MCP. `suncode-computer` owns 17 provider-neutral desktop actions exposed as stable `computer_*` function tools: validation, ordered execution, coordinate transforms, zoom cropping, PNG encoding, cancellation checks, and held-input cleanup. It runs on a pinned revision of the maintained Enigo fork. Core `ComputerManager` owns enablement, policy, approvals, and runtime state.
+Computer Use is a first-party Rust capability that observes and operates the user's primary display. It is separate from Browser Use and MCP. `suncode-computer` owns 17 provider-neutral desktop actions and one read-only accessibility observation, exposed as stable `computer_*` function tools: validation, ordered execution, coordinate transforms, zoom cropping, PNG encoding, cancellation checks, and held-input cleanup. It runs on a pinned revision of the maintained Enigo fork. Core `ComputerManager` owns enablement, policy, approvals, and runtime state.
 
 ## What users can rely on
 
@@ -15,7 +15,11 @@ Computer Use is a first-party Rust capability that observes and operates the use
 - `computer_runtime_info` returns only redacted facts: backend availability, display and screenshot sizes, capture and input permission state, control owner, and a safe error. Desktop Settings has a Computer Use page with enablement, model support, runtime and permission state, explicit permission requests, and emergency stop.
 - Enabling Computer Use checks input permission before creating the backend and requests the operating-system permission when supported. If permission remains denied, the SDK returns `computer_input_permission_required` and does not persist enablement.
 
+- `computer_accessibility_tree` reads the operating-system accessibility tree (macOS AX, Windows UI Automation, Linux X11 AT-SPI2) as a bounded outline. Each node has a normalized role, name, value, and states, plus a box in the latest screenshot's pixels, so existing coordinate tools can act on it. It is observe-risk, needs a current screenshot, runs outside the executor lock under a 2-second deadline, never reads secure-text values, and stays out of SQLite, compaction checkpoints, approval continuations, and older provider turns. Settings reports its availability as its own read-only row. Contract details are in `contracts/agent-sdk/README.md`.
+
 Capture backends exist for macOS (with Retina point-to-pixel normalization), Windows (per-monitor-DPI GDI), and X11 (RandR primary output).
+
+Accessibility status: macOS was verified against a live window. Windows and Linux collectors compile and lint for their targets but have not yet run against live desktops, so their conformance (box alignment across DPI and scaling, redaction, elevated or disabled-bus states) is unverified. Semantic element actions and durable element references are out of scope.
 
 Not implemented: complete serial-batch halt semantics across durable approval continuation; verified macOS, Windows, and X11 conformance across DPI, scaling, and multi-display layouts; Wayland (needs a unified portal ScreenCast and RemoteDesktop session); multi-display control; a Computer Use approval UI; secure or locked desktops; provider routes that do not support function calling, vision, or multimodal function results; and an interactive CLI Computer Use surface.
 

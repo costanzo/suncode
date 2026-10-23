@@ -15,7 +15,8 @@ public sealed class ComputerRuntimeViewModel : ObservableObject, IPolledPage
         nameof(BackendStateText), nameof(BackendTone), nameof(TargetDisplayText),
         nameof(CapturePermissionText), nameof(CapturePermissionTone), nameof(CanRequestCapturePermission),
         nameof(CapturePermissionButtonText), nameof(InputPermissionText), nameof(InputPermissionTone),
-        nameof(CanRequestInputPermission), nameof(InputPermissionButtonText), nameof(ControlOwnerText),
+        nameof(CanRequestInputPermission), nameof(InputPermissionButtonText),
+        nameof(AccessibilityText), nameof(AccessibilityTone), nameof(ControlOwnerText),
         nameof(IsTakeControlVisible), nameof(IsReturnControlVisible), nameof(CanTransferControl),
         nameof(PageStatusText), nameof(CanEmergencyStop)
     ];
@@ -131,6 +132,31 @@ public sealed class ComputerRuntimeViewModel : ObservableObject, IPolledPage
     public string InputPermissionButtonText => Runtime?.InputPermission == "allowed"
         ? L("LocInputControlAllowed", "Input control allowed")
         : L("LocRequestInputControl", "Request input control");
+
+    // Read-only: macOS shares the input permission, Windows needs none, and
+    // SunCode never toggles the Linux accessibility bus.
+    private string? AccessibilityState => Runtime switch
+    {
+        null => null,
+        { AccessibilityAvailable: true, AccessibilityPermission: "allowed" } => "available",
+        { AccessibilityPermission: "denied" } => "denied",
+        _ => "unavailable"
+    };
+
+    public string AccessibilityText => AccessibilityState switch
+    {
+        null => UnknownText,
+        "available" => L("LocAvailable", "Available"),
+        "denied" => L("LocPermissionNeeded", "Permission needed"),
+        _ => L("LocUnavailable", "Unavailable")
+    };
+
+    public StatusTone AccessibilityTone => AccessibilityState switch
+    {
+        "available" => StatusTone.Success,
+        "denied" => StatusTone.Warning,
+        _ => StatusTone.Muted
+    };
 
     public string ControlOwnerText => Runtime is null ? L("LocUser", "User") : ComputerValue(Runtime.ControlOwner);
     private bool AgentControlled => Runtime?.ControlOwner == "agent";

@@ -6,4 +6,4 @@ Use the template for a new substantial delivery only when the work needs a durab
 
 ## Active deliveries
 
-None.
+- [`2026-10-23-computer-accessibility-tree`](2026-10-23-computer-accessibility-tree/) — read-only accessibility tree observation for Computer Use (Testing)

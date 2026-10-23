@@ -367,6 +367,9 @@
 .computer-runtime-state.is-interrupted {
   color: var(--warning);
 }
+.computer-inline-status.is-unsupported {
+  color: var(--text-muted);
+}
 .computer-runtime-state.is-unsupported,
 .computer-runtime-state.is-failed,
 .computer-inline-status.is-failed {

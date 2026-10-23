@@ -55,6 +55,10 @@ pub(in crate::agent) fn continuation_snapshot(
         if message.role != "tool" {
             continue;
         }
+        crate::context::redact_accessibility_outlines(
+            message,
+            "[computer accessibility tree omitted from durable continuation]",
+        );
         for part in &mut message.content {
             if part.kind == "image_url" {
                 part.kind = "text".into();

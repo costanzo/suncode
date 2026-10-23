@@ -252,7 +252,7 @@ impl ComputerAction {
     }
 }
 
-fn normalize_point(value: &Value) -> ComputerResult<Value> {
+pub(crate) fn normalize_point(value: &Value) -> ComputerResult<Value> {
     if value.is_object() {
         return Ok(value.clone());
     }

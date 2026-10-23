@@ -80,6 +80,16 @@
         </Grid>
         <Grid Classes="settings-row" ColumnDefinitions="*,220">
           <StackPanel Classes="settings-row-copy">
+            <TextBlock Classes="settings-row-title" Text="{DynamicResource LocAccessibilityTree}" />
+            <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocAccessibilityTreeHint}" />
+          </StackPanel>
+          <Grid Grid.Column="1" ColumnDefinitions="10,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
+            <Ellipse Width="7" Height="7" infra:StatusToneProperties.Tone="{Binding AccessibilityTone}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding AccessibilityText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+          </Grid>
+        </Grid>
+        <Grid Classes="settings-row" ColumnDefinitions="*,220">
+          <StackPanel Classes="settings-row-copy">
             <TextBlock Classes="settings-row-title" Text="{DynamicResource LocCurrentControlOwner}" />
             <TextBlock Classes="settings-row-hint" TextWrapping="Wrap" Text="{DynamicResource LocControlOwnerHint}" />
           </StackPanel>

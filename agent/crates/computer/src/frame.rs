@@ -39,6 +39,19 @@ pub struct ComputerFrame {
     pub rgba: Vec<u8>,
 }
 
+impl DisplayGeometry {
+    /// Maps a pixel of this geometry's image to input coordinates.
+    pub fn input_point(&self, point: PixelPoint) -> ComputerResult<(i32, i32)> {
+        if point.x >= self.pixel_width || point.y >= self.pixel_height {
+            return Err(ComputerError::CoordinateOutOfBounds);
+        }
+        Ok((
+            map_axis(point.x, self.pixel_width, self.input_x, self.input_width)?,
+            map_axis(point.y, self.pixel_height, self.input_y, self.input_height)?,
+        ))
+    }
+}
+
 impl ComputerFrame {
     pub fn new(display: DisplayGeometry, rgba: Vec<u8>) -> ComputerResult<Self> {
         if display.input_width == 0
@@ -70,23 +83,7 @@ impl ComputerFrame {
     }
 
     pub fn input_point(&self, point: PixelPoint) -> ComputerResult<(i32, i32)> {
-        if point.x >= self.display.pixel_width || point.y >= self.display.pixel_height {
-            return Err(ComputerError::CoordinateOutOfBounds);
-        }
-        Ok((
-            map_axis(
-                point.x,
-                self.display.pixel_width,
-                self.display.input_x,
-                self.display.input_width,
-            )?,
-            map_axis(
-                point.y,
-                self.display.pixel_height,
-                self.display.input_y,
-                self.display.input_height,
-            )?,
-        ))
+        self.display.input_point(point)
     }
 
     pub fn crop(&self, region: PixelRegion) -> ComputerResult<Self> {

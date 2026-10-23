@@ -177,6 +177,10 @@
   <x:String x:Key="LocScreenCaptureHint">Required to send screenshots to the selected provider.</x:String>
   <x:String x:Key="LocInputControl">Input control</x:String>
   <x:String x:Key="LocInputControlHint">Required for mouse and keyboard actions after approval.</x:String>
+  <x:String x:Key="LocAccessibilityTree">Accessibility tree</x:String>
+  <x:String x:Key="LocAccessibilityTreeHint">Read-only control names, states, and boxes that complement screenshots. Uses the input control permission on macOS.</x:String>
+  <x:String x:Key="LocAvailable">Available</x:String>
+  <x:String x:Key="LocPermissionNeeded">Permission needed</x:String>
   <x:String x:Key="LocCurrentControlOwner">Current control owner</x:String>
   <x:String x:Key="LocControlOwnerHint">The user and agent never control desktop input simultaneously.</x:String>
   <x:String x:Key="LocUser">User</x:String>

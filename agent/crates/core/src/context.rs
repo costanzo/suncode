@@ -97,11 +97,39 @@ pub fn apply_generated_summary(result: &mut ContextBuildResult, summary: Context
     true
 }
 
+/// Accessibility-tree text from Computer Use. It names on-screen content of
+/// other applications, so it stays out of durable context like screenshots.
+pub(crate) fn is_accessibility_outline(
+    message: &Message,
+    part: &suncode_data::ContentPart,
+) -> bool {
+    message.role == "tool"
+        && part.kind == "text"
+        && part.text.starts_with(suncode_computer::OUTLINE_MARKER)
+}
+
+/// Replaces accessibility-tree text with `placeholder`; returns whether any
+/// was replaced.
+pub(crate) fn redact_accessibility_outlines(message: &mut Message, placeholder: &str) -> bool {
+    let mut redacted = false;
+    for index in 0..message.content.len() {
+        if is_accessibility_outline(message, &message.content[index]) {
+            message.content[index].text = placeholder.into();
+            redacted = true;
+        }
+    }
+    redacted
+}
+
 pub fn persistable_messages(messages: &[Message]) -> Vec<Message> {
     messages
         .iter()
         .cloned()
         .map(|mut message| {
+            redact_accessibility_outlines(
+                &mut message,
+                "[transient accessibility tree omitted from persisted context]",
+            );
             let original = message.content.len();
             message.content.retain(|part| part.kind != "image_url");
             if message.content.len() != original {

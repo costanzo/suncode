@@ -177,6 +177,10 @@
   <x:String x:Key="LocScreenCaptureHint">向所选提供商发送屏幕截图时需要。</x:String>
   <x:String x:Key="LocInputControl">输入控制</x:String>
   <x:String x:Key="LocInputControlHint">批准后执行鼠标和键盘操作时需要。</x:String>
+  <x:String x:Key="LocAccessibilityTree">辅助功能树</x:String>
+  <x:String x:Key="LocAccessibilityTreeHint">只读的控件名称、状态和边框，用于补充截图。在 macOS 上使用输入控制权限。</x:String>
+  <x:String x:Key="LocAvailable">可用</x:String>
+  <x:String x:Key="LocPermissionNeeded">需要权限</x:String>
   <x:String x:Key="LocCurrentControlOwner">当前控制方</x:String>
   <x:String x:Key="LocControlOwnerHint">用户和代理不会同时控制桌面输入。</x:String>
   <x:String x:Key="LocUser">用户</x:String>

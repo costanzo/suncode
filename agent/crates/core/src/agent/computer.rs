@@ -51,10 +51,16 @@ impl AgentRuntime {
         Ok(self.computer.info())
     }
 
+    /// Installs the input backend and, where the platform has one, the
+    /// read-only accessibility backend.
     pub fn install_computer_backend(
         &self,
         backend: Box<dyn ComputerBackend>,
     ) -> Result<(), BusinessError> {
-        self.computer.install_backend(backend)
+        self.computer.install_backend(backend)?;
+        if let Some(accessibility) = suncode_computer::platform_accessibility_backend() {
+            self.computer.install_accessibility_backend(accessibility)?;
+        }
+        Ok(())
     }
 }

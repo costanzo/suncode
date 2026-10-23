@@ -3271,6 +3271,8 @@ dependencies = [
 name = "suncode-computer"
 version = "0.1.0"
 dependencies = [
+ "core-foundation 0.10.1",
+ "dbus",
  "enigo",
  "image",
  "jsonschema",
@@ -3278,6 +3280,7 @@ dependencies = [
  "serde_json",
  "suncode-common",
  "tempfile",
+ "windows",
 ]
 
 [[package]]

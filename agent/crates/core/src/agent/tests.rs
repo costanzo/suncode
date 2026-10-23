@@ -1700,6 +1700,28 @@ async fn provider_tool_is_advertised_validated_and_executed() {
 }
 
 #[test]
+fn approval_continuations_omit_accessibility_trees() {
+    let tree = format!(
+        "{}\napp=\"Bank\" nodes=1\n[0] text \"account 1234\"",
+        suncode_computer::OUTLINE_MARKER
+    );
+    let continuation = serde_json::from_value::<Continuation>(json!({
+        "session_id": "s", "project_id": "p", "project_root": "/",
+        "turn_id": "t", "submission_key": "k", "model": "m",
+        "messages": [{"role":"tool","content":[{"type":"text","text":tree}],"tool_call_id":"call-1"}],
+        "iterations": 0, "tool_calls": 0,
+        "usage": {"input_tokens":0,"output_tokens":0,"total_tokens":0},
+        "pending_call": null, "remaining_calls": []
+    }))
+    .unwrap();
+    let snapshot = support::continuation_snapshot(&continuation)
+        .unwrap()
+        .to_string();
+    assert!(!snapshot.contains("account 1234"), "{snapshot}");
+    assert!(snapshot.contains("omitted from durable continuation"));
+}
+
+#[test]
 fn legacy_mcp_generation_snapshot_resumes_as_an_approval_pin() {
     let mut snapshot = serde_json::to_value(Continuation {
         pending_approval_pin: None,

@@ -919,6 +919,7 @@ impl TurnLoop<'_> {
         message.tool_call_id = Some(call.call_id.clone());
         self.context.messages.push(message);
         prune_tool_images(&mut self.context.messages, MAX_TOOL_IMAGES);
+        prune_accessibility_outlines(&mut self.context.messages, MAX_ACCESSIBILITY_OUTLINES);
         let mut redacted = Message::text(
             "tool",
             serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".into()),
@@ -1038,6 +1039,30 @@ pub(super) fn tool_name(call: &ToolCall) -> std::borrow::Cow<'_, str> {
 /// a placeholder so long turns stay within provider limits.
 const MAX_TOOL_IMAGES: usize = 2;
 
+/// Accessibility trees kept in the provider context; each one describes a
+/// screen state that later trees and screenshots supersede.
+const MAX_ACCESSIBILITY_OUTLINES: usize = 2;
+
+pub(super) fn prune_accessibility_outlines(messages: &mut [Message], keep_latest: usize) {
+    let mut retained = 0usize;
+    for message in messages.iter_mut().rev() {
+        let has_outline = message
+            .content
+            .iter()
+            .any(|part| crate::context::is_accessibility_outline(message, part));
+        if !has_outline {
+            continue;
+        }
+        retained += 1;
+        if retained > keep_latest {
+            crate::context::redact_accessibility_outlines(
+                message,
+                "[older computer accessibility tree omitted from provider context]",
+            );
+        }
+    }
+}
+
 pub(super) fn prune_tool_images(messages: &mut [Message], keep_latest: usize) {
     let mut retained = 0usize;
     for message in messages.iter_mut().rev() {
@@ -1070,6 +1095,57 @@ mod computer_context_tests {
         });
         message.tool_call_id = Some(call_id.into());
         message
+    }
+
+    fn outline(call_id: &str) -> Message {
+        let mut message = Message::text(
+            "tool",
+            format!(
+                "{}\napp=\"Mail\" nodes=1\n[0] text \"secret subject\"",
+                suncode_computer::OUTLINE_MARKER
+            ),
+        );
+        message.tool_call_id = Some(call_id.into());
+        message
+    }
+
+    #[test]
+    fn only_the_newest_accessibility_trees_stay_in_provider_context() {
+        let mut messages = vec![
+            outline("one"),
+            screenshot("two"),
+            outline("three"),
+            outline("four"),
+        ];
+        prune_accessibility_outlines(&mut messages, 2);
+        assert_eq!(
+            messages[0].content[0].text,
+            "[older computer accessibility tree omitted from provider context]"
+        );
+        assert_eq!(messages[0].tool_call_id.as_deref(), Some("one"));
+        // Screenshots are left to the image retention pass.
+        assert!(messages[1]
+            .content
+            .iter()
+            .any(|part| part.kind == "image_url"));
+        assert!(messages[2..]
+            .iter()
+            .all(|message| message.content[0].text.contains("secret subject")));
+    }
+
+    #[test]
+    fn accessibility_trees_never_reach_durable_snapshots() {
+        let mut user = Message::text("user", suncode_computer::OUTLINE_MARKER);
+        user.tool_call_id = None;
+        let persisted = crate::context::persistable_messages(&[outline("one"), user]);
+        let json = serde_json::to_string(&persisted).unwrap();
+        assert!(!json.contains("secret subject"));
+        assert!(json.contains("[transient accessibility tree omitted from persisted context]"));
+        // Only tool results are treated as trees.
+        assert_eq!(
+            persisted[1].content[0].text,
+            suncode_computer::OUTLINE_MARKER
+        );
     }
 
     #[test]

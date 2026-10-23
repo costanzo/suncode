@@ -1,6 +1,6 @@
 use crate::{
-    ComputerAction, ComputerBackend, ComputerFrame, KeyChord, KeyModifier, KeyState, MouseButton,
-    MouseButtonState, PixelPoint, PixelRegion,
+    AccessibilityReport, ComputerAction, ComputerBackend, ComputerFrame, DisplayGeometry, KeyChord,
+    KeyModifier, KeyState, MouseButton, MouseButtonState, PixelPoint, PixelRegion,
 };
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
@@ -20,6 +20,8 @@ pub enum ComputerError {
     FrameRetired,
     CoordinateOutOfBounds,
     Cancelled,
+    /// The operating system has not granted the permission this needs.
+    PermissionRequired,
     Backend(String),
 }
 
@@ -34,6 +36,9 @@ impl Display for ComputerError {
                 write!(formatter, "coordinate is outside the screenshot")
             }
             Self::Cancelled => write!(formatter, "computer action was cancelled"),
+            Self::PermissionRequired => {
+                write!(formatter, "the operating system has not granted permission")
+            }
             Self::Backend(message) => write!(formatter, "computer backend failed: {message}"),
         }
     }
@@ -47,6 +52,10 @@ pub enum ActionOutcome {
     Image {
         frame: ComputerFrame,
         source_frame: ComputerFrame,
+    },
+    Accessibility {
+        report: AccessibilityReport,
+        duration: Duration,
     },
 }
 
@@ -63,6 +72,16 @@ pub struct ComputerExecutor<B: ComputerBackend> {
     last_source_frame: Option<ComputerFrame>,
     held_keys: Vec<String>,
     left_button_held: bool,
+    /// Bumped whenever the coordinate frame is replaced or retired.
+    frame_epoch: u64,
+}
+
+/// The current coordinate frame, copied for work outside the executor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FrameSnapshot {
+    pub epoch: u64,
+    /// Provider screenshot geometry the model sees.
+    pub display: DisplayGeometry,
 }
 
 impl<B: ComputerBackend> ComputerExecutor<B> {
@@ -73,6 +92,7 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
             last_source_frame: None,
             held_keys: Vec::new(),
             left_button_held: false,
+            frame_epoch: 0,
         }
     }
 
@@ -83,6 +103,22 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
     pub fn retire_frame(&mut self) {
         self.last_frame = None;
         self.last_source_frame = None;
+        self.frame_epoch += 1;
+    }
+
+    /// Epoch of the current coordinate frame; changes when it is replaced
+    /// or retired.
+    pub fn frame_epoch(&self) -> u64 {
+        self.frame_epoch
+    }
+
+    /// Validates the current frame against the live display and copies it.
+    pub fn frame_snapshot(&mut self) -> ComputerResult<FrameSnapshot> {
+        let display = self.current_frame()?.display;
+        Ok(FrameSnapshot {
+            epoch: self.frame_epoch,
+            display,
+        })
     }
 
     pub fn execute_batch(
@@ -122,6 +158,7 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
                 let frame = source_frame.provider_frame()?;
                 self.last_source_frame = Some(source_frame.clone());
                 self.last_frame = Some(frame.clone());
+                self.frame_epoch += 1;
                 Ok(ActionOutcome::Image {
                     frame,
                     source_frame,
@@ -307,8 +344,7 @@ impl<B: ComputerBackend> ComputerExecutor<B> {
             .ok_or(ComputerError::FrameRequired)?
             .display;
         if current != source_display {
-            self.last_frame = None;
-            self.last_source_frame = None;
+            self.retire_frame();
             return Err(ComputerError::FrameRetired);
         }
         Ok(self.last_frame.as_ref().expect("frame was checked"))

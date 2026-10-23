@@ -197,6 +197,34 @@ public sealed class SettingsPageViewModelTests
     }
 
     [Fact]
+    public void ComputerAccessibilityRowFollowsRuntime()
+    {
+        var computer = new ComputerRuntimeViewModel(new FakeViewModelHost());
+        Assert.Equal("Unknown", computer.AccessibilityText);
+
+        ComputerRuntimeInfo Runtime(bool available, string permission) => new(true, true, "primary_display",
+            null, null, 1920, 1080, "allowed", "allowed", "agent", null, available, permission);
+
+        computer.Runtime = Runtime(true, "allowed");
+        Assert.Equal("Available", computer.AccessibilityText);
+        Assert.Equal(StatusTone.Success, computer.AccessibilityTone);
+
+        computer.Runtime = Runtime(true, "denied");
+        Assert.Equal("Permission needed", computer.AccessibilityText);
+        Assert.Equal(StatusTone.Warning, computer.AccessibilityTone);
+
+        // Not installed yet, or no platform backend.
+        computer.Runtime = Runtime(false, "allowed");
+        Assert.Equal("Unavailable", computer.AccessibilityText);
+        Assert.Equal(StatusTone.Muted, computer.AccessibilityTone);
+
+        // Older agents omit the fields.
+        computer.Runtime = new ComputerRuntimeInfo(true, true, "primary_display", null, null, null, null,
+            "allowed", "allowed", "agent", null);
+        Assert.Equal("Unavailable", computer.AccessibilityText);
+    }
+
+    [Fact]
     public void BrowserPresentationFollowsRuntimeAndProject()
     {
         var host = new FakeViewModelHost();

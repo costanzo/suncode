@@ -17,3 +17,12 @@ suncode-common.workspace = true
 [dev-dependencies]
 jsonschema.workspace = true
 tempfile.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus.workspace = true

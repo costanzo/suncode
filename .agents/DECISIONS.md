@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261023-computer-accessibility-tree
+
+- Date: 2026-10-23
+- Status: Accepted; Windows and Linux conformance pending
+- Context: Computer Use was purely visual. Models inferred every control from pixels, even though each desktop platform already publishes semantic roles, names, values, states, and bounds.
+- Decision: Add one read-only `computer_accessibility_tree` observation tool backed by a separate `AccessibilityBackend` trait in `suncode-computer`, with hand-written macOS AX, Windows UI Automation, and Linux AT-SPI2 collectors over crates already in the lockfile (`core-foundation`, `windows`, `dbus`). Boxes map into the latest screenshot's pixels so input stays on the existing coordinate tools; no semantic element actions or durable element handles. Collection copies the frame under a short lock, then runs without the executor lock so a hung target never blocks takeover or emergency stop; the result is discarded if the frame changes. The outline is transient provider context marked by a fixed first line, which core uses to redact it from compaction checkpoints, approval continuations, and older provider turns.
+- Consequences: Models get a cheaper, more precise way to find targets and read text, but tree quality depends on each application, so screenshots remain primary. There is no new permission prompt: macOS shares the input control trust, and SunCode never toggles the Linux accessibility bus. The marker-based redaction is a convention between `suncode-computer` and core rather than a typed content kind.
+- Details: `features/computer-use/`, `contracts/agent-sdk/README.md`, `agent/crates/computer/src/accessibility/`
+
 ## ADR-20261018-provider-secret-storage
 
 - Date: 2026-10-18
