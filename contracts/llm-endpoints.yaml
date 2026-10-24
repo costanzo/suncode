@@ -1,0 +1,794 @@
+openapi: 3.1.0
+info:
+  title: SunCode LLM Provider Endpoints
+  version: 1.0.0
+  description: |
+    Wire contracts used by the three built-in Rust LLM adapters. The endpoint
+    base URL is provider configuration; the paths below are appended to it.
+    Requests are made with streaming enabled for the Responses and Chat
+    Completions adapters. The Anthropic adapter intentionally uses the normal
+    JSON Messages response and buffers it before returning a provider-neutral
+    completion.
+  contact:
+    name: SunCode
+tags:
+  - name: OpenAI Responses
+    description: OpenAI Responses-compatible adapter, including compatible providers.
+  - name: Chat Completions
+    description: Tencent Hunyuan Chat Completions adapter.
+  - name: Anthropic Messages
+    description: Anthropic Claude Messages adapter.
+paths:
+  /responses:
+    post:
+      tags: [OpenAI Responses]
+      summary: Create a streamed model response
+      servers:
+        - url: https://api.openai.com/v1
+          description: OpenAI Responses API (SunCode also supports configured OpenAI-compatible endpoints).
+      description: |
+        SunCode posts to `<configured-endpoint>/responses` with a bearer token.
+        The server must return an SSE stream containing a terminal
+        `response.completed` or `response.incomplete` event. Function calls are
+        sent as Responses input items and are reconstructed from output item
+        and function-call argument events.
+      externalDocs:
+        description: OpenAI Create a model response and streaming events
+        url: https://developers.openai.com/api/reference/resources/responses/methods/create
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponsesRequest'
+      responses:
+        '200':
+          description: Server-sent response events.
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/ProviderRequestId'
+          content:
+            text/event-stream:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ResponsesCreatedEvent'
+                  - $ref: '#/components/schemas/ResponsesTextDeltaEvent'
+                  - $ref: '#/components/schemas/ResponsesOutputItemEvent'
+                  - $ref: '#/components/schemas/ResponsesFunctionArgumentsDeltaEvent'
+                  - $ref: '#/components/schemas/ResponsesFunctionArgumentsDoneEvent'
+                  - $ref: '#/components/schemas/ResponsesTerminalEvent'
+                  - $ref: '#/components/schemas/ResponsesErrorEvent'
+                description: Each SSE data field is one JSON event; an optional event field names its type.
+          links:
+            responseId:
+              operationId: responsesResponseId
+              description: The response id is available in response.created or the terminal response object.
+        '400':
+          $ref: '#/components/responses/ProviderError'
+        '401':
+          $ref: '#/components/responses/ProviderError'
+        '429':
+          $ref: '#/components/responses/ProviderError'
+        '500':
+          $ref: '#/components/responses/ProviderError'
+
+  /chat/completions:
+    post:
+      tags: [Chat Completions]
+      summary: Create a streamed chat completion
+      servers:
+        - url: https://api.hunyuan.cloud.tencent.com/v1
+          description: Tencent Cloud Hunyuan OpenAI-compatible API.
+      description: |
+        SunCode posts to `<configured-endpoint>/chat/completions` with bearer
+        authentication. This is the Tencent Hunyuan OpenAI-compatible route.
+        The final usage-only chunk may have an empty choices array, and the
+        stream ends with the literal `data: [DONE]` marker.
+      externalDocs:
+        description: Tencent Cloud official OpenAI-compatible interface
+        url: https://cloud.tencent.com/document/product/1729/111007
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionsRequest'
+      responses:
+        '200':
+          description: Server-sent chat completion chunks.
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/ProviderRequestId'
+          content:
+            text/event-stream:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ChatCompletionChunk'
+                  - $ref: '#/components/schemas/ChatCompletionUsageChunk'
+                description: "Each SSE data field is one JSON chunk followed by a final data: [DONE] marker."
+        '400':
+          $ref: '#/components/responses/ProviderError'
+        '401':
+          $ref: '#/components/responses/ProviderError'
+        '429':
+          $ref: '#/components/responses/ProviderError'
+        '500':
+          $ref: '#/components/responses/ProviderError'
+
+  /messages:
+    post:
+      tags: [Anthropic Messages]
+      summary: Create a message
+      servers:
+        - url: https://api.anthropic.com/v1
+          description: Anthropic API.
+      description: |
+        SunCode posts to `<configured-endpoint>/messages` with an Anthropic
+        API key and `anthropic-version: 2023-06-01`. The adapter does not send
+        `stream`; it reads the complete JSON response and emits text deltas
+        locally while normalizing tool_use blocks.
+      externalDocs:
+        description: Anthropic Create a Message API
+        url: https://platform.claude.com/docs/en/api/messages/create
+      security:
+        - anthropicApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/AnthropicVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnthropicMessagesRequest'
+      responses:
+        '200':
+          description: Complete Anthropic message response.
+          headers:
+            request-id:
+              $ref: '#/components/headers/ProviderRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnthropicMessageResponse'
+        '400':
+          $ref: '#/components/responses/ProviderError'
+        '401':
+          $ref: '#/components/responses/ProviderError'
+        '429':
+          $ref: '#/components/responses/ProviderError'
+        '500':
+          $ref: '#/components/responses/ProviderError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: "Provider API key sent as Authorization: Bearer <key>."
+    anthropicApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: "Anthropic API key. The adapter also sends anthropic-version: 2023-06-01."
+  headers:
+    ProviderRequestId:
+      description: Provider request identifier, when supplied by the provider.
+      schema:
+        type: string
+  parameters:
+    AnthropicVersion:
+      name: anthropic-version
+      in: header
+      required: true
+      schema:
+        type: string
+        const: '2023-06-01'
+  responses:
+    ProviderError:
+      description: Provider returned an error.
+      headers:
+        retry-after:
+          description: Optional provider retry delay.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProviderErrorBody'
+
+  schemas:
+    ResponsesRequest:
+      type: object
+      additionalProperties: false
+      required: [model, input, tools, stream, store]
+      properties:
+        model:
+          type: string
+          description: Provider wire model identifier.
+        input:
+          type: array
+          description: Canonical transcript encoded as Responses input items.
+          items:
+            $ref: '#/components/schemas/ResponsesInputItem'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResponsesFunctionTool'
+        stream:
+          type: boolean
+          const: true
+        store:
+          type: boolean
+          const: false
+        reasoning:
+          type: object
+          additionalProperties: false
+          required: [effort]
+          properties:
+            effort:
+              type: string
+        max_output_tokens:
+          type: integer
+          minimum: 1
+    ResponsesInputItem:
+      oneOf:
+        - $ref: '#/components/schemas/ResponsesMessageItem'
+        - $ref: '#/components/schemas/ResponsesFunctionCallItem'
+        - $ref: '#/components/schemas/ResponsesFunctionCallOutputItem'
+    ResponsesMessageItem:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, developer, user, assistant]
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ResponsesContentPart'
+    ResponsesContentPart:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [type, text]
+          properties:
+            type:
+              const: input_text
+            text:
+              type: string
+        - type: object
+          additionalProperties: false
+          required: [type, image_url]
+          properties:
+            type:
+              const: input_image
+            image_url:
+              type: string
+              format: uri-reference
+    ResponsesFunctionCallItem:
+      type: object
+      additionalProperties: false
+      required: [type, call_id, name, arguments]
+      properties:
+        type:
+          const: function_call
+        call_id:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: string
+    ResponsesFunctionCallOutputItem:
+      type: object
+      additionalProperties: false
+      required: [type, call_id, output]
+      properties:
+        type:
+          const: function_call_output
+        call_id:
+          type: string
+        output:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ResponsesContentPart'
+    ResponsesFunctionTool:
+      type: object
+      additionalProperties: false
+      required: [type, name, description, parameters, strict]
+      properties:
+        type:
+          const: function
+        name:
+          type: string
+        description:
+          type: string
+        parameters:
+          type: object
+        strict:
+          const: false
+    ResponsesCreatedEvent:
+      type: object
+      required: [type, response]
+      properties:
+        type:
+          const: response.created
+        response:
+          $ref: '#/components/schemas/ResponsesResponseReference'
+    ResponsesTextDeltaEvent:
+      type: object
+      required: [type, delta]
+      properties:
+        type:
+          const: response.output_text.delta
+        delta:
+          type: string
+    ResponsesOutputItemEvent:
+      type: object
+      required: [type, item]
+      properties:
+        type:
+          type: string
+          enum: [response.output_item.added, response.output_item.done]
+        output_index:
+          type: integer
+        item:
+          $ref: '#/components/schemas/ResponsesFunctionCall'
+    ResponsesFunctionArgumentsDeltaEvent:
+      type: object
+      required: [type, output_index, call_id, name, delta]
+      properties:
+        type:
+          const: response.function_call_arguments.delta
+        output_index:
+          type: integer
+        call_id:
+          type: string
+        name:
+          type: string
+        delta:
+          type: string
+    ResponsesFunctionArgumentsDoneEvent:
+      type: object
+      required: [type, output_index, call_id, name, arguments]
+      properties:
+        type:
+          const: response.function_call_arguments.done
+        output_index:
+          type: integer
+        call_id:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: string
+    ResponsesFunctionCall:
+      type: object
+      required: [type, call_id, name, arguments]
+      properties:
+        type:
+          const: function_call
+        call_id:
+          type: string
+        name:
+          type: string
+        arguments:
+          type: string
+    ResponsesTerminalEvent:
+      type: object
+      required: [type, response]
+      properties:
+        type:
+          type: string
+          enum: [response.completed, response.incomplete]
+        response:
+          $ref: '#/components/schemas/ResponsesResponse'
+    ResponsesResponseReference:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+    ResponsesResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponsesResponseReference'
+        - type: object
+          properties:
+            status:
+              type: string
+            usage:
+              $ref: '#/components/schemas/ResponsesUsage'
+            output:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResponsesFunctionCall'
+    ResponsesUsage:
+      type: object
+      properties:
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        input_tokens_details:
+          type: object
+          properties:
+            cached_tokens:
+              type: integer
+    ResponsesErrorEvent:
+      type: object
+      required: [type]
+      properties:
+        type:
+          enum: [response.failed, error]
+        response:
+          type: object
+          properties:
+            error:
+              $ref: '#/components/schemas/ProviderErrorBody'
+        error:
+          $ref: '#/components/schemas/ProviderErrorBody'
+
+    ChatCompletionsRequest:
+      type: object
+      additionalProperties: false
+      required: [model, messages, stream, stream_options]
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        stream:
+          type: boolean
+          const: true
+        stream_options:
+          type: object
+          additionalProperties: false
+          required: [include_usage]
+          properties:
+            include_usage:
+              type: boolean
+              const: true
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatFunctionTool'
+        max_tokens:
+          type: integer
+          minimum: 1
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ChatContentPart'
+        tool_calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatToolCall'
+        tool_call_id:
+          type: string
+    ChatContentPart:
+      oneOf:
+        - type: object
+          required: [type, text]
+          properties:
+            type:
+              const: text
+            text:
+              type: string
+        - type: object
+          required: [type, image_url]
+          properties:
+            type:
+              const: image_url
+            image_url:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri-reference
+    ChatFunctionTool:
+      type: object
+      additionalProperties: false
+      required: [type, function]
+      properties:
+        type:
+          const: function
+        function:
+          type: object
+          required: [name, description, parameters]
+          properties:
+            name:
+              type: string
+            description:
+              type: string
+            parameters:
+              type: object
+    ChatToolCall:
+      type: object
+      required: [id, type, function]
+      properties:
+        id:
+          type: string
+        type:
+          const: function
+        function:
+          type: object
+          required: [name, arguments]
+          properties:
+            name:
+              type: string
+            arguments:
+              type: string
+    ChatCompletionChunk:
+      type: object
+      required: [id, object, choices]
+      properties:
+        id:
+          type: string
+        object:
+          const: chat.completion.chunk
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            required: [index, delta]
+            properties:
+              index:
+                type: integer
+              delta:
+                $ref: '#/components/schemas/ChatDelta'
+              finish_reason:
+                type: [string, 'null']
+    ChatDelta:
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: [string, 'null']
+        tool_calls:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              id:
+                type: string
+              type:
+                const: function
+              function:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  arguments:
+                    type: string
+    ChatCompletionUsageChunk:
+      allOf:
+        - $ref: '#/components/schemas/ChatCompletionChunk'
+        - type: object
+          properties:
+            choices:
+              type: array
+              maxItems: 0
+            usage:
+              $ref: '#/components/schemas/ChatUsage'
+    ChatUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        prompt_tokens_details:
+          type: object
+          properties:
+            cached_tokens:
+              type: integer
+        completion_tokens_details:
+          type: object
+          properties:
+            reasoning_tokens:
+              type: integer
+
+    AnthropicMessagesRequest:
+      type: object
+      additionalProperties: false
+      required: [model, max_tokens, messages]
+      properties:
+        model:
+          type: string
+        max_tokens:
+          type: integer
+          minimum: 1
+          default: 4096
+        system:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnthropicMessage'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnthropicTool'
+        output_config:
+          type: object
+          additionalProperties: false
+          required: [effort]
+          properties:
+            effort:
+              type: string
+    AnthropicMessage:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/AnthropicContentBlock'
+    AnthropicContentBlock:
+      oneOf:
+        - type: object
+          required: [type, text]
+          properties:
+            type:
+              const: text
+            text:
+              type: string
+        - type: object
+          required: [type, source]
+          properties:
+            type:
+              const: image
+            source:
+              type: object
+              required: [type, media_type, data]
+              properties:
+                type:
+                  const: base64
+                media_type:
+                  type: string
+                  enum: [image/png, image/jpeg, image/gif, image/webp]
+                data:
+                  type: string
+        - type: object
+          required: [type, tool_use_id, content]
+          properties:
+            type:
+              const: tool_result
+            tool_use_id:
+              type: string
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/AnthropicContentBlock'
+        - type: object
+          required: [type, id, name, input]
+          properties:
+            type:
+              const: tool_use
+            id:
+              type: string
+            name:
+              type: string
+            input:
+              type: object
+    AnthropicTool:
+      type: object
+      additionalProperties: false
+      required: [name, description, input_schema]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        input_schema:
+          type: object
+          required: [type]
+          properties:
+            type:
+              const: object
+    AnthropicMessageResponse:
+      type: object
+      required: [id, type, role, content, model, stop_reason, usage]
+      properties:
+        id:
+          type: string
+        type:
+          const: message
+        role:
+          const: assistant
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnthropicResponseBlock'
+        model:
+          type: string
+        stop_reason:
+          type: [string, 'null']
+        usage:
+          $ref: '#/components/schemas/AnthropicUsage'
+    AnthropicResponseBlock:
+      oneOf:
+        - type: object
+          required: [type, text]
+          properties:
+            type:
+              const: text
+            text:
+              type: string
+        - type: object
+          required: [type, id, name, input]
+          properties:
+            type:
+              const: tool_use
+            id:
+              type: string
+            name:
+              type: string
+            input:
+              type: object
+    AnthropicUsage:
+      type: object
+      properties:
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_input_tokens:
+          type: integer
+        cache_creation_input_tokens:
+          type: integer
+    ProviderErrorBody:
+      type: object
+      properties:
+        type:
+          type: string
+        error:
+          type: object
+          properties:
+            type:
+              type: string
+            code:
+              type: string
+            message:
+              type: string
+        message:
+          type: string
+      additionalProperties: true
