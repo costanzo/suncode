@@ -306,6 +306,18 @@ impl TurnLoop<'_> {
                 .turn_state(self.context, TurnState::CallingModel, None)?;
             let agent = self.context.agent();
             let mut tool_definitions = suncode_tool::definitions::all();
+            let lsp_enabled = db_blocking(|| {
+                self.services.store.language_servers().map(|servers| {
+                    servers.iter().any(|server| {
+                        server.enabled
+                            && server.config.project_id.as_deref()
+                                == Some(self.context.project_id.as_str())
+                    })
+                })
+            })?;
+            if !lsp_enabled {
+                tool_definitions.retain(|definition| !suncode_lsp::is_lsp_tool(&definition.name));
+            }
             if !agent.can_ask_user {
                 tool_definitions.retain(|definition| definition.name != "question");
             }

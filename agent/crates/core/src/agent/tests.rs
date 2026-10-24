@@ -1651,6 +1651,11 @@ async fn provider_tool_is_advertised_validated_and_executed() {
                 .into_iter()
                 .flatten()
                 .any(|tool| tool["name"] == "fake_echo");
+            let lsp_advertised = body["tools"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|tool| tool["name"] == "lsp_hover");
             let tool_output = body["input"]
                 .as_array()
                 .into_iter()
@@ -1665,7 +1670,7 @@ async fn provider_tool_is_advertised_validated_and_executed() {
                     }
                 }]}}]})],
                 Some(output) => vec![json!({"choices":[{"delta":{
-                    "content": format!("advertised={advertised} output={output}")
+                    "content": format!("advertised={advertised} lsp_advertised={lsp_advertised} output={output}")
                 }}]})],
             };
             (
@@ -1695,6 +1700,7 @@ async fn provider_tool_is_advertised_validated_and_executed() {
         .unwrap()
         .text_content();
     assert!(reply.contains("advertised=true"), "{reply}");
+    assert!(reply.contains("lsp_advertised=false"), "{reply}");
     assert!(reply.contains("hi"), "{reply}");
     server.abort();
 }
