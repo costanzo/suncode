@@ -3,6 +3,7 @@ import { Icon } from "../../../shared/Icon.jsx";
 import { McpLoadingStatus, RemoteServerStatus, WorkspaceWindow } from "./shell/index.js";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 import { NativeMenuSpecimen } from "./shell/NativeMenuSpecimen.jsx";
+import { DockMenuSpecimen } from "./shell/DockMenuSpecimen.jsx";
 
 export function WorkspacePage() {
   return (
@@ -72,6 +73,10 @@ export function WorkspacePage() {
         description="Project windows expose existing SunCode actions through a native menu bar. Menus refresh when opened so session, model, checkpoint, and pane state stays truthful."
       >
         <NativeMenuSpecimen />
+      </Section>
+      <Section id="workspace-dock-menu" title="macOS Dock menu"
+        description="The running app exposes open project windows and recent projects from its Dock icon.">
+        <DockMenuSpecimen />
       </Section>
       <Section id="workspace-modules" title="Focused workspace surfaces">
         <div className="module-card-grid">

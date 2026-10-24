@@ -34,6 +34,10 @@ internal sealed class ProjectWindowManager
 
     public bool CanMergeWindows => _registry.Count >= 2;
 
+    public IReadOnlyList<ProjectItem> OpenProjects => _registry.Windows
+        .Select(window => (window.DataContext as DesktopViewModel)?.SelectedProject)
+        .OfType<ProjectItem>().ToArray();
+
     public bool TryGetWindow(string projectId, out WorkspaceWindow window) => _registry.TryGet(projectId, out window);
 
     /// <summary>Completes when the project's window is registered. UI-thread only.</summary>
@@ -45,15 +49,7 @@ internal sealed class ProjectWindowManager
         if (disposition == ProjectWindowDisposition.ActivateExisting &&
             _registry.TryGet(project.ProjectId, out var existing))
         {
-            if (_mergedWindow?.ContainsProject(project.ProjectId) == true)
-            {
-                _mergedWindow.SelectProject(project.ProjectId);
-                _mergedWindow.Show();
-                _mergedWindow.Activate();
-                return;
-            }
-            existing.Show();
-            existing.Activate();
+            RevealProject(project.ProjectId, existing);
             return;
         }
         if (disposition == ProjectWindowDisposition.AwaitOpening)

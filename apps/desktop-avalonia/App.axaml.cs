@@ -20,6 +20,7 @@ public sealed partial class App : Application
     private UiStateStore? _uiStateStore;
     private ProjectHubWindow? _hubWindow;
     private ProjectWindowManager? _windows;
+    private DesktopDockMenuController? _dockMenuController;
     private DialogService? _dialogs;
     private BrowserHostBridge? _browserHost;
     private SessionAttentionCoordinator? _attentionCoordinator;
@@ -49,6 +50,18 @@ public sealed partial class App : Application
             _hubViewModel = new ProjectHubViewModel(_viewModel);
             _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
             _windows = new ProjectWindowManager(_hubWindow, () => desktop.Windows, _uiStateStore, _appSettings);
+            _dockMenuController = new DesktopDockMenuController(
+                () => _viewModel.Projects.ToArray(),
+                () => _windows.OpenProjects,
+                OpenProjectWindowAsync,
+                async () =>
+                {
+                    ShowProjectHub();
+                    await _hubWindow.OpenProjectPickerAsync();
+                },
+                ShowProjectHub,
+                () => _hubWindow.IsEnabled && desktop.Windows.All(window => window.IsEnabled));
+            if (OperatingSystem.IsMacOS()) NativeDock.SetMenu(this, _dockMenuController.Menu);
             _dialogs = new DialogService(() => _viewModel, SetOtherWindowsEnabled);
             _browserHost = new BrowserHostBridge(new ProjectWindowBrowserHost(
                 _windows,
@@ -118,8 +131,12 @@ public sealed partial class App : Application
         }
     }
 
-    internal Task OpenProjectWindowAsync(ProjectItem project) =>
-        _windows?.OpenProjectWindowAsync(project) ?? Task.CompletedTask;
+    internal async Task OpenProjectWindowAsync(ProjectItem project)
+    {
+        if (_windows is null) return;
+        await _windows.OpenProjectWindowAsync(project);
+        if (_viewModel is not null) await _viewModel.RefreshProjectsAsync();
+    }
 
     // Merging is synchronous. The Task shape is kept only for existing view callers.
     internal Task MergeAllProjectWindowsAsync()

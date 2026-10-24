@@ -53,6 +53,8 @@
   <x:String x:Key="LocMenuFullScreen">Full Screen</x:String>
   <x:String x:Key="LocMenuMergeAllWindows">Merge All Windows</x:String>
   <x:String x:Key="LocMenuOpenWindows">Open Windows</x:String>
+  <x:String x:Key="LocMenuRecentProjects">Recent Projects</x:String>
+  <x:String x:Key="LocMenuProjectHub">Show Project Hub</x:String>
   <x:String x:Key="LocMenuNoWindows">No Open Windows</x:String>
   <x:String x:Key="LocMenuKeyboardShortcuts">Keyboard Shortcuts</x:String>
   <x:String x:Key="LocMenuAbout">About SunCode</x:String>

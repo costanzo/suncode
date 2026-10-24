@@ -47,7 +47,7 @@ public sealed partial class ProjectHubWindow : Window
 
     private void OpenSettings(object? sender, RoutedEventArgs e) => ShowSettings();
 
-    private async Task OpenProjectPickerAsync()
+    internal async Task OpenProjectPickerAsync()
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {

@@ -26,6 +26,7 @@ The Avalonia client has a small application menu and a project-specific menu lab
 
 - Project windows expose File, Edit, Navigate, Session, Agent, View, Window, and Help menus.
 - ProjectHub exposes relevant File, Edit, Navigate, Window, and Help actions.
+- The macOS Dock icon exposes open project windows, recent projects, project opening, and the ProjectHub through Avalonia NativeDock. Open projects include merged tabs; recent projects preserve the SDK catalog order and are capped at ten.
 - Menu items call existing client actions; unavailable context disables the command.
 - View and model selections show current state when their menus open.
 - Undoing Agent file changes and archiving sessions retain explicit confirmation.
@@ -45,4 +46,4 @@ The Avalonia client has a small application menu and a project-specific menu lab
 - ProjectHub and project windows use consistent file/navigation/window/help terminology.
 - Existing menu shortcuts match the shortcuts shown in Settings.
 - Design-system specimen covers menu hierarchy and enabled, checked, and empty states.
-- Focused Avalonia tests, desktop build, design-system build, `git diff --check`, and design-system visual review pass. Native macOS click-through remains pending because the automated UI session could not attach to the isolated app instance.
+- Focused Avalonia tests, desktop build, design-system build, `git diff --check`, and design-system visual review pass. Native macOS menu and Dock click-through remain pending because the automated UI session could not attach to the isolated app instance.

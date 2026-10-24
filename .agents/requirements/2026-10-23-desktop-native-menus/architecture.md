@@ -2,7 +2,7 @@
 
 ## Current state
 
-`App` attaches a native menu containing About and Window actions. `WorkspaceWindow` attaches Project actions and Window menus, while ProjectHub has no native window menu. UI commands are implemented by the active workspace view model and controls.
+`App` attaches a native application menu containing About and Settings actions. `WorkspaceWindow` and ProjectHub attach contextual native menus using the eight-group IDE hierarchy. UI commands are implemented by existing view models, the project-window manager, and workspace controls.
 
 ## Proposed design
 
@@ -11,6 +11,8 @@ Keep menu composition in the Avalonia window code-behind because the menus are t
 The workspace menu groups commands under File, Edit, Navigate, Session, Agent, View, Window, and Help. `NeedsUpdate` refreshes dynamic session/project/checkpoint/model entries and stateful menu checks before display. ProjectWorkspace exposes narrow internal action methods for the native menu and existing controls to share behavior.
 
 The design-system route under Projects → Desktop → Workspace documents the menu hierarchy and representative state behavior. `DESIGN.md` remains normative.
+
+On macOS, `NativeDock` attaches a separate Dock menu to the Avalonia application without replacing the AppKit application delegate. Its open-window submenu reads the live project-window registry, including source windows hosted as merged tabs. Its recent-project submenu uses the existing SDK catalog order and is capped at ten entries. Commands route through existing picker, project-opening, and ProjectHub flows. Windows/Linux retain their existing window/taskbar behaviors.
 
 ## Boundaries and dependencies
 

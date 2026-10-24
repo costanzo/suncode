@@ -53,6 +53,8 @@
   <x:String x:Key="LocMenuFullScreen">全屏</x:String>
   <x:String x:Key="LocMenuMergeAllWindows">合并所有窗口</x:String>
   <x:String x:Key="LocMenuOpenWindows">已打开的窗口</x:String>
+  <x:String x:Key="LocMenuRecentProjects">最近的项目</x:String>
+  <x:String x:Key="LocMenuProjectHub">显示项目中心</x:String>
   <x:String x:Key="LocMenuNoWindows">没有已打开的窗口</x:String>
   <x:String x:Key="LocMenuKeyboardShortcuts">键盘快捷键</x:String>
   <x:String x:Key="LocMenuAbout">关于 SunCode</x:String>
