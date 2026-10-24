@@ -81,3 +81,19 @@ test("SSE decoding preserves a Unicode character split across network chunks", a
   store.appendResponseChunk(capture.id, raw.subarray(split));
   assert.equal(store.getCapture(capture.id).sseEvents[0].data, '{"delta":"你好"}');
 });
+
+test("capture list supports cursor updates and older pages", async () => {
+  const store = await import(`../lib/capture-store.mjs?test=paging-${Date.now()}`);
+  const first = store.createCapture({ method: "POST", target: "https://example.test/v1/responses" });
+  store.createCapture({ method: "POST", target: "https://example.test/v1/chat/completions" });
+  store.createCapture({ method: "POST", target: "https://example.test/v1/messages" });
+  const page = store.queryCaptures(new URLSearchParams({ limit: "2" }));
+  assert.equal(page.requests.length, 2);
+  assert.equal(page.hasMore, true);
+  assert.ok(page.nextBefore);
+  const older = store.queryCaptures(new URLSearchParams({ limit: "2", before: page.nextBefore }));
+  assert.equal(older.requests.length, 1);
+  store.updateCapture(first.id, { status: 200 });
+  const updates = store.queryCaptures(new URLSearchParams({ limit: "10", since: page.cursor }));
+  assert.deepEqual(updates.requests.map((record) => record.id), [first.id]);
+});

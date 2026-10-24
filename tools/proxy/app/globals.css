@@ -77,6 +77,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .proxy-request-row { display: grid; gap: var(--space-2); width: 100%; padding: var(--space-4); text-align: left; color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--border); }
 .proxy-request-row:hover { background: var(--surface-hover); }
 .proxy-request-row.is-selected { background: var(--surface-active); box-shadow: inset 1px 0 0 var(--accent); }
+.proxy-load-more { width: calc(100% - 24px); min-height: var(--control-md); margin: 12px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; }
+.proxy-load-more:hover:not(:disabled) { color: var(--text); background: var(--surface-hover); }
+.proxy-load-more:disabled { opacity: .55; cursor: default; }
 .llm-row-heading, .llm-row-model, .proxy-row-meta { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .llm-row-heading strong { font-size: 12px; font-weight: 600; }
 .llm-row-heading > span { color: var(--success); font: 10px var(--font-mono); }

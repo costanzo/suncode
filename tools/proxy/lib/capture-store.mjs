@@ -1,5 +1,7 @@
 import { EventEmitter } from "node:events";
 import { StringDecoder } from "node:string_decoder";
+import { randomUUID } from "node:crypto";
+import { providerSummary } from "./provider-payload.mjs";
 
 const REDACTED_HEADERS = new Set([
   "authorization",
@@ -17,6 +19,8 @@ const maxRecords = Number.parseInt(process.env.MAX_CAPTURED_REQUESTS || "500", 1
 export const captureEvents = new EventEmitter();
 const records = new Map();
 let sequence = 0;
+let revision = 0;
+let generation = randomUUID();
 
 function safeNumber(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -73,6 +77,8 @@ function recordForPublic(record) {
 function recordForSummary(record) {
   return {
     id: record.id,
+    sequence: record.sequence,
+    revision: record.revision,
     method: record.method,
     url: record.url,
     target: record.target,
@@ -94,6 +100,7 @@ function recordForSummary(record) {
 }
 
 function publish(type, record) {
+  record.revision = ++revision;
   captureEvents.emit("record", { type, record: recordForSummary(record) });
 }
 
@@ -108,6 +115,7 @@ export function createCapture(input) {
   const now = new Date().toISOString();
   const record = {
     id: `req-${Date.now().toString(36)}-${(++sequence).toString(36)}`,
+    sequence,
     method: input.method || "GET",
     url: input.url || "",
     target: input.target || "",
@@ -238,6 +246,50 @@ export function listCaptures() {
   return [...records.values()].reverse().map(recordForSummary);
 }
 
+// Creation order drives history paging; mutation order drives incremental sync.
+// Keeping only each record's latest revision coalesces streaming chunk updates.
+export function queryCaptures(params = new URLSearchParams()) {
+  const limitText = params.get("limit") || "50";
+  if (!/^\d+$/.test(limitText) || Number(limitText) < 1 || Number(limitText) > 100) throw new RangeError("limit must be between 1 and 100.");
+  const limit = Number(limitText);
+  const since = params.get("since"), before = params.get("before");
+  if (since && before) throw new RangeError("Use either since or before.");
+  const decode = (value) => {
+    const [epoch, number, extra] = value.split(":");
+    if (!epoch || !/^\d+$/.test(number || "") || extra || !Number.isSafeInteger(Number(number))) throw new RangeError("Invalid capture cursor.");
+    return { epoch, number: Number(number) };
+  };
+  const cursor = since || before ? decode(since || before) : null;
+  const reset = Boolean(cursor && (cursor.epoch !== generation || (since && cursor.number > revision)));
+  const endpoint = params.get("endpoint") || "all", state = params.get("state") || "all";
+  const query = (params.get("q") || "").toLowerCase();
+  const matches = (record) => {
+    const meta = providerSummary(record);
+    const text = `${meta.label} ${meta.path} ${meta.model} ${record.method} ${record.url} ${record.target} ${record.id} ${record.providerRequestId || ""}`.toLowerCase();
+    return (endpoint === "all" || meta.provider?.id === endpoint) && (state === "all" || record.state === state) && (!query || text.includes(query));
+  };
+  const all = listCaptures(), matching = all.filter(matches);
+  const incremental = Boolean(since && !reset);
+  const candidates = incremental
+    ? all.filter((record) => record.revision > cursor.number).sort((a, b) => a.revision - b.revision)
+    : matching.filter((record) => !before || reset || record.sequence < cursor.number);
+  const page = candidates.slice(0, limit), hasMore = candidates.length > page.length;
+  const nextRevision = incremental && hasMore ? page.at(-1).revision : revision;
+  return {
+    requests: incremental ? page.filter(matches) : page,
+    removed: incremental ? page.filter((record) => !matches(record)).map((record) => record.id) : [],
+    cursor: `${generation}:${nextRevision}`,
+    nextBefore: !incremental && hasMore ? `${generation}:${page.at(-1).sequence}` : null,
+    hasMore,
+    reset,
+    oldestSequence: all.at(-1)?.sequence ?? sequence + 1,
+    total: matching.length,
+    activeCount: matching.filter((record) => ["forwarding", "streaming", "tunnel"].includes(record.state)).length,
+    streamCount: matching.filter((record) => record.contentType?.includes("text/event-stream")).length,
+    captureLimit: getCaptureLimit(),
+  };
+}
+
 export function getCapture(id) {
   const record = records.get(id);
   return record ? recordForPublic(record) : null;
@@ -245,6 +297,7 @@ export function getCapture(id) {
 
 export function clearCaptures() {
   records.clear();
+  generation = randomUUID();
   captureEvents.emit("clear");
 }
 

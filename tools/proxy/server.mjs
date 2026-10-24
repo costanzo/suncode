@@ -10,8 +10,7 @@ import {
   createCapture,
   finishCapture,
   getCapture,
-  getCaptureLimit,
-  listCaptures,
+  queryCaptures,
   sanitizeHeaders,
   updateCapture,
 } from "./lib/capture-store.mjs";
@@ -34,9 +33,10 @@ function json(res, status, payload) {
 }
 
 async function handleUiRequest(req, res, handleNext) {
-  const pathname = new URL(req.url, "http://localhost").pathname;
+  const { pathname, searchParams } = new URL(req.url, "http://localhost");
   if (pathname === "/api/requests" && req.method === "GET") {
-    json(res, 200, { requests: listCaptures(), captureLimit: getCaptureLimit() });
+    try { json(res, 200, queryCaptures(searchParams)); }
+    catch (error) { if (!(error instanceof RangeError)) throw error; json(res, 400, { error: error.message }); }
     return;
   }
   if (pathname.startsWith("/api/requests/") && req.method === "GET") {
@@ -57,14 +57,18 @@ async function handleUiRequest(req, res, handleNext) {
       "content-type": "text/event-stream; charset=utf-8",
       connection: "keep-alive",
     });
-    res.write(`event: snapshot\ndata: ${JSON.stringify({ requests: listCaptures() })}\n\n`);
-    const send = (payload) => res.write(`event: update\ndata: ${JSON.stringify(payload)}\n\n`);
+    res.write("event: snapshot\ndata: {}\n\n");
+    let notification;
+    const send = () => {
+      notification ||= setTimeout(() => { notification = null; res.write("event: update\ndata: {}\n\n"); }, 120);
+    };
     const clear = () => res.write("event: clear\ndata: {}\n\n");
     captureEvents.on("record", send);
     captureEvents.on("clear", clear);
     const heartbeat = setInterval(() => res.write(": ping\n\n"), 15_000);
     req.on("close", () => {
       clearInterval(heartbeat);
+      clearTimeout(notification);
       captureEvents.off("record", send);
       captureEvents.off("clear", clear);
     });
