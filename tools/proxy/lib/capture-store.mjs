@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { StringDecoder } from "node:string_decoder";
 
 const REDACTED_HEADERS = new Set([
   "authorization",
@@ -21,6 +22,11 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function requestModel(preview) {
+  try { const model = JSON.parse(preview)?.model; return typeof model === "string" ? model : null; }
+  catch { return null; }
+}
+
 export function sanitizeHeaders(headers = {}) {
   return Object.fromEntries(
     Object.entries(headers).map(([name, value]) => [
@@ -40,17 +46,14 @@ function decodePreview(buffer, contentType = "") {
       .toString("base64")}…`;
   }
   if (contentType.includes("json")) {
-    try {
-      return JSON.stringify(JSON.parse(text), null, 2);
-    } catch {
-      return text;
-    }
+    try { return JSON.stringify(JSON.parse(text), null, 2); }
+    catch { return text; }
   }
   return text;
 }
 
 function boundedAppend(target, chunk) {
-  if (target.bytes >= captureLimit) return;
+  if (target.bytes >= captureLimit) { target.truncated ||= chunk.length > 0; return; }
   const remaining = Math.max(0, captureLimit - target.bytes);
   const slice = chunk.subarray(0, remaining);
   target.chunks.push(slice);
@@ -59,7 +62,7 @@ function boundedAppend(target, chunk) {
 }
 
 function recordForPublic(record) {
-  const { requestBuffer, responseBuffer, sseBuffer, sseCurrent, ...publicRecord } = record;
+  const { requestBuffer, responseBuffer, sseBuffer, sseCurrent, sseDecoder, ...publicRecord } = record;
   return {
     ...publicRecord,
     requestHeaders: sanitizeHeaders(record.requestHeaders),
@@ -84,6 +87,8 @@ function recordForSummary(record) {
     requestTruncated: record.requestTruncated,
     responseTruncated: record.responseTruncated,
     contentType: record.contentType,
+    model: record.model,
+    providerRequestId: record.responseHeaders["x-request-id"] || record.responseHeaders["request-id"] || null,
     error: record.error,
   };
 }
@@ -115,12 +120,17 @@ export function createCapture(input) {
     requestHeaders: input.requestHeaders || {},
     responseHeaders: {},
     requestBodyPreview: "",
+    requestBodyRawPreview: "",
     responseBodyPreview: "",
+    responseBodyRawPreview: "",
     requestBytes: 0,
     responseBytes: 0,
     requestTruncated: false,
     responseTruncated: false,
     contentType: "",
+    model: null,
+    sseEventCount: 0,
+    sseDecoder: new StringDecoder("utf8"),
     error: null,
     sseEvents: [],
     sseCurrent: null,
@@ -144,6 +154,8 @@ export function appendRequestChunk(id, chunk) {
     Buffer.concat(record.requestBuffer.chunks),
     record.requestHeaders["content-type"] || "",
   );
+  record.requestBodyRawPreview = Buffer.concat(record.requestBuffer.chunks).toString("utf8");
+  record.model ||= requestModel(record.requestBodyPreview);
   publish("updated", record);
 }
 
@@ -157,19 +169,23 @@ export function appendResponseChunk(id, chunk) {
     Buffer.concat(record.responseBuffer.chunks),
     record.contentType,
   );
-  if (record.contentType.includes("text/event-stream")) parseSse(record, chunk);
+  record.responseBodyRawPreview = Buffer.concat(record.responseBuffer.chunks).toString("utf8");
+  if (record.contentType.includes("text/event-stream")) {
+    const retainedLength = Math.max(0, Math.min(chunk.length, captureLimit - (record.responseBytes - chunk.length)));
+    parseSse(record, record.sseDecoder.write(chunk.subarray(0, retainedLength)));
+  }
   publish("updated", record);
 }
 
 function parseSse(record, chunk) {
-  record.sseBuffer += chunk.toString("utf8");
+  record.sseBuffer += String(chunk);
   const lines = record.sseBuffer.split(/\r?\n/);
   record.sseBuffer = lines.pop() || "";
   let event = record.sseCurrent;
   for (const line of lines) {
     if (line === "") {
       if (event && (event.data || event.event || event.id)) {
-        record.sseEvents.push({ ...event, receivedAt: new Date().toISOString() });
+        record.sseEvents.push({ ...event, sequence: ++record.sseEventCount, receivedAt: new Date().toISOString() });
         record.sseEvents = record.sseEvents.slice(-200);
       }
       event = null;
@@ -205,14 +221,14 @@ export function updateCapture(id, patch) {
 export function finishCapture(id, patch = {}) {
   const record = records.get(id);
   if (!record) return null;
-  if (record.contentType.includes("text/event-stream")) flushSse(record);
+  if (record.contentType.includes("text/event-stream")) { parseSse(record, record.sseDecoder.end()); flushSse(record); }
   const finishedAt = new Date();
   const startedAt = new Date(record.startedAt);
   Object.assign(record, {
     ...patch,
     finishedAt: finishedAt.toISOString(),
     durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-    state: patch.state || (record.error ? "failed" : "completed"),
+    state: patch.state || (record.error || record.status >= 400 ? "failed" : "completed"),
   });
   publish("finished", record);
   return record;

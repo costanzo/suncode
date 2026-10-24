@@ -45,3 +45,39 @@ test("capture list returns summaries without payloads", async () => {
   assert.match(detail.requestBodyPreview, /"hello": "world"/);
   assert.equal(detail.requestHeaders.authorization, "[redacted]");
 });
+
+test("summary exposes only model and request identity while Raw preserves JSON whitespace", async () => {
+  const store = await import(`../lib/capture-store.mjs?test=raw-${Date.now()}`);
+  const capture = store.createCapture({ method: "POST", target: "https://custom.test/responses", requestHeaders: { "content-type": "application/json" } });
+  const raw = '{ "model" : "test-model", "input" : "private prompt" }\n';
+  store.appendRequestChunk(capture.id, Buffer.from(raw));
+  store.updateCapture(capture.id, { responseHeaders: { "x-request-id": "provider-1" } });
+  const detail = store.getCapture(capture.id), summary = store.listCaptures()[0];
+  assert.equal(detail.requestBodyRawPreview, raw);
+  assert.equal(summary.model, "test-model");
+  assert.equal(summary.providerRequestId, "provider-1");
+  assert.equal(summary.requestBodyRawPreview, undefined);
+  assert.equal(detail.sseDecoder, undefined);
+});
+
+test("preview marks truncation when a later chunk exceeds an exact limit", async () => {
+  const store = await import(`../lib/capture-store.mjs?test=limit-${Date.now()}`);
+  const capture = store.createCapture({ method: "POST" });
+  const limit = store.getCaptureLimit();
+  store.appendRequestChunk(capture.id, Buffer.alloc(limit, 65));
+  store.appendRequestChunk(capture.id, Buffer.from("extra"));
+  assert.equal(store.getCapture(capture.id).requestTruncated, true);
+  assert.equal(store.getCapture(capture.id).requestBodyRawPreview.length, limit);
+  assert.equal(store.getCapture(capture.id).requestBytes, limit + 5);
+});
+
+test("SSE decoding preserves a Unicode character split across network chunks", async () => {
+  const store = await import(`../lib/capture-store.mjs?test=utf8-${Date.now()}`);
+  const capture = store.createCapture({ method: "POST" });
+  store.updateCapture(capture.id, { contentType: "text/event-stream" });
+  const raw = Buffer.from('data: {"delta":"你好"}\n\n');
+  const split = raw.indexOf(Buffer.from("你")) + 1;
+  store.appendResponseChunk(capture.id, raw.subarray(0, split));
+  store.appendResponseChunk(capture.id, raw.subarray(split));
+  assert.equal(store.getCapture(capture.id).sseEvents[0].data, '{"delta":"你好"}');
+});
