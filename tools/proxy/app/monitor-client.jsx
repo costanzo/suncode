@@ -19,6 +19,8 @@ const endpointOptions = [
   ["messages", "Messages"],
 ];
 
+const THEME_STORAGE_KEY = "proxy-tool-theme";
+
 function connectionLabel(connected, paused) {
   if (paused) return "Updates paused";
   return connected ? "Monitor connected" : "Connecting";
@@ -33,7 +35,7 @@ export default function ProxyToolClient() {
   const [state, setState] = useState("all");
   const [paused, setPaused] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("light");
   const [connected, setConnected] = useState(false);
   const [listener, setListener] = useState(null);
   const [captureLimit, setCaptureLimit] = useState(null);
@@ -47,6 +49,16 @@ export default function ProxyToolClient() {
   const [streamCount, setStreamCount] = useState(0);
   const syncCursor = useRef(null);
   const beforeCursor = useRef(null);
+
+  useEffect(() => {
+    try { setTheme(window.localStorage.getItem(THEME_STORAGE_KEY) === "dark" ? "dark" : "light"); } catch { /* Ignore storage restrictions and keep the default theme. */ }
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme); } catch { /* Ignore storage restrictions; the theme still applies for this visit. */ }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -188,7 +200,7 @@ export default function ProxyToolClient() {
   return <main className={`proxy-shell theme-${theme}`}>
     <header className="proxy-specimen-topbar">
       <div className="proxy-specimen-brand"><Icon name="activity" size={20} /><strong>Proxy Tool</strong><span className="llm-local-address">{listener || "Listener unavailable"}</span></div>
-      <div className="proxy-specimen-actions"><span className={`proxy-live-pill ${paused ? "is-paused" : connected ? "" : "is-connecting"}`}><i />{connectionLabel(connected, paused)}</span><button type="button" className="proxy-action" aria-pressed={paused} onClick={() => setPaused(!paused)}><Icon name={paused ? "play" : "pause"} size={14} />{paused ? "Resume" : "Pause"}</button><button type="button" className="proxy-action" aria-label="Toggle theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "Light" : "Dark"}</button><button type="button" className="proxy-action" disabled={!requests.length || clearing} onClick={() => setConfirmClear(!confirmClear)}><Icon name="close" size={14} />Clear</button></div>
+      <div className="proxy-specimen-actions"><span className={`proxy-live-pill ${paused ? "is-paused" : connected ? "" : "is-connecting"}`}><i />{connectionLabel(connected, paused)}</span><button type="button" className="proxy-action" aria-pressed={paused} onClick={() => setPaused(!paused)}><Icon name={paused ? "play" : "pause"} size={14} />{paused ? "Resume" : "Pause"}</button><button type="button" className="proxy-action" aria-label="Toggle theme" onClick={toggleTheme}>{theme === "dark" ? "Light" : "Dark"}</button><button type="button" className="proxy-action" disabled={!requests.length || clearing} onClick={() => setConfirmClear(!confirmClear)}><Icon name="close" size={14} />Clear</button></div>
     </header>
     {confirmClear && <div className="llm-clear-confirm" role="alert"><span>Clear all captured calls?</span><button type="button" className="proxy-action is-danger" disabled={clearing} onClick={clearAll}>{clearing ? "Clearing…" : "Clear calls"}</button><button type="button" className="proxy-action" disabled={clearing} onClick={() => setConfirmClear(false)}>Keep calls</button>{clearError && <p role="alert">{clearError}</p>}</div>}
     <div className="proxy-filter-bar"><label className="llm-search"><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search endpoint, model, or request ID" aria-label="Search captured calls" /></label><select value={endpoint} onChange={(event) => setEndpoint(event.target.value)} aria-label="Filter endpoint">{endpointOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><select value={state} onChange={(event) => setState(event.target.value)} aria-label="Filter state"><option value="all">All states</option><option value="forwarding">Forwarding</option><option value="streaming">Streaming</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="tunnel">Tunnel</option></select><span className="llm-filter-count">{total || filtered.length} calls · {activeCount} active · {streamCount} SSE</span></div>
