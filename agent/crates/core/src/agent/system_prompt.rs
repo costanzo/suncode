@@ -29,21 +29,15 @@ pub(super) struct PromptContext<'a> {
 
 /// System messages for one turn, from the most shared prefix to the volatile tail.
 ///
-/// Order: identity, authority, workflow, host platform, specialist role,
-/// repository instructions, dependencies, skills, capabilities, optional model
-/// family guidance, then session context (provider, model, session start).
+/// Order: stable identity and authority, repository instructions, tool-scoped
+/// workflow, specialist role, dependencies, skills, capabilities and host facts,
+/// optional model-family guidance, then volatile session context.
 /// Optional sections are omitted rather than left empty, so a missing section
 /// does not shift later text inside a message.
 pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>, BusinessError> {
     let mut messages = vec![
         Message::text("system", prompt::IDENTITY),
         Message::text("system", authority_guidance()),
-        Message::text("system", prompt::workflow(context.allowed_tools)),
-        host_environment_message_with_context(
-            context.non_interactive,
-            context.host_capabilities,
-            context.allowed_tools,
-        ),
     ];
     if let Some(role) = context.agent.role_prompt() {
         messages.push(Message::text("system", role));
@@ -54,6 +48,10 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
     if let Some(message) = context.dependency_context {
         messages.push(message);
     }
+    messages.push(Message::text(
+        "system",
+        prompt::workflow(context.allowed_tools),
+    ));
     if let Some(guidance) = context.skill_guidance.filter(|value| !value.is_empty()) {
         messages.push(Message::text("system", guidance));
     }
@@ -64,6 +62,12 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
             context.agent,
             context.non_interactive,
         ),
+    ));
+    messages.push(host_environment_message_with_context(
+        context.non_interactive,
+        context.host_capabilities,
+        context.allowed_tools,
+        context.project_root,
     ));
     // Family text is identical for every model in that family. It stays ahead
     // of the session line so only the exact model id and start time change per

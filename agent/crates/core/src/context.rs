@@ -10,8 +10,14 @@ pub const DEFAULT_KEEP_RECENT_TOKENS: usize = 20_000;
 pub struct ContextSummary {
     pub objective: String,
     pub important_constraints: Vec<String>,
+    #[serde(default)]
+    pub pending_user_requests: Vec<String>,
+    #[serde(default)]
+    pub decisions: Vec<String>,
     pub completed_work: Vec<String>,
     pub active_work: Vec<String>,
+    #[serde(default)]
+    pub verification_state: Vec<String>,
     pub blockers: Vec<String>,
     pub next_action: String,
 }
@@ -362,6 +368,27 @@ fn summarize(dropped: &[Message], tail: &[Message]) -> ContextSummary {
     ContextSummary {
         objective: latest_user.chars().take(2_000).collect(),
         important_constraints: matching_tail(&texts, r"must|cannot|only|never|required", 8, 500),
+        pending_user_requests: tail
+            .iter()
+            .filter(|message| message.role == "user")
+            .map(Message::text_content)
+            .filter(|text| !text.trim().is_empty())
+            .rev()
+            .take(8)
+            .map(|text| text.chars().take(500).collect())
+            .collect(),
+        decisions: dropped
+            .iter()
+            .chain(tail.iter())
+            .filter(|message| message.role == "assistant")
+            .map(Message::text_content)
+            .filter(|text| {
+                text.contains("decided") || text.contains("decision") || text.contains("will ")
+            })
+            .rev()
+            .take(8)
+            .map(|text| text.chars().take(500).collect())
+            .collect(),
         completed_work: dropped
             .iter()
             .filter(|message| message.role == "tool")
@@ -378,6 +405,12 @@ fn summarize(dropped: &[Message], tail: &[Message]) -> ContextSummary {
             .filter(|text| !text.is_empty())
             .map(|text| text.chars().take(500).collect())
             .collect(),
+        verification_state: matching_tail(
+            &texts,
+            r"test|tests|lint|typecheck|verified|passed|failed",
+            8,
+            500,
+        ),
         blockers: matching_tail(&texts, r"error|failed|conflict|denied|blocked", 8, 500),
         next_action: latest_user.chars().take(1_000).collect(),
     }
@@ -559,8 +592,11 @@ mod tests {
         let summary = ContextSummary {
             objective: "implement feature".into(),
             important_constraints: vec!["preserve API".into()],
+            pending_user_requests: vec!["run tests".into()],
+            decisions: vec!["keep API compatible".into()],
             completed_work: vec![],
             active_work: vec![],
+            verification_state: vec!["cargo test passed".into()],
             blockers: vec![],
             next_action: "run tests".into(),
         };
@@ -573,8 +609,11 @@ mod tests {
         let oversized = ContextSummary {
             objective: "x".repeat(8_000),
             important_constraints: vec![],
+            pending_user_requests: vec![],
+            decisions: vec![],
             completed_work: vec![],
             active_work: vec![],
+            verification_state: vec![],
             blockers: vec![],
             next_action: "continue".into(),
         };

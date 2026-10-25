@@ -99,8 +99,11 @@ impl TurnServices {
                 .map(|summary| ContextSummaryPayload {
                     objective: summary.objective.clone(),
                     important_constraints: summary.important_constraints.clone(),
+                    pending_user_requests: summary.pending_user_requests.clone(),
+                    decisions: summary.decisions.clone(),
                     completed_work: summary.completed_work.clone(),
                     active_work: summary.active_work.clone(),
+                    verification_state: summary.verification_state.clone(),
                     blockers: summary.blockers.clone(),
                     next_action: summary.next_action.clone(),
                 }),

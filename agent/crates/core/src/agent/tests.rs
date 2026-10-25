@@ -80,6 +80,7 @@ fn host_tool_guidance_follows_the_advertised_tools() {
         false,
         AgentHostCapabilities::default(),
         &names(&["read", "glob", "grep", "webfetch", "todowrite"]),
+        "/tmp/project",
     )
     .text_content();
     assert!(read_only.contains("For file discovery and content search, use glob, grep, and read."));
@@ -92,6 +93,7 @@ fn host_tool_guidance_follows_the_advertised_tools() {
         false,
         AgentHostCapabilities::default(),
         &names(&["read", "grep"]),
+        "/tmp/project",
     )
     .text_content();
     assert!(search_subset.contains("use grep and read."));
@@ -105,6 +107,7 @@ fn host_tool_guidance_follows_the_advertised_tools() {
             computer_use: false,
         },
         &names(&["bash"]),
+        "/tmp/project",
     )
     .text_content();
     assert!(shell_only.contains("Use the bash tool"));
@@ -203,14 +206,17 @@ fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
     assert!(workflow.contains("coding workflow"));
     assert!(workflow.contains("File tools (read and grep)"));
     assert!(!workflow.contains("bash"));
-    let host = messages[3].text_content();
+    let host = messages[4].text_content();
     assert!(host.contains("use grep and read."));
     assert!(!host.contains("Use the bash tool"));
     assert!(host.contains("shell tool dialect="));
     assert!(!workflow.contains("todowrite"));
     assert!(!workflow.contains("ask a focused question"));
-    assert!(messages[3].text_content().contains("host environment"));
-    assert!(!messages[3].text_content().contains("model-1"));
+    assert!(host.contains("host environment"));
+    assert!(!host.contains("model-1"));
+    assert!(host.contains("opened project root=project"));
+    assert!(host.contains("local date and time="));
+    assert!(host.contains("Git metadata in opened project or an ancestor="));
     let session = messages.last().unwrap().text_content();
     assert!(session.contains("provider=provider-1"));
     assert!(session.contains("model=model-1"));
@@ -230,6 +236,28 @@ fn system_prompt_prefix_is_stable_across_model_and_session_time() {
     assert_eq!(&first[..first.len() - 1], &second[..second.len() - 1]);
     assert!(first.last().unwrap().text_content().contains("model-a"));
     assert!(second.last().unwrap().text_content().contains("model-b"));
+}
+
+#[test]
+fn stable_prompt_prefix_survives_tool_scope_and_host_changes() {
+    let first = prompt_messages("model-a", "provider-a", "2026-01-01T00:00:00Z");
+    let second = super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        model_id: "model-a",
+        provider_id: "provider-a",
+        project_root: "/another/project",
+        session_started_at: "2026-01-01T00:00:00Z",
+        non_interactive: false,
+        host_capabilities: AgentHostCapabilities {
+            browser_use: true,
+            computer_use: true,
+        },
+        allowed_tools: &["read".into(), "write".into(), "edit".into()],
+        agent: &suncode_agents::PRIMARY,
+        dependency_context: None,
+        skill_guidance: None,
+    })
+    .unwrap();
+    assert_eq!(&first[..2], &second[..2]);
 }
 
 #[test]

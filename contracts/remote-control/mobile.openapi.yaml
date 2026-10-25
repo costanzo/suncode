@@ -1416,12 +1416,15 @@ components:
             - type: 'null'
     ContextSummary:
       type: object
-      required: [objective, important_constraints, completed_work, active_work, blockers, next_action]
+      required: [objective, important_constraints, pending_user_requests, decisions, completed_work, active_work, verification_state, blockers, next_action]
       properties:
         objective: { type: string }
         important_constraints: { type: array, items: { type: string } }
+        pending_user_requests: { type: array, items: { type: string } }
+        decisions: { type: array, items: { type: string } }
         completed_work: { type: array, items: { type: string } }
         active_work: { type: array, items: { type: string } }
+        verification_state: { type: array, items: { type: string } }
         blockers: { type: array, items: { type: string } }
         next_action: { type: string }
     ProviderExchangeStartedPayload:

@@ -9,8 +9,11 @@ import java.util.List;
 public record EventContextSummary(
         String objective,
         List<String> importantConstraints,
+        List<String> pendingUserRequests,
+        List<String> decisions,
         List<String> completedWork,
         List<String> activeWork,
+        List<String> verificationState,
         List<String> blockers,
         String nextAction) {
 }

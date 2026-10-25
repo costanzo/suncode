@@ -992,8 +992,11 @@ public sealed record AgentTodoEventItem(
 public sealed record AgentContextSummary(
     string Objective,
     [property: JsonPropertyName("important_constraints")] IReadOnlyList<string> ImportantConstraints,
+    [property: JsonPropertyName("pending_user_requests")] IReadOnlyList<string> PendingUserRequests,
+    IReadOnlyList<string> Decisions,
     [property: JsonPropertyName("completed_work")] IReadOnlyList<string> CompletedWork,
     [property: JsonPropertyName("active_work")] IReadOnlyList<string> ActiveWork,
+    [property: JsonPropertyName("verification_state")] IReadOnlyList<string> VerificationState,
     IReadOnlyList<string> Blockers,
     [property: JsonPropertyName("next_action")] string NextAction);
 

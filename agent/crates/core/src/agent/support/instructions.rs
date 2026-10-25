@@ -158,7 +158,15 @@ pub(in crate::agent) fn slash_path(path: &Path) -> String {
 
 #[cfg(test)]
 pub(in crate::agent) fn host_environment_message() -> suncode_llm::Message {
-    host_environment_message_with_context(false, AgentHostCapabilities::default(), &[])
+    host_environment_message_with_context(
+        false,
+        AgentHostCapabilities::default(),
+        &[],
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .to_string_lossy()
+            .as_ref(),
+    )
 }
 
 /// Platform and host-mode facts. Provider, model, and session start time stay
@@ -171,6 +179,7 @@ pub(in crate::agent) fn host_environment_message_with_context(
     non_interactive: bool,
     capabilities: AgentHostCapabilities,
     allowed_tools: &[String],
+    project_root: &str,
 ) -> suncode_llm::Message {
     let shell = if cfg!(target_os = "windows") {
         "Windows PowerShell"
@@ -182,16 +191,23 @@ pub(in crate::agent) fn host_environment_message_with_context(
     } else {
         "POSIX"
     };
+    let local_date = chrono::Local::now()
+        .format("%Y-%m-%d %H:%M %:z")
+        .to_string();
+    let git_repository = has_git_metadata(Path::new(project_root));
     suncode_llm::Message {
         role: "system".into(),
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: project root=opened project, OS={}, architecture={}, shell tool dialect={}, path style={}, non-interactive={}, browser capability={}, computer capability={}. {}",
+                "SunCode host environment: opened project root={}, process tool default working directory=opened project root, local date and time={}, OS={}, architecture={}, shell tool dialect={}, path style={}, Git metadata in opened project or an ancestor={}, non-interactive={}, browser capability={}, computer capability={}. {}",
+                project_root,
+                local_date,
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
                 path_style,
+                git_repository,
                 non_interactive,
                 capabilities.browser_use,
                 capabilities.computer_use,
@@ -201,6 +217,12 @@ pub(in crate::agent) fn host_environment_message_with_context(
         tool_calls: Vec::new(),
         tool_call_id: None,
     }
+}
+
+fn has_git_metadata(project_root: &Path) -> bool {
+    project_root
+        .ancestors()
+        .any(|ancestor| ancestor.join(".git").exists())
 }
 
 /// Tool sentences that follow the platform facts. The full-catalog wording stays
