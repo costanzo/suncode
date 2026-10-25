@@ -182,6 +182,16 @@ fn workflow_omits_rules_for_tools_outside_the_scope() {
     assert!(read.contains("File tools (read)"));
 }
 
+#[test]
+fn model_family_guidance_stays_narrow() {
+    assert!(prompt::GPT_GUIDANCE.contains("final answer must stand alone"));
+    assert!(prompt::GPT_GUIDANCE.contains("steering that task"));
+    assert!(!prompt::GPT_GUIDANCE.contains("git reset"));
+    assert!(prompt::CLAUDE_GUIDANCE.contains("comment density"));
+    assert!(!prompt::CLAUDE_GUIDANCE.contains("git reset"));
+    assert!(!prompt::CLAUDE_GUIDANCE.contains("final answer must stand alone"));
+}
+
 fn names(tools: &[&str]) -> Vec<String> {
     tools.iter().map(|tool| (*tool).to_string()).collect()
 }

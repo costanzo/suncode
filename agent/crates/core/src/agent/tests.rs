@@ -273,6 +273,68 @@ fn capability_section(agent: &AgentDefinition) -> String {
     .unwrap()
 }
 
+#[test]
+fn model_family_appendix_is_only_for_gpt_and_claude() {
+    let gpt_a = family_messages("gpt-5.5", "openai");
+    let gpt_b = family_messages("gpt-5.6-sol", "openai");
+    assert_eq!(gpt_a.len(), gpt_b.len());
+    assert_eq!(&gpt_a[..gpt_a.len() - 1], &gpt_b[..gpt_b.len() - 1]);
+    assert!(gpt_a[gpt_a.len() - 2]
+        .text_content()
+        .contains("model guidance for GPT"));
+    assert!(gpt_a
+        .last()
+        .unwrap()
+        .text_content()
+        .contains("model=gpt-5.5"));
+    assert!(!gpt_a[gpt_a.len() - 2].text_content().contains("git reset"));
+
+    let claude = family_messages("claude-opus-5", "claude");
+    assert!(claude[claude.len() - 2]
+        .text_content()
+        .contains("model guidance for Claude"));
+    assert_eq!(&gpt_a[..gpt_a.len() - 2], &claude[..claude.len() - 2]);
+
+    let qwen = family_messages("qwen-max", "qwen");
+    assert!(!qwen
+        .iter()
+        .any(|message| message.text_content().contains("model guidance for")));
+    assert!(qwen
+        .last()
+        .unwrap()
+        .text_content()
+        .contains("model=qwen-max"));
+    assert_eq!(&gpt_a[..gpt_a.len() - 2], &qwen[..qwen.len() - 1]);
+
+    let custom_gpt = family_messages("gpt-4.1", "custom-gateway");
+    assert!(custom_gpt[custom_gpt.len() - 2]
+        .text_content()
+        .contains("model guidance for GPT"));
+    let provider_claude = family_messages("future-model", "anthropic");
+    assert!(provider_claude[provider_claude.len() - 2]
+        .text_content()
+        .contains("model guidance for Claude"));
+}
+
+fn family_messages(model_id: &str, provider_id: &str) -> Vec<Message> {
+    super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        model_id,
+        provider_id,
+        project_root: "project",
+        session_started_at: "2026-01-01T00:00:00Z",
+        non_interactive: true,
+        host_capabilities: AgentHostCapabilities {
+            browser_use: false,
+            computer_use: true,
+        },
+        allowed_tools: &["read".into(), "grep".into()],
+        agent: &suncode_agents::PRIMARY,
+        dependency_context: None,
+        skill_guidance: None,
+    })
+    .unwrap()
+}
+
 fn prompt_messages(model_id: &str, provider_id: &str, session_started_at: &str) -> Vec<Message> {
     super::system_prompt::build_messages(super::system_prompt::PromptContext {
         model_id,

@@ -1,8 +1,9 @@
 //! Turn system prompt, ordered so provider prompt caches can reuse the prefix.
 //!
-//! Shared guidance comes first. Provider, model, and session start time are
-//! always the last system message, because those values change on a model
-//! switch or a new session and must not invalidate the earlier prefix.
+//! Shared guidance comes first. A GPT or Claude family appendix, when one
+//! applies, sits immediately before the session context. That last message
+//! carries the exact provider, model, and session start time, so a new session
+//! or a model switch inside one family does not invalidate the earlier prefix.
 
 use super::{
     host_environment_message_with_context, project_instruction_message, session_context_message,
@@ -29,10 +30,10 @@ pub(super) struct PromptContext<'a> {
 /// System messages for one turn, from the most shared prefix to the volatile tail.
 ///
 /// Order: identity, authority, workflow, host platform, specialist role,
-/// repository instructions, dependencies, skills, capabilities, then session
-/// context (provider, model, session start). Optional sections are omitted
-/// rather than left empty, so a missing section does not shift later text
-/// inside a message.
+/// repository instructions, dependencies, skills, capabilities, optional model
+/// family guidance, then session context (provider, model, session start).
+/// Optional sections are omitted rather than left empty, so a missing section
+/// does not shift later text inside a message.
 pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>, BusinessError> {
     let mut messages = vec![
         Message::text("system", prompt::IDENTITY),
@@ -64,14 +65,36 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
             context.non_interactive,
         ),
     ));
-    // Last on purpose: this is the only section that changes with the selected
-    // model or a new session start time.
+    // Family text is identical for every model in that family. It stays ahead
+    // of the session line so only the exact model id and start time change per
+    // session.
+    if let Some(guidance) = model_family_guidance(context.provider_id, context.model_id) {
+        messages.push(Message::text("system", guidance));
+    }
     messages.push(session_context_message(
         context.session_started_at,
         context.model_id,
         context.provider_id,
     ));
     Ok(messages)
+}
+
+/// GPT and Claude get a short appendix. Every other provider and model does not.
+/// The model id wins when it names a family, so a custom gateway serving `gpt-*`
+/// or `claude-*` still receives the matching appendix.
+fn model_family_guidance(provider_id: &str, model_id: &str) -> Option<&'static str> {
+    let model = model_id.to_ascii_lowercase();
+    let provider = provider_id.to_ascii_lowercase();
+    if model.contains("claude") {
+        return Some(prompt::CLAUDE_GUIDANCE);
+    }
+    if model.contains("gpt") || provider == "openai" {
+        return Some(prompt::GPT_GUIDANCE);
+    }
+    if provider == "claude" || provider == "anthropic" {
+        return Some(prompt::CLAUDE_GUIDANCE);
+    }
+    None
 }
 
 fn authority_guidance() -> String {

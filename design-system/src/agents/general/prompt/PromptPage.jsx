@@ -53,6 +53,24 @@ SunCode session context:
 provider=<provider>, model=<model>, session started at=<timestamp>.`,
   },
   {
+    id: "model-family",
+    title: "Model family",
+    scope: "GPT and Claude requests",
+    owner: "Agent runtime",
+    status: "Implemented",
+    tone: "implemented",
+    description:
+      "A short appendix sits immediately before the session context. Other models omit it. It does not replace the shared identity, authority, or workflow text.",
+    content: `SunCode model guidance for GPT:
+During the task, write a short update only for a discovery, tradeoff, or blocker.
+Treat a new user message as steering the current task.
+The final answer must stand alone and lead with the outcome.
+
+SunCode model guidance for Claude:
+Match the surrounding comment density.
+User and repository instructions take precedence.`,
+  },
+  {
     id: "tool-guidance",
     title: "Tool guidance",
     scope: "Tool selection and arguments",
