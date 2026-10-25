@@ -191,7 +191,11 @@ fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
     assert!(text.contains("model-1"));
     assert!(text.contains("You are SunCode"));
     assert!(text.contains("Non-interactive execution"));
-    assert!(text.contains("Browser Use host capability: disabled"));
+    assert!(text.contains("disabled in non-interactive mode"));
+    assert!(!text.contains("Advertised tool scope"));
+    assert!(!text.contains("Browser Use host capability"));
+    assert!(!text.contains("Computer Use host capability"));
+    assert!(!text.contains("Computer Use workflow"));
     assert!(!text.contains("todowrite and keep its statuses current"));
     assert!(messages[0].text_content().starts_with("You are SunCode"));
     assert!(messages[1].text_content().contains("authority and trust"));
@@ -226,6 +230,47 @@ fn system_prompt_prefix_is_stable_across_model_and_session_time() {
     assert_eq!(&first[..first.len() - 1], &second[..second.len() - 1]);
     assert!(first.last().unwrap().text_content().contains("model-a"));
     assert!(second.last().unwrap().text_content().contains("model-b"));
+}
+
+#[test]
+fn capability_section_keeps_question_policy_and_computer_workflow() {
+    let primary = capability_section(&suncode_agents::PRIMARY);
+    assert!(primary.contains("available to the host"));
+    assert!(primary.contains("policy and approvals still apply"));
+    assert!(primary.contains("Computer Use workflow"));
+    assert!(primary.contains("computer_screenshot"));
+    assert!(!primary.contains("Advertised tool scope"));
+    assert!(!primary.contains("Browser Use host capability"));
+    assert!(!primary.contains("Computer Use host capability"));
+
+    let architect = suncode_agents::specialist_by_name("architect-agent").unwrap();
+    let specialist = capability_section(architect);
+    assert!(specialist.contains("disabled for this specialist"));
+    assert!(specialist.contains("specialist restrictions apply"));
+    assert!(!specialist.contains("Computer Use workflow"));
+}
+
+fn capability_section(agent: &AgentDefinition) -> String {
+    super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        model_id: "model-1",
+        provider_id: "provider-1",
+        project_root: "project",
+        session_started_at: "2026-01-01T00:00:00Z",
+        non_interactive: false,
+        host_capabilities: AgentHostCapabilities {
+            browser_use: true,
+            computer_use: true,
+        },
+        allowed_tools: &[],
+        agent,
+        dependency_context: None,
+        skill_guidance: None,
+    })
+    .unwrap()
+    .into_iter()
+    .map(|message| message.text_content())
+    .find(|text| text.contains("effective capabilities"))
+    .unwrap()
 }
 
 fn prompt_messages(model_id: &str, provider_id: &str, session_started_at: &str) -> Vec<Message> {

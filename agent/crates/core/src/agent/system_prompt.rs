@@ -61,7 +61,6 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
         capability_guidance(
             context.host_capabilities,
             context.agent,
-            context.allowed_tools,
             context.non_interactive,
         ),
     ));
@@ -86,30 +85,24 @@ fn authority_guidance() -> String {
     .join("\n")
 }
 
+/// Policy that the tool schema and host facts do not already state.
+///
+/// Tool names and the browser/computer booleans stay in the schema and the
+/// host section. This section reports whether the agent can ask the user, which
+/// constraint still applies in non-interactive execution, and the Computer Use
+/// workflow only when that capability is available to this agent.
 fn capability_guidance(
     capabilities: AgentHostCapabilities,
     agent: &AgentDefinition,
-    allowed_tools: &[String],
     non_interactive: bool,
 ) -> String {
-    let tool_list = if allowed_tools.is_empty() {
-        "primary session catalog".to_string()
+    let question = if non_interactive {
+        "disabled in non-interactive mode"
     } else {
-        allowed_tools.join(", ")
+        agent.question_continuation()
     };
     let mut guidance = format!(
-        "SunCode effective capabilities:\n- Advertised tool scope: {tool_list}\n- Interactive approval/question continuation: {}\n- Browser Use host capability: {}\n- Computer Use host capability: {}\n- Non-interactive execution: {}",
-        if non_interactive {
-            "disabled in non-interactive mode"
-        } else {
-            agent.question_continuation()
-        },
-        if capabilities.browser_use { "enabled" } else { "disabled" },
-        if capabilities.computer_use {
-            "available through SunCode's provider-neutral desktop tools when the selected model supports tool use and vision"
-        } else {
-            "disabled"
-        },
+        "SunCode effective capabilities:\n- Interactive approval/question continuation: {question}\n- Non-interactive execution: {}",
         agent.non_interactive_constraints(),
     );
     if capabilities.computer_use && agent.can_use_external_tools && !non_interactive {
