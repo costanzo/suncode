@@ -33,7 +33,7 @@ Run the Avalonia test project from its colocated `tests/` directory:
 dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj
 ```
 
-Create the macOS app bundle with the .NET 10 runtime included. Release publishes that specify a runtime identifier are self-contained, are not trimmed, and are not packed into a single file, so the Rust agent library and CEF stay as separate native binaries. The current desktop version is 0.1.0. Give users `SunCode.app`; the files next to the bundle are the publish inputs that the bundle copies.
+Create the macOS app bundle with the .NET 10 runtime included. Release publishes that specify a runtime identifier are self-contained, are not trimmed, and are not packed into a single file, so the Rust agent library and CEF stay as separate native binaries. Each Release publish clears its publish directory first, so assemblies left by an older dependency set cannot remain beside the new app. The current desktop version is 0.1.0. Give users `SunCode.app`; the files next to the bundle are the publish inputs that the bundle copies.
 
 ```sh
 dotnet publish apps/desktop-avalonia/SunCode.Desktop.csproj -c Release -r osx-arm64 --self-contained true

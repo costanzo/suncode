@@ -35,6 +35,14 @@
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
+  <!-- NuGet package timestamps can be older than files left by a previous publish.
+       PreserveNewest then keeps those stale assemblies, and the app aborts while
+       loading the version named in the new deps file. Clear the publish directory first. -->
+  <Target Name="CleanReleasePublishDirectory" BeforeTargets="PrepareForPublish"
+          Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' != '' And '$(PublishDir)' != ''">
+    <RemoveDir Directories="$(PublishDir)" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
                       Condition="'$(Configuration)' != 'Release'" />

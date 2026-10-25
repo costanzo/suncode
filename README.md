@@ -86,7 +86,7 @@ cloc . \
   --exclude-dir=.git,.codex,node_modules,target,bin,obj,dist,artifacts
 ```
 
-For a release publish on Apple Silicon macOS. The bundle includes the .NET 10 runtime for `osx-arm64`, so the target machine does not need a separate `dotnet` install. Distribute `SunCode.app`, not the loose files beside it:
+For a release publish on Apple Silicon macOS. The bundle includes the .NET 10 runtime for `osx-arm64`, so the target machine does not need a separate `dotnet` install. The Release publish clears that publish directory first, so older dependency assemblies are not reused. Distribute `SunCode.app`, not the loose files beside it:
 
 ```sh
 dotnet publish apps/desktop-avalonia/SunCode.Desktop.csproj \
