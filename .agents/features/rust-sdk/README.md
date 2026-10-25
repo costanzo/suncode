@@ -17,7 +17,7 @@ CLI ------------------------------------------> sdks/rust
 - `sdks/c` owns `extern "C"` exports, panic containment, callback worker threads, C strings, the established `{session_id, occurred_at, event_type, payload}` JSON envelope, and the translation of lag into `resync.required`. It never touches persistence or provider internals directly.
 - `sdks/csharp` owns P/Invoke, native library build integration, exact ABI version validation, typed DTOs, and handle lifetime for Avalonia.
 
-The native ABI is version 18. Dedicated Git methods and DTOs were removed; Source Control is desktop-owned and optional. Checkpoints, undo, and generic process policy remain Rust-owned.
+The native ABI is version 25. Dedicated Git methods and DTOs were removed; Source Control is desktop-owned and optional. Checkpoints, undo, and generic process policy remain Rust-owned.
 
 ## Async-first and blocking surfaces
 

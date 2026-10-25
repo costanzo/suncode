@@ -11,7 +11,7 @@ This directory contains durable project knowledge, not tool runtime state.
 
 ## New requirements
 
-For a new substantial delivery, create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/`. Keep `progress.md` and `todo.md` current while implementing. When work is complete, promote only stable behavior into `features/`, current technical facts into `specs/`, and important tradeoffs into `DECISIONS.md`; remove the delivery package when it no longer explains an active decision.
+For a new substantial delivery, create `.agents/requirements/YYYY-MM-DD-short-topic/` from `_template/` only when a temporary work record is useful. Keep `progress.md` and `todo.md` current while implementing. At closeout, promote stable behavior into `features/`, current technical facts into `specs/` or `contracts/`, and important tradeoffs into `DECISIONS.md`; then delete the dated delivery package. Do not keep completed requirement packages as a history archive. Preserve important decision history in `DECISIONS.md` instead.
 
 ## Boundaries
 
@@ -27,6 +27,6 @@ When a requirement changes after review, edit `requirement.md` and `architecture
 
 An amendment that has been folded into its parent must be marked consolidated and non-normative, so readers are never left guessing which document describes current intent.
 
-## Superseded records
+## Closeout and decision history
 
-Keep historical requirement packages only when they still explain a decision trail. When one is replaced, set its status to superseded, say where the current version lives, and list the specific conclusions later decisions changed. Do not retrofit a superseded record to current templates or terminology.
+Features describe current implemented behavior, including known verification gaps. Decision records preserve consequential tradeoffs and superseded architectural conclusions. Dated requirement packages are temporary delivery records and are removed after closeout; do not copy their plans, logs, or checklists into feature documentation.

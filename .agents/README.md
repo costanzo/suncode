@@ -5,19 +5,19 @@ This directory is the source of truth for project context used by contributors a
 ## Reading order
 
 1. `AGENTS.md` — rules for maintaining this knowledge base.
-2. `PRODUCT.md` — product purpose, users, and scope.
+2. `PRODUCT.md` — product purpose, users, current scope, and explicit deferrals.
 3. `ARCHITECTURE.md` — approved system architecture and boundaries.
-4. `features/` — stable, implemented product capabilities.
-5. `requirements/` — lightweight template and policy for a new delivery; historical packages are consolidated into `features/`.
-6. `specs/` — current technical contracts and implementation facts.
-7. `DECISIONS.md` — accepted decisions and superseded choices.
+4. `features/` — durable implemented behavior and its current verification status.
+5. `specs/` — current technical contracts and implementation facts.
+6. `DECISIONS.md` — durable architectural decisions and the constraints they explain.
+7. `requirements/` — template and policy for active delivery work; completed packages are removed after closeout.
 
 ## Directory ownership
 
 | Path | Purpose |
 | --- | --- |
-| `features/` | Durable behavior after it is implemented |
-| `requirements/` | Template and policy for a new delivery; completed behavior belongs in `features/` |
+| `features/` | Durable implemented behavior and known verification gaps |
+| `requirements/` | Template and policy for active delivery work; no completed delivery archive |
 | `specs/` | Current API, protocol, storage, security, and operational contracts |
 | `DECISIONS.md` | Project-level architectural decisions and their consequences |
 
@@ -27,4 +27,4 @@ This directory is the source of truth for project context used by contributors a
 - Feature directories: `features/short-topic/`
 - Decision identifiers: `ADR-YYYYMMDD-short-topic`
 
-Start a requirement from `requirements/_template/`. Keep transient tool state out of this directory. `.agents` is tracked project knowledge; `.codex`, `.claude`, logs, and local brainstorming sessions are not.
+Start a requirement from `requirements/_template/` only when substantial work needs a temporary durable delivery record. At closeout, promote stable behavior to `features/`, current contracts to `specs/` or `contracts/`, and consequential tradeoffs to `DECISIONS.md`; then remove the dated package. Keep transient tool state out of this directory. `.agents` is tracked project knowledge; `.codex`, `.claude`, logs, and local brainstorming sessions are not.

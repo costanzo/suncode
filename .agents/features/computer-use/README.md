@@ -19,7 +19,7 @@ Computer Use is a first-party Rust capability that observes and operates the use
 
 Capture backends exist for macOS (with Retina point-to-pixel normalization), Windows (per-monitor-DPI GDI), and X11 (RandR primary output).
 
-Accessibility status: macOS was verified against a live window. Windows and Linux collectors compile and lint for their targets but have not yet run against live desktops, so their conformance (box alignment across DPI and scaling, redaction, elevated or disabled-bus states) is unverified. Semantic element actions and durable element references are out of scope.
+Accessibility status: basic collection was observed against a live macOS window. Coordinate click alignment and Retina scaling remain unverified; Windows and Linux collectors compile and lint for their targets but have not yet run against live desktops. Cross-platform conformance for box alignment, redaction, elevated targets, and disabled accessibility-bus states remains open. Semantic element actions and durable element references are out of scope.
 
 Not implemented: complete serial-batch halt semantics across durable approval continuation; verified macOS, Windows, and X11 conformance across DPI, scaling, and multi-display layouts; Wayland (needs a unified portal ScreenCast and RemoteDesktop session); multi-display control; a Computer Use approval UI; secure or locked desktops; provider routes that do not support function calling, vision, or multimodal function results; and an interactive CLI Computer Use surface.
 

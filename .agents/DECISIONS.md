@@ -19,7 +19,64 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: Provider API keys stored directly in SQLite were unnecessarily exposed to database readers and backups. The new system has no migration requirement and needs a cross-platform provider-level choice.
 - Decision: Add `suncode-secrets` as the only platform credential-store boundary. New and unspecified provider credentials use the OS store: macOS Keychain, Windows Credential Manager, or Linux Secret Service. A provider may explicitly select `plaintext`, in which case the complete value is stored in SQLite. Keychain mode stores only a UUID reference and mask in SQLite; the modes are mutually exclusive. Save, mode changes, and removal use rollback across the two stores. SDK and client DTOs expose only mode, mask, source, and status; complete values remain in Rust memory for the provider request and are zeroized where owned by the secrets crate. Old schemas lacking credential columns are rejected as incompatible; no migration or ECC/master key is added.
 - Consequences: OS keychain availability, user-session permissions, and same-user processes remain environmental risks. Linux headless environments may have no Secret Service. Plaintext mode is an explicit user choice and is visible as such. Installed-platform smoke tests and signing/entitlement verification remain release work.
-- Details: `agent/crates/secrets/`, `contracts/persistence.md`, `contracts/sqlite-schema.md`, `.agents/requirements/2026-10-18-provider-secret-storage/`
+- Details: `agent/crates/secrets/`, `contracts/persistence.md`, `contracts/sqlite-schema.md`, `features/providers-and-models/`
+
+## ADR-20261017-project-language-server-catalog
+
+- Date: 2026-10-17
+- Status: Accepted
+- Supersedes: The global user-created definition model in ADR-20260919-rust-owned-language-server-support
+- Context: The generic executable, arguments, language IDs, initialization JSON, root markers, environment, and timeout form required users to understand each server's raw launch contract. Global arguments also caused project-specific state such as the jdtls data directory to be shared incorrectly.
+- Decision: Rust owns an immutable catalog of supported language-server kinds, beginning with `jdtls`. Enablement and effective configuration are persisted per project. Each kind owns typed validation and launch construction; jdtls exposes executable, Java runtime, managed or custom data path, root markers, environment, and timeouts while Rust fixes Java language identity, initialization behavior, and `-data` arguments. The default managed path is unique under application data by stable project id. Legacy global free-form records remain database-compatible but are ignored by catalog listing and runtime selection.
+- Consequences: Users no longer create, rename, or delete arbitrary LSP definitions. Each project owns an independent process, index, configuration, and runtime state. Adding another language server requires a Rust catalog adapter, typed SDK contract, design-system specimen, and corresponding Avalonia page rather than a new generic row.
+- Details: `.agents/features/language-servers/`, `contracts/agent-sdk/README.md`, `DESIGN.md`, `agent/crates/core/src/agent/lsp.rs`, `sdks/rust/src/facade/language_servers.rs`
+
+## ADR-20261016-core-and-agent-definitions
+
+- Date: 2026-10-16
+- Status: Accepted
+- Amends: ADR naming the Rust crate `suncode-agent`
+- Context: The harness crate held both the turn loop and the specialist catalog, and "primary agent" was inferred from an empty tool allowlist or a missing agent id. Several catalog fields (model, MCP, delegation policy) were display text that nothing enforced.
+- Decision: Rename the harness package to `suncode-core`. Add `suncode-agents` for agent definitions with typed capabilities and an explicit primary definition. The core reads capabilities from the definition instead of inferring them. The C ABI keeps the `suncode_agent` library name and `suncode_agent_sdk_*` symbols.
+- Consequences: New built-in agents are added in `suncode-agents` only. User-defined agents can later be another definition source; they must only narrow capabilities and stay subject to core policy. Prompts, tool catalogs, and the SDK agent list were verified byte-identical across the change.
+- Details: `specs/built-in-subagents.md`, `agent/crates/agents/src/lib.rs`, `agent/crates/core/src/agent/system_prompt.rs`
+
+## ADR-20261013-provider-request-retries
+
+- Date: 2026-10-13
+- Status: Accepted
+- Context: A temporary provider failure ended an otherwise valid turn. Retrying a whole turn could repeat completed tools, while independent adapter retries would hide attempts and multiply the retry budget.
+- Decision: Core retries one immutable agent-loop provider request at most twice, with bounded exponential backoff, jitter, and `Retry-After` minimums. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
+- Consequences: Recovery does not replay tools or consume another agent iteration. Partial output and permanent/configuration failures remain terminal; snapshot resync shows ordinary turn state rather than reconstructing a transient scheduled wait. The SDK event addition requires no ABI change.
+- Details: `specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`, `agent/crates/core/src/agent/run.rs`, `agent/crates/llm/src/errors.rs`
+
+## ADR-20261013-sqlite-user-version-migrations
+
+- Date: 2026-10-13
+- Status: Accepted
+- Supersedes: The "no version or migration metadata" portion of ADR-20260819-current-schema-bootstrap
+- Context: Initialization detected older layouts by inspecting columns and table SQL, and re-ran a dated data patch on every open. Nothing stopped an older build from opening a database written by a newer one.
+- Decision: Record the schema version in SQLite `PRAGMA user_version`. `suncode-data` keeps an ordered list of migration steps; step `n` upgrades version `n` to `n + 1`, and `SCHEMA_VERSION` equals the step count. Opening runs the table scripts (`IF NOT EXISTS`), the steps above the stored version, structural validation, and the idempotent seed scripts in one transaction, then writes the version. Version 1 holds the pre-versioning column additions; version 2 holds the Claude adapter patch. Existing steps are never edited. Foreign-key constraints are intentionally not used; referential cleanup stays in explicit cascades.
+- Consequences: Schema changes become reviewable numbered steps. A database whose version is newer than the build is rejected without mutation. Unversioned databases run every step once; the steps stay guarded by layout checks, so already-upgraded databases are unaffected.
+- Details: `agent/crates/data/src/store.rs`
+
+## ADR-20261012-desktop-system-git
+
+- Date: 2026-10-12
+- Status: Accepted
+- Context: Embedded libgit2 duplicates an installed developer tool and makes desktop-only repository review an agent/SDK concern. The user approved removing it and hiding Source Control without executable Git.
+- Decision: Avalonia owns a narrow C# system Git service and desktop DTOs for bounded read-only status and structured diffs. Discovery validates executable candidates, never installs Git, and hides all opening controls/footer/drawer when unavailable. This explicitly supersedes the previous client Git prohibition. Preserve project boundaries, literal/NUL-safe paths, read limits, cancellation, and distinct repository failures. Disable optional index writes and repository-configured helper processes. Remove dedicated Git agent operations and SDK bindings; bump the native ABI to 18.
+- Consequences: Git 2.11+ is an optional desktop dependency. Installed Git differences are covered by command-level integration tests. Generic agent bash retains its policy, and touched files/checkpoints/undo do not depend on Git. Clients still cannot access SQLite/providers or bypass Rust agent authority. There are no new Git mutation, remote, or credential features.
+- Details: `features/avalonia-desktop-phase-1/`, `contracts/agent-sdk/README.md`, `apps/desktop-avalonia/Infrastructure/Git/`
+
+## ADR-20261005-cef-cdp-browser
+
+- Date: 2026-10-05
+- Status: Accepted
+- Supersedes: ADR-20260919-bundled-playwright-browser-runtime
+- Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate uses `chromiumoxide` to attach to a page target through CDP. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
+- Consequences: CEF resources and profile/window lifecycle remain desktop-owned. `chromiumoxide` owns CDP transport, target attachment, event handling, and command correlation; the agent applies request bounds and stable errors. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
+- Details: `contracts/browser-cdp.md`, `agent/crates/browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`
 
 ## ADR-20260927-durable-context-compaction
 
@@ -185,6 +242,16 @@ Newest first. Historical context is retained only when it still explains a curre
 - Decision: Compile six immutable specialist definitions into Rust: Architect, UI/UX, Product, Software Engineering, QA, and SRE. Expose `delegate_agent` only to primary sessions. Every invocation creates a linked child session and durable invocation row, inherits the parent model/effort, applies a role allowlist and limit, excludes MCP/questions/nested delegation, and reuses normal policy, approvals, audit, checkpoints, recovery, and cancellation. SDK and Avalonia expose read-only catalog and child-session inspection; users may resolve child machine-operation approvals but cannot submit messages directly to a child.
 - Consequences: Specialist behavior and capability remain reviewable and versioned in source rather than configuration. Child sessions do not pollute the primary session list and cannot be renamed, pinned, archived, reopened, retried, or directly submitted. Child checkpoint manifests are not grouped into the parent turn's undo unit, so the UI and contracts must not claim unified parent undo.
 - Details: `features/built-in-subagents/`, `specs/built-in-subagents.md`, `contracts/agent-sdk/README.md`, `contracts/sqlite-schema.md`
+
+## ADR-20260908-mcp-server-runtime
+
+- Date: 2026-09-08
+- Status: Accepted
+- Supersedes: the MCP exclusion and mandatory precondition portion of `ADR-20260807-trusted-runtime-extension-isolation`; plugin and third-party provider-adapter exclusions remain accepted
+- Context: Users need tools from local and remote MCP servers to become available to existing sessions immediately. Requiring a cross-platform OS sandbox first would prevent the feature, while describing an ordinary child process as isolated would be incorrect.
+- Decision: Phase 1 supports MCP tools over structured local stdio processes and remote Streamable HTTP. Rust owns global desired configuration in SQLite and project-scoped live clients. Every exposed tool is namespaced, enters the existing external-tool policy and audit path, and requires interactive approval unless Full Control is active. Local processes use no shell and receive a bounded baseline environment plus configured values, but run with the user's OS authority. Settings and approvals explicitly state that MCP side effects may be outside SunCode's undo boundary. Prompts, resources, OAuth, executable plugins, and third-party provider adapters remain deferred.
+- Consequences: Existing sessions receive a rebuilt MCP catalog before their next provider request; configuration mutations retire stale generations immediately. Connection state is not a trust signal. Secret values remain Rust-owned plaintext SQLite data and never enter read DTOs or logs. A future OS sandbox can strengthen local execution without changing the SDK ownership boundary.
+- Details: `features/mcp-servers/`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`
 
 ## ADR-20260827-global-https-certificate-verification
 
@@ -411,6 +478,24 @@ Newest first. Historical context is retained only when it still explains a curre
 - Consequences: `/models` is the source for all selectable models, session and turn records keep stable model IDs, and provider credentials remain provider-scoped. Vendor model discovery and custom user model registration remain deferred.
 - Details: `features/agent-phase-1/`
 
+## ADR-20260815-embedded-ripgrep-search
+
+- Date: 2026-08-15
+- Status: Accepted
+- Context: The built-in Rust content search was a literal in-process directory walk, while the grep tool contract described regular-expression search. Calling an `rg` executable would add an installation, PATH, and child-process dependency to the embedded runtime.
+- Decision: Embed ripgrep's reusable Rust crates (`ignore`, `globset`, `grep-regex`, and `grep-searcher`) in the audited operations crate. Use Rust regular expressions, standard ripgrep ignore/hidden-file traversal, bounded project-relative glob filtering, and the existing bounded JSON result contract. Do not invoke an external `rg` process and defer PCRE2.
+- Consequences: The desktop runtime has no ripgrep installation prerequisite and remains inside the Rust operation boundary. The search behavior now follows ripgrep standard filters and regex syntax; callers needing literal punctuation must escape it. Command-line-only features and output formats remain outside the operation contract.
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/search.rs`
+
+## ADR-20260815-embedded-git2-review
+
+- Date: 2026-08-15
+- Status: Superseded by ADR-20261012-desktop-system-git (Git implementation and SDK ownership only).
+- Context: The Qt project window needs the actual Git working-tree and index state, but invoking a Git executable would add an installation, PATH, and child-process dependency and allowing Qt to inspect `.git` would violate the SDK ownership boundary.
+- Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
+- Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/git.rs`
+
 ## ADR-20260812-plaintext-provider-secrets
 
 - Date: 2026-08-12
@@ -502,16 +587,6 @@ Newest first. Historical context is retained only when it still explains a curre
 - Consequences: Extension IPC, sandbox profiles, scoped secret delivery, lifecycle, and failure recovery become prerequisites before third-party extensions are enabled. Built-in providers remain trusted runtime code; the trusted runtime is an explicit threat-model assumption, not an OS-enforced sandbox.
 - Details: `ARCHITECTURE.md` sections 3.4, 9.5, and 14.1
 
-## ADR-20260908-mcp-server-runtime
-
-- Date: 2026-09-08
-- Status: Accepted
-- Supersedes: the MCP exclusion and mandatory precondition portion of `ADR-20260807-trusted-runtime-extension-isolation`; plugin and third-party provider-adapter exclusions remain accepted
-- Context: Users need tools from local and remote MCP servers to become available to existing sessions immediately. Requiring a cross-platform OS sandbox first would prevent the feature, while describing an ordinary child process as isolated would be incorrect.
-- Decision: Phase 1 supports MCP tools over structured local stdio processes and remote Streamable HTTP. Rust owns global desired configuration in SQLite and project-scoped live clients. Every exposed tool is namespaced, enters the existing external-tool policy and audit path, and requires interactive approval unless Full Control is active. Local processes use no shell and receive a bounded baseline environment plus configured values, but run with the user's OS authority. Settings and approvals explicitly state that MCP side effects may be outside SunCode's undo boundary. Prompts, resources, OAuth, executable plugins, and third-party provider adapters remain deferred.
-- Consequences: Existing sessions receive a rebuilt MCP catalog before their next provider request; configuration mutations retire stale generations immediately. Connection state is not a trust signal. Secret values remain Rust-owned plaintext SQLite data and never enter read DTOs or logs. A future OS sandbox can strengthen local execution without changing the SDK ownership boundary.
-- Details: `features/mcp-servers/`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`
-
 ## ADR-20260807-durable-stream-separation
 
 - Date: 2026-08-07
@@ -557,78 +632,3 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The UI used "project" and "task" while the runtime used "workspace" and "session" for the same two concepts, with an amendment explicitly endorsing the split. Renaming the two most central nouns at a layer boundary creates persistent ambiguity in documents, protocol messages, and logs.
 - Decision: One vocabulary in all layers, protocols, and interfaces. A **project** is a directory tree the user has opened. A **session** is one conversation against one project. A **turn** is one user submission and its execution. Consistency with the user-facing term takes priority over internal convention.
 - Consequences: "Workspace" and "task" are retired as domain nouns. "Workspace" survives only for build-tool workspaces such as Cargo and pnpm.
-
-## ADR-20260815-embedded-ripgrep-search
-
-- Date: 2026-08-15
-- Status: Accepted
-- Context: The built-in Rust content search was a literal in-process directory walk, while the grep tool contract described regular-expression search. Calling an `rg` executable would add an installation, PATH, and child-process dependency to the embedded runtime.
-- Decision: Embed ripgrep's reusable Rust crates (`ignore`, `globset`, `grep-regex`, and `grep-searcher`) in the audited operations crate. Use Rust regular expressions, standard ripgrep ignore/hidden-file traversal, bounded project-relative glob filtering, and the existing bounded JSON result contract. Do not invoke an external `rg` process and defer PCRE2.
-- Consequences: The desktop runtime has no ripgrep installation prerequisite and remains inside the Rust operation boundary. The search behavior now follows ripgrep standard filters and regex syntax; callers needing literal punctuation must escape it. Command-line-only features and output formats remain outside the operation contract.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/search.rs`
-
-## ADR-20260815-embedded-git2-review
-
-- Date: 2026-08-15
-- Status: Superseded by ADR-20261012-desktop-system-git (Git implementation and SDK ownership only).
-- Context: The Qt project window needs the actual Git working-tree and index state, but invoking a Git executable would add an installation, PATH, and child-process dependency and allowing Qt to inspect `.git` would violate the SDK ownership boundary.
-- Decision: Embed `git2` with vendored libgit2 in the audited Rust operations crate. Expose bounded read-only status and per-file diff methods through the typed Rust SDK and C ABI. Repository discovery may locate a root above the opened project, but every result and requested path remains filtered to the opened project. Qt owns only transient drawer presentation state.
-- Consequences: The desktop can review all, staged, unstaged, untracked, renamed, deleted, binary, and conflicted local changes without an installed Git executable or system libgit2. Vendoring increases build time and binary size, and the Qt static-library link must include libgit2's native compression and character-conversion dependencies. Stage, discard, commit, refs, remotes, and credentials require separate policy and recovery designs.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/git.rs`
-
-## ADR-20261005-cef-cdp-browser
-
-- Date: 2026-10-05
-- Status: Accepted
-- Supersedes: ADR-20260919-bundled-playwright-browser-runtime
-- Decision: Remove the bundled Node.js, Playwright, worker, and Chromium packaging path. Avalonia-owned CefGlue initializes CEF with a localhost remote debugging port (9222); the Rust `suncode-browser` crate uses `chromiumoxide` to attach to a page target through CDP. Rust retains Browser Use policy, approvals, lifecycle, artifacts, cancellation, and audit ownership.
-- Consequences: CEF resources and profile/window lifecycle remain desktop-owned. `chromiumoxide` owns CDP transport, target attachment, event handling, and command correlation; the agent applies request bounds and stable errors. The initial semantic action subset is intentionally smaller than Playwright and must grow through explicit CDP contracts.
-- Details: `contracts/browser-cdp.md`, `agent/crates/browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`
-
-## ADR-20261012-desktop-system-git
-
-- Date: 2026-10-12
-- Status: Accepted
-- Context: Embedded libgit2 duplicates an installed developer tool and makes desktop-only repository review an agent/SDK concern. The user approved removing it and hiding Source Control without executable Git.
-- Decision: Avalonia owns a narrow C# system Git service and desktop DTOs for bounded read-only status and structured diffs. Discovery validates executable candidates, never installs Git, and hides all opening controls/footer/drawer when unavailable. This explicitly supersedes the previous client Git prohibition. Preserve project boundaries, literal/NUL-safe paths, read limits, cancellation, and distinct repository failures. Disable optional index writes and repository-configured helper processes. Remove dedicated Git agent operations and SDK bindings; bump the native ABI to 18.
-- Consequences: Git 2.11+ is an optional desktop dependency. Installed Git differences are covered by command-level integration tests. Generic agent bash retains its policy, and touched files/checkpoints/undo do not depend on Git. Clients still cannot access SQLite/providers or bypass Rust agent authority. There are no new Git mutation, remote, or credential features.
-- Details: `features/avalonia-desktop-phase-1/`, `contracts/agent-sdk/README.md`, `apps/desktop-avalonia/Infrastructure/Git/`
-
-## ADR-20261013-provider-request-retries
-
-- Date: 2026-10-13
-- Status: Accepted
-- Context: A temporary provider failure ended an otherwise valid turn. Retrying a whole turn could repeat completed tools, while independent adapter retries would hide attempts and multiply the retry budget.
-- Decision: Core retries one immutable agent-loop provider request at most twice, with bounded exponential backoff, jitter, and `Retry-After` minimums. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
-- Consequences: Recovery does not replay tools or consume another agent iteration. Partial output and permanent/configuration failures remain terminal; snapshot resync shows ordinary turn state rather than reconstructing a transient scheduled wait. The SDK event addition requires no ABI change.
-- Details: `specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`, `agent/crates/core/src/agent/run.rs`, `agent/crates/llm/src/errors.rs`
-
-## ADR-20261013-sqlite-user-version-migrations
-
-- Date: 2026-10-13
-- Status: Accepted
-- Supersedes: The "no version or migration metadata" portion of ADR-20260819-current-schema-bootstrap
-- Context: Initialization detected older layouts by inspecting columns and table SQL, and re-ran a dated data patch on every open. Nothing stopped an older build from opening a database written by a newer one.
-- Decision: Record the schema version in SQLite `PRAGMA user_version`. `suncode-data` keeps an ordered list of migration steps; step `n` upgrades version `n` to `n + 1`, and `SCHEMA_VERSION` equals the step count. Opening runs the table scripts (`IF NOT EXISTS`), the steps above the stored version, structural validation, and the idempotent seed scripts in one transaction, then writes the version. Version 1 holds the pre-versioning column additions; version 2 holds the Claude adapter patch. Existing steps are never edited. Foreign-key constraints are intentionally not used; referential cleanup stays in explicit cascades.
-- Consequences: Schema changes become reviewable numbered steps. A database whose version is newer than the build is rejected without mutation. Unversioned databases run every step once; the steps stay guarded by layout checks, so already-upgraded databases are unaffected.
-- Details: `agent/crates/data/src/store.rs`
-
-## ADR-20261016-core-and-agent-definitions
-
-- Date: 2026-10-16
-- Status: Accepted
-- Amends: ADR naming the Rust crate `suncode-agent`
-- Context: The harness crate held both the turn loop and the specialist catalog, and "primary agent" was inferred from an empty tool allowlist or a missing agent id. Several catalog fields (model, MCP, delegation policy) were display text that nothing enforced.
-- Decision: Rename the harness package to `suncode-core`. Add `suncode-agents` for agent definitions with typed capabilities and an explicit primary definition. The core reads capabilities from the definition instead of inferring them. The C ABI keeps the `suncode_agent` library name and `suncode_agent_sdk_*` symbols.
-- Consequences: New built-in agents are added in `suncode-agents` only. User-defined agents can later be another definition source; they must only narrow capabilities and stay subject to core policy. Prompts, tool catalogs, and the SDK agent list were verified byte-identical across the change.
-- Details: `specs/built-in-subagents.md`, `agent/crates/agents/src/lib.rs`, `agent/crates/core/src/agent/system_prompt.rs`
-
-## ADR-20261017-project-language-server-catalog
-
-- Date: 2026-10-17
-- Status: Accepted
-- Supersedes: The global user-created definition model in ADR-20260919-rust-owned-language-server-support
-- Context: The generic executable, arguments, language IDs, initialization JSON, root markers, environment, and timeout form required users to understand each server's raw launch contract. Global arguments also caused project-specific state such as the jdtls data directory to be shared incorrectly.
-- Decision: Rust owns an immutable catalog of supported language-server kinds, beginning with `jdtls`. Enablement and effective configuration are persisted per project. Each kind owns typed validation and launch construction; jdtls exposes executable, Java runtime, managed or custom data path, root markers, environment, and timeouts while Rust fixes Java language identity, initialization behavior, and `-data` arguments. The default managed path is unique under application data by stable project id. Legacy global free-form records remain database-compatible but are ignored by catalog listing and runtime selection.
-- Consequences: Users no longer create, rename, or delete arbitrary LSP definitions. Each project owns an independent process, index, configuration, and runtime state. Adding another language server requires a Rust catalog adapter, typed SDK contract, design-system specimen, and corresponding Avalonia page rather than a new generic row.
-- Details: `.agents/features/language-servers/`, `contracts/agent-sdk/README.md`, `DESIGN.md`, `agent/crates/core/src/agent/lsp.rs`, `sdks/rust/src/facade/language_servers.rs`
