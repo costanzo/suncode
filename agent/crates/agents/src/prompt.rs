@@ -1,38 +1,124 @@
 //! Prompt text owned by agents: the identity and coding workflow every agent
 //! shares, each agent's role text, and the context compaction instructions.
 //!
-//! The core assembles the system prompt and keeps the authority and trust
-//! rules, host environment, and capability report; it takes everything
-//! agent-specific from here.
+//! The shared workflow is then narrowed to the turn's tool scope. The core
+//! assembles the system prompt and keeps the authority and trust rules, host
+//! environment, and capability report; it takes everything agent-specific
+//! from here.
 
 use crate::{AgentDefinition, ToolScope};
 
 /// Who every SunCode agent is.
 pub const IDENTITY: &str = "You are SunCode, an expert coding agent operating inside an opened project. Help the user understand, change, review, and verify software using the tools and authority provided by the host.";
 
-const WORKFLOW_RULES: &[&str] = &[
-    "SunCode coding workflow:",
-    "- Inspect relevant files and repository instructions before editing.",
-    "- Prefer glob, grep, and read for project discovery and content search; use bash for commands that require a shell.",
-    "- File tools (read, write, edit, glob, and grep) take paths relative to the opened project. When a task names an absolute container path under the opened project, translate it to the equivalent relative path before calling a file tool (for example, `/app/run.py` becomes `run.py` when the project root is `/app`). Use the absolute path only inside bash commands where the task explicitly requires it.",
-    "- Keep changes focused and preserve existing conventions. Do not make unrelated cleanup changes.",
-    "- For multi-step work, use todowrite and keep its statuses current.",
-    "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.",
-    "- If blocked, missing information, or uncertain about a destructive choice, explain the blocker and ask a focused question.",
-];
+const INSPECT_BEFORE_EDITING: &str =
+    "- Inspect relevant files and repository instructions before editing.";
+const DISCOVERY_WITH_SHELL: &str = "- Prefer glob, grep, and read for project discovery and content search; use bash for commands that require a shell.";
+const FILE_PATHS_WITH_SHELL: &str = "- File tools (read, write, edit, glob, and grep) take paths relative to the opened project. When a task names an absolute container path under the opened project, translate it to the equivalent relative path before calling a file tool (for example, `/app/run.py` becomes `run.py` when the project root is `/app`). Use the absolute path only inside bash commands where the task explicitly requires it.";
+const KEEP_CHANGES_FOCUSED: &str =
+    "- Keep changes focused and preserve existing conventions. Do not make unrelated cleanup changes.";
+const KEEP_TODOS_CURRENT: &str =
+    "- For multi-step work, use todowrite and keep its statuses current.";
+const VERIFY_CHANGES: &str = "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.";
+const ASK_WHEN_BLOCKED: &str = "- If blocked, missing information, or uncertain about a destructive choice, explain the blocker and ask a focused question.";
 
-/// The coding workflow shared by every agent. `allowed_tools` is the turn's
-/// tool scope; empty means the full catalog. Rules about tools outside the
-/// scope are left out.
+/// The coding workflow for one turn. `allowed_tools` is that turn's tool
+/// scope; empty means the full catalog and keeps every rule. A narrower scope
+/// omits a rule when the tool it names is not offered, so a read-only
+/// specialist is not told to run bash, edit files, or ask the user.
 pub fn workflow(allowed_tools: &[String]) -> String {
-    let todowrite_offered =
-        allowed_tools.is_empty() || allowed_tools.iter().any(|tool| tool == "todowrite");
-    WORKFLOW_RULES
-        .iter()
-        .filter(|rule| todowrite_offered || !rule.contains("todowrite"))
-        .copied()
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut rules = vec!["SunCode coding workflow:".to_string()];
+    if let Some(rule) = inspect_rule(allowed_tools) {
+        rules.push(rule.to_string());
+    }
+    if let Some(rule) = discovery_rule(allowed_tools) {
+        rules.push(rule);
+    }
+    if let Some(rule) = file_path_rule(allowed_tools) {
+        rules.push(rule);
+    }
+    // Mutation, todos, verification, and questions are each tied to one tool.
+    if offers(allowed_tools, "write") || offers(allowed_tools, "edit") {
+        rules.push(KEEP_CHANGES_FOCUSED.to_string());
+    }
+    if offers(allowed_tools, "todowrite") {
+        rules.push(KEEP_TODOS_CURRENT.to_string());
+    }
+    if offers(allowed_tools, "bash") {
+        rules.push(VERIFY_CHANGES.to_string());
+    }
+    if offers(allowed_tools, "question") {
+        rules.push(ASK_WHEN_BLOCKED.to_string());
+    }
+    rules.join("\n")
+}
+
+/// Empty scope is the full catalog, so every named tool is treated as offered.
+fn offers(allowed_tools: &[String], name: &str) -> bool {
+    allowed_tools.is_empty() || allowed_tools.iter().any(|tool| tool == name)
+}
+
+fn inspect_rule(allowed_tools: &[String]) -> Option<&'static str> {
+    if offers(allowed_tools, "write") || offers(allowed_tools, "edit") {
+        return Some(INSPECT_BEFORE_EDITING);
+    }
+    if offers(allowed_tools, "read")
+        || offers(allowed_tools, "glob")
+        || offers(allowed_tools, "grep")
+    {
+        return Some("- Inspect relevant files and repository instructions.");
+    }
+    None
+}
+
+fn discovery_rule(allowed_tools: &[String]) -> Option<String> {
+    let search = ["glob", "grep", "read"]
+        .into_iter()
+        .filter(|name| offers(allowed_tools, name))
+        .collect::<Vec<_>>();
+    let bash = offers(allowed_tools, "bash");
+    if search.len() == 3 && bash {
+        return Some(DISCOVERY_WITH_SHELL.to_string());
+    }
+    match (search.is_empty(), bash) {
+        (true, false) => None,
+        (true, true) => Some("- Use bash for commands that require a shell.".to_string()),
+        (false, bash) => {
+            let mut rule = format!(
+                "- Prefer {} for project discovery and content search",
+                join_and(&search)
+            );
+            if bash {
+                rule.push_str("; use bash for commands that require a shell.");
+            } else {
+                rule.push('.');
+            }
+            Some(rule)
+        }
+    }
+}
+
+fn file_path_rule(allowed_tools: &[String]) -> Option<String> {
+    let tools = ["read", "write", "edit", "glob", "grep"]
+        .into_iter()
+        .filter(|name| offers(allowed_tools, name))
+        .collect::<Vec<_>>();
+    if tools.is_empty() {
+        return None;
+    }
+    if tools.len() == 5 && offers(allowed_tools, "bash") {
+        return Some(FILE_PATHS_WITH_SHELL.to_string());
+    }
+    let mut rule = format!(
+        "- File tools ({}) take paths relative to the opened project. When a task names an absolute container path under the opened project, translate it to the equivalent relative path before calling a file tool (for example, `/app/run.py` becomes `run.py` when the project root is `/app`).",
+        join_and(&tools)
+    );
+    if offers(allowed_tools, "bash") {
+        rule.push_str(
+            " Use the absolute path only inside bash commands where the task explicitly requires it.",
+        );
+    }
+    Some(rule)
 }
 
 /// The `delegate_agent` tool description: what delegation does and, for each
@@ -120,6 +206,16 @@ impl AgentDefinition {
         .filter(|(allowed, _)| !allowed)
         .map(|(_, action)| action)
         .collect()
+    }
+}
+
+/// `a`, `a and b`, `a, b, and c`.
+fn join_and(items: &[&str]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => (*one).to_string(),
+        [first, second] => format!("{first} and {second}"),
+        [rest @ .., last] => format!("{}, and {last}", rest.join(", ")),
     }
 }
 

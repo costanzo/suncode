@@ -127,11 +127,56 @@ fn role_limits_follow_the_definition_capabilities() {
 
 #[test]
 fn workflow_omits_rules_for_tools_outside_the_scope() {
-    assert!(prompt::workflow(&[]).contains("todowrite"));
-    assert!(prompt::workflow(&["todowrite".into()]).contains("todowrite"));
-    let read_only = prompt::workflow(&["read".into()]);
-    assert!(!read_only.contains("todowrite"));
+    let full = prompt::workflow(&[]);
+    assert_eq!(
+        full,
+        prompt::workflow(&names(&[
+            "read",
+            "glob",
+            "grep",
+            "bash",
+            "write",
+            "edit",
+            "todowrite",
+            "question",
+        ]))
+    );
+    assert!(full.contains("use bash for commands that require a shell"));
+    assert!(full.contains("File tools (read, write, edit, glob, and grep)"));
+    assert!(full.contains("before editing"));
+    assert!(full.contains("ask a focused question"));
+    assert!(full.contains("focused tests"));
+
+    let read_only = prompt::workflow(&names(READ_TOOLS));
     assert!(read_only.starts_with("SunCode coding workflow:\n"));
+    assert!(
+        read_only.contains("Prefer glob, grep, and read for project discovery and content search.")
+    );
+    assert!(read_only.contains("File tools (read, glob, and grep)"));
+    assert!(read_only.contains("todowrite"));
+    assert!(read_only.contains("Inspect relevant files and repository instructions."));
+    assert!(!read_only.contains("bash"));
+    assert!(!read_only.contains(", write"));
+    assert!(!read_only.contains("edit"));
+    assert!(!read_only.contains("before editing"));
+    assert!(!read_only.contains("focused tests"));
+    assert!(!read_only.contains("ask a focused question"));
+
+    let implementation = prompt::workflow(&names(IMPLEMENTATION_TOOLS));
+    assert!(implementation.contains("use bash for commands that require a shell"));
+    assert!(implementation.contains("before editing"));
+    assert!(implementation.contains("focused tests"));
+    assert!(!implementation.contains("ask a focused question"));
+
+    let read = prompt::workflow(&names(&["read"]));
+    assert!(!read.contains("todowrite"));
+    assert!(!read.contains("bash"));
+    assert!(read.contains("Prefer read for project discovery and content search."));
+    assert!(read.contains("File tools (read)"));
+}
+
+fn names(tools: &[&str]) -> Vec<String> {
+    tools.iter().map(|tool| (*tool).to_string()).collect()
 }
 
 #[test]

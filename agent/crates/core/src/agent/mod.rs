@@ -1,11 +1,11 @@
 use crate::{
     context,
-    policy::{Decision, Risk, evaluate, tool_risk},
+    policy::{evaluate, tool_risk, Decision, Risk},
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
+use base64::{engine::general_purpose::STANDARD, Engine};
 use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     collections::{HashMap, VecDeque},
     fs,
@@ -13,13 +13,13 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use suncode_common::BusinessError;
 use suncode_common::logging;
+use suncode_common::BusinessError;
 use suncode_config::{Config, RuntimeConfig};
 use suncode_data::{ApprovalInput, Store};
 use suncode_data::{Message, ToolCall, Usage};
 use suncode_llm::{CompletionRequest, ModelProviderRegistry, ModelRoute};
-use tokio::sync::{Mutex as AsyncMutex, mpsc};
+use tokio::sync::{mpsc, Mutex as AsyncMutex};
 use tokio_util::sync::CancellationToken;
 
 use events::*;
@@ -32,8 +32,8 @@ pub use suncode_events::{
 mod lsp;
 mod system_prompt;
 pub use lsp::{
-    LanguageServerRuntimeState, LanguageServerRuntimeStatus, match_root_marker,
-    validate_root_marker,
+    match_root_marker, validate_root_marker, LanguageServerRuntimeState,
+    LanguageServerRuntimeStatus,
 };
 mod browser;
 mod preview;
