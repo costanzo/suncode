@@ -9,10 +9,11 @@
     <AssemblyName>SunCode</AssemblyName>
     <Product>SunCode</Product>
     <ApplicationIcon>Assets/suncode.ico</ApplicationIcon>
-    <Version>0.0.1</Version>
-    <AssemblyVersion>0.0.1.0</AssemblyVersion>
-    <FileVersion>0.0.1.0</FileVersion>
-    <InformationalVersion>0.0.1</InformationalVersion>
+    <!-- Desktop release version. The About window reads InformationalVersion; the macOS bundle version is in Info.plist. -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
@@ -24,6 +25,14 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DebugSymbols>false</DebugSymbols>
     <DebugType>None</DebugType>
+  </PropertyGroup>
+
+  <!-- Release publishes that specify a RID include the matching .NET runtime.
+       Target machines usually do not have dotnet installed. Single-file and trimming stay off so the Rust and CEF native libraries remain separate files. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>

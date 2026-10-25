@@ -10,7 +10,8 @@ public static class AppInfo
         typeof(AppInfo).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
             .InformationalVersion,
-        "v0.0.1");
+        // Fallback shown in About when the assembly has no InformationalVersion.
+        "v0.1.0");
 
     public static string FormatVersion(string? version, string fallback = "Unavailable")
     {

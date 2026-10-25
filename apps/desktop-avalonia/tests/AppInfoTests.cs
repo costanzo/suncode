@@ -7,7 +7,7 @@ public sealed class AppInfoTests
     [Fact]
     public void DisplayVersionUsesTheSemverDisplayFormat()
     {
-        Assert.Equal("v0.0.1", AppInfo.DisplayVersion);
+        Assert.Equal("v0.1.0", AppInfo.DisplayVersion);
     }
 
     [Fact]
