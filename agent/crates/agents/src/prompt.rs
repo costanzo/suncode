@@ -20,6 +20,12 @@ const KEEP_CHANGES_FOCUSED: &str =
 const KEEP_TODOS_CURRENT: &str =
     "- For multi-step work, use todowrite and keep its statuses current.";
 const VERIFY_CHANGES: &str = "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.";
+const PRESERVE_OTHERS_WORK: &str = "- Do not revert, reset, or discard changes you did not make.";
+const NO_BROAD_DESTRUCTION: &str = "- Unless the user clearly asked, do not run `git reset --hard`, `git checkout --`, or recursive deletes on broad paths.";
+const ASK_BEFORE_WIDENING: &str =
+    "- When the destructive target or scope is unclear, ask before acting and do not widen the task.";
+const STOP_BEFORE_WIDENING: &str =
+    "- When the destructive target or scope is unclear, explain the blocker and do not widen the task.";
 const ASK_WHEN_BLOCKED: &str = "- If blocked, missing information, or uncertain about a destructive choice, explain the blocker and ask a focused question.";
 
 /// The coding workflow for one turn. `allowed_tools` is that turn's tool
@@ -46,6 +52,18 @@ pub fn workflow(allowed_tools: &[String]) -> String {
     }
     if offers(allowed_tools, "bash") {
         rules.push(VERIFY_CHANGES.to_string());
+        // Shell-only guidance. Asking the user stays tied to the question tool,
+        // so a specialist that can run bash still must not be told to ask.
+        rules.push(PRESERVE_OTHERS_WORK.to_string());
+        rules.push(NO_BROAD_DESTRUCTION.to_string());
+        rules.push(
+            if offers(allowed_tools, "question") {
+                ASK_BEFORE_WIDENING
+            } else {
+                STOP_BEFORE_WIDENING
+            }
+            .to_string(),
+        );
     }
     if offers(allowed_tools, "question") {
         rules.push(ASK_WHEN_BLOCKED.to_string());

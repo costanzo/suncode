@@ -146,6 +146,8 @@ fn workflow_omits_rules_for_tools_outside_the_scope() {
     assert!(full.contains("before editing"));
     assert!(full.contains("ask a focused question"));
     assert!(full.contains("focused tests"));
+    assert!(full.contains("git reset --hard"));
+    assert!(full.contains("ask before acting and do not widen the task"));
 
     let read_only = prompt::workflow(&names(READ_TOOLS));
     assert!(read_only.starts_with("SunCode coding workflow:\n"));
@@ -161,11 +163,16 @@ fn workflow_omits_rules_for_tools_outside_the_scope() {
     assert!(!read_only.contains("before editing"));
     assert!(!read_only.contains("focused tests"));
     assert!(!read_only.contains("ask a focused question"));
+    assert!(!read_only.contains("git reset"));
+    assert!(!read_only.contains("recursive deletes"));
 
     let implementation = prompt::workflow(&names(IMPLEMENTATION_TOOLS));
     assert!(implementation.contains("use bash for commands that require a shell"));
     assert!(implementation.contains("before editing"));
     assert!(implementation.contains("focused tests"));
+    assert!(implementation.contains("git reset --hard"));
+    assert!(implementation.contains("explain the blocker and do not widen the task"));
+    assert!(!implementation.contains("ask before acting"));
     assert!(!implementation.contains("ask a focused question"));
 
     let read = prompt::workflow(&names(&["read"]));
