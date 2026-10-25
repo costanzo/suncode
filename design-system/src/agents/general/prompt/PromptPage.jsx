@@ -40,14 +40,17 @@ broader instructions for files in their directory tree.`,
     status: "Implemented",
     tone: "implemented",
     description:
-      "The runtime gives the model stable execution context so commands and paths are expressed for the actual host rather than an imagined environment.",
+      "Platform facts stay in the shared system prefix. Provider, model, and session start time are a trailing section so a model switch or a new session does not invalidate the earlier prefix.",
     content: `SunCode host environment:
-OS=<host OS>, architecture=<host architecture>,
+project root=opened project, OS=<host OS>, architecture=<host architecture>,
 shell tool dialect=<shell>, path style=<path style>,
-session started at=<timestamp>.
+non-interactive=<bool>, browser capability=<bool>, computer capability=<bool>.
 
 Use the bash tool for terminal commands and use glob, grep, and read for
-file discovery and content search.`,
+file discovery and content search.
+
+SunCode session context:
+provider=<provider>, model=<model>, session started at=<timestamp>.`,
   },
   {
     id: "tool-guidance",

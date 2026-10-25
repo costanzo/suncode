@@ -157,20 +157,13 @@ pub(in crate::agent) fn slash_path(path: &Path) -> String {
 }
 
 #[cfg(test)]
-pub(in crate::agent) fn host_environment_message(session_started_at: &str) -> suncode_llm::Message {
-    host_environment_message_with_context(
-        session_started_at,
-        "unknown",
-        "unknown",
-        false,
-        AgentHostCapabilities::default(),
-    )
+pub(in crate::agent) fn host_environment_message() -> suncode_llm::Message {
+    host_environment_message_with_context(false, AgentHostCapabilities::default())
 }
 
+/// Platform and host-mode facts. Provider, model, and session start time stay
+/// in [`session_context_message`] so they do not sit in the cacheable prefix.
 pub(in crate::agent) fn host_environment_message_with_context(
-    session_started_at: &str,
-    model_id: &str,
-    provider_id: &str,
     non_interactive: bool,
     capabilities: AgentHostCapabilities,
 ) -> suncode_llm::Message {
@@ -184,19 +177,12 @@ pub(in crate::agent) fn host_environment_message_with_context(
     } else {
         "POSIX"
     };
-    let session_started_at = if session_started_at.is_empty() {
-        "unavailable"
-    } else {
-        session_started_at
-    };
     suncode_llm::Message {
         role: "system".into(),
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: provider={}, model={}, project root=opened project, OS={}, architecture={}, shell tool dialect={}, path style={}, non-interactive={}, browser capability={}, computer capability={}, session started at={}. Use the bash tool for terminal commands and write commands in the stated shell dialect. For file discovery and content search, use glob, grep, and read instead of running find, grep, or rg through bash. The opened project is the authority boundary for ordinary project-relative paths; do not infer permissions from an absolute path.",
-                provider_id,
-                model_id,
+                "SunCode host environment: project root=opened project, OS={}, architecture={}, shell tool dialect={}, path style={}, non-interactive={}, browser capability={}, computer capability={}. Use the bash tool for terminal commands and write commands in the stated shell dialect. For file discovery and content search, use glob, grep, and read instead of running find, grep, or rg through bash. The opened project is the authority boundary for ordinary project-relative paths; do not infer permissions from an absolute path.",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
@@ -204,10 +190,28 @@ pub(in crate::agent) fn host_environment_message_with_context(
                 non_interactive,
                 capabilities.browser_use,
                 capabilities.computer_use,
-                session_started_at,
             ),
         }],
         tool_calls: Vec::new(),
         tool_call_id: None,
     }
+}
+
+/// Volatile session facts. Callers append this after every other system section.
+pub(in crate::agent) fn session_context_message(
+    session_started_at: &str,
+    model_id: &str,
+    provider_id: &str,
+) -> suncode_llm::Message {
+    let session_started_at = if session_started_at.is_empty() {
+        "unavailable"
+    } else {
+        session_started_at
+    };
+    suncode_llm::Message::text(
+        "system",
+        format!(
+            "SunCode session context: provider={provider_id}, model={model_id}, session started at={session_started_at}."
+        ),
+    )
 }

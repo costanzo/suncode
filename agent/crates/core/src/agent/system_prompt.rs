@@ -1,5 +1,12 @@
+//! Turn system prompt, ordered so provider prompt caches can reuse the prefix.
+//!
+//! Shared guidance comes first. Provider, model, and session start time are
+//! always the last system message, because those values change on a model
+//! switch or a new session and must not invalidate the earlier prefix.
+
 use super::{
-    host_environment_message_with_context, project_instruction_message, AgentHostCapabilities,
+    host_environment_message_with_context, project_instruction_message, session_context_message,
+    AgentHostCapabilities,
 };
 use suncode_agents::{prompt, AgentDefinition};
 use suncode_common::BusinessError;
@@ -19,21 +26,20 @@ pub(super) struct PromptContext<'a> {
     pub skill_guidance: Option<String>,
 }
 
+/// System messages for one turn, from the most shared prefix to the volatile tail.
+///
+/// Order: identity, authority, workflow, host platform, specialist role,
+/// repository instructions, dependencies, skills, capabilities, then session
+/// context (provider, model, session start). Optional sections are omitted
+/// rather than left empty, so a missing section does not shift later text
+/// inside a message.
 pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>, BusinessError> {
-    let mut messages = vec![host_environment_message_with_context(
-        context.session_started_at,
-        context.model_id,
-        context.provider_id,
-        context.non_interactive,
-        context.host_capabilities,
-    )];
-
-    messages.push(Message::text("system", prompt::IDENTITY));
-    messages.push(Message::text("system", authority_guidance()));
-    messages.push(Message::text(
-        "system",
-        prompt::workflow(context.allowed_tools),
-    ));
+    let mut messages = vec![
+        Message::text("system", prompt::IDENTITY),
+        Message::text("system", authority_guidance()),
+        Message::text("system", prompt::workflow(context.allowed_tools)),
+        host_environment_message_with_context(context.non_interactive, context.host_capabilities),
+    ];
     if let Some(role) = context.agent.role_prompt() {
         messages.push(Message::text("system", role));
     }
@@ -54,6 +60,13 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
             context.allowed_tools,
             context.non_interactive,
         ),
+    ));
+    // Last on purpose: this is the only section that changes with the selected
+    // model or a new session start time.
+    messages.push(session_context_message(
+        context.session_started_at,
+        context.model_id,
+        context.provider_id,
     ));
     Ok(messages)
 }

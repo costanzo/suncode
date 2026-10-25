@@ -58,17 +58,32 @@ fn dependency_paths_are_parsed_without_exposing_absolute_roots() {
 }
 
 #[test]
-fn host_context_identifies_platform_and_stable_session_time() {
-    let session_started_at = "2026-08-23T01:02:03.000Z";
-    let message = host_environment_message(session_started_at);
-    let text = message.content[0].text.as_str();
+fn host_context_identifies_platform_without_session_identity() {
+    let text = host_environment_message().text_content();
     assert!(text.contains(std::env::consts::OS));
     assert!(text.contains(std::env::consts::ARCH));
-    assert!(text.contains(&format!("session started at={session_started_at}")));
-    assert!(text.contains("provider=unknown"));
-    assert!(text.contains("model=unknown"));
+    assert!(text.contains("non-interactive=false"));
+    assert!(text.contains("browser capability=true"));
+    assert!(text.contains("computer capability=true"));
     assert!(
         text.contains("use glob, grep, and read instead of running find, grep, or rg through bash")
+    );
+    assert!(!text.contains("provider="));
+    assert!(!text.contains("model="));
+    assert!(!text.contains("session started at="));
+}
+
+#[test]
+fn session_context_carries_provider_model_and_start_time() {
+    let session_started_at = "2026-08-23T01:02:03.000Z";
+    let text = session_context_message(session_started_at, "model-1", "provider-1").text_content();
+    assert!(text.contains("provider=provider-1"));
+    assert!(text.contains("model=model-1"));
+    assert!(text.contains(&format!("session started at={session_started_at}")));
+    assert!(
+        session_context_message("", "model-1", "provider-1")
+            .text_content()
+            .contains("session started at=unavailable")
     );
 }
 
@@ -138,6 +153,49 @@ fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
     assert!(text.contains("Non-interactive execution"));
     assert!(text.contains("Browser Use host capability: disabled"));
     assert!(!text.contains("todowrite and keep its statuses current"));
+    assert!(messages[0].text_content().starts_with("You are SunCode"));
+    assert!(messages[1].text_content().contains("authority and trust"));
+    assert!(messages[2].text_content().contains("coding workflow"));
+    assert!(messages[3].text_content().contains("host environment"));
+    assert!(!messages[3].text_content().contains("model-1"));
+    let session = messages.last().unwrap().text_content();
+    assert!(session.contains("provider=provider-1"));
+    assert!(session.contains("model=model-1"));
+    assert!(session.contains("session started at=2026-01-01T00:00:00Z"));
+    assert!(messages[..messages.len() - 1].iter().all(|message| {
+        let earlier = message.text_content();
+        !earlier.contains("provider=provider-1") && !earlier.contains("model=model-1")
+    }));
+}
+
+#[test]
+fn system_prompt_prefix_is_stable_across_model_and_session_time() {
+    let first = prompt_messages("model-a", "provider-a", "2026-01-01T00:00:00Z");
+    let second = prompt_messages("model-b", "provider-b", "2026-06-01T00:00:00Z");
+    assert_eq!(first.len(), second.len());
+    assert!(first.len() > 1);
+    assert_eq!(&first[..first.len() - 1], &second[..second.len() - 1]);
+    assert!(first.last().unwrap().text_content().contains("model-a"));
+    assert!(second.last().unwrap().text_content().contains("model-b"));
+}
+
+fn prompt_messages(model_id: &str, provider_id: &str, session_started_at: &str) -> Vec<Message> {
+    super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        model_id,
+        provider_id,
+        project_root: "project",
+        session_started_at,
+        non_interactive: true,
+        host_capabilities: AgentHostCapabilities {
+            browser_use: false,
+            computer_use: true,
+        },
+        allowed_tools: &["read".into(), "grep".into()],
+        agent: &suncode_agents::PRIMARY,
+        dependency_context: None,
+        skill_guidance: None,
+    })
+    .unwrap()
 }
 
 #[test]
