@@ -40,7 +40,7 @@ broader instructions for files in their directory tree.`,
     status: "Implemented",
     tone: "implemented",
     description:
-      "Platform facts stay in the shared system prefix. Provider, model, and session start time are a trailing section so a model switch or a new session does not invalidate the earlier prefix.",
+      "Platform facts stay in the shared system prefix. The bash and file-search sentences appear only when those tools are advertised; the general agent includes both. Provider, model, and session start time are a trailing section so a model switch or a new session does not invalidate the earlier prefix.",
     content: `SunCode host environment:
 project root=opened project, OS=<host OS>, architecture=<host architecture>,
 shell tool dialect=<shell>, path style=<path style>,

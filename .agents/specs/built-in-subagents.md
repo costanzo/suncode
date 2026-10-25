@@ -7,7 +7,7 @@ Definitions are compiled into the `suncode-agents` crate (`agent/crates/agents`)
 - Architect, UI/UX, Product: `read`, `glob`, `grep`, `webfetch`, `todowrite`; limit 32.
 - SWE, QA, SRE: `read`, `glob`, `grep`, `write`, `edit`, `bash`, `todowrite`, `webfetch`; limit 64.
 
-All six inherit the parent model and reasoning effort, deny MCP, deny `question`, and deny `delegate_agent`. The shared coding workflow keeps a rule only when the snapshotted allowlist offers the tool that rule names. Read-only specialists therefore do not receive bash, file-mutation, verification, or question guidance. Implementation specialists keep those rules except the question prompt. An empty allowlist is the primary catalog and keeps the full workflow.
+All six inherit the parent model and reasoning effort, deny MCP, deny `question`, and deny `delegate_agent`. The shared coding workflow and the host-environment tool sentences keep a rule only when the snapshotted allowlist offers the tool that rule names. Read-only specialists therefore do not receive bash, file-mutation, verification, or question guidance. Implementation specialists keep those rules except the question prompt. An empty allowlist is the primary catalog and keeps the full workflow.
 
 ## Invocation lifecycle
 

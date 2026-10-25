@@ -63,12 +63,56 @@ fn host_context_identifies_platform_without_session_identity() {
     assert!(text.contains("non-interactive=false"));
     assert!(text.contains("browser capability=true"));
     assert!(text.contains("computer capability=true"));
+    assert!(text.contains(
+        "Use the bash tool for terminal commands and write commands in the stated shell dialect."
+    ));
     assert!(
         text.contains("use glob, grep, and read instead of running find, grep, or rg through bash")
     );
     assert!(!text.contains("provider="));
     assert!(!text.contains("model="));
     assert!(!text.contains("session started at="));
+}
+
+#[test]
+fn host_tool_guidance_follows_the_advertised_tools() {
+    let read_only = host_environment_message_with_context(
+        false,
+        AgentHostCapabilities::default(),
+        &names(&["read", "glob", "grep", "webfetch", "todowrite"]),
+    )
+    .text_content();
+    assert!(read_only.contains("For file discovery and content search, use glob, grep, and read."));
+    assert!(!read_only.contains("Use the bash tool"));
+    assert!(!read_only.contains("through bash"));
+    assert!(read_only.contains("shell tool dialect="));
+    assert!(read_only.contains("authority boundary"));
+
+    let search_subset = host_environment_message_with_context(
+        false,
+        AgentHostCapabilities::default(),
+        &names(&["read", "grep"]),
+    )
+    .text_content();
+    assert!(search_subset.contains("use grep and read."));
+    assert!(!search_subset.contains("glob"));
+    assert!(!search_subset.contains("Use the bash tool"));
+
+    let shell_only = host_environment_message_with_context(
+        true,
+        AgentHostCapabilities {
+            browser_use: false,
+            computer_use: false,
+        },
+        &names(&["bash"]),
+    )
+    .text_content();
+    assert!(shell_only.contains("Use the bash tool"));
+    assert!(!shell_only.contains("file discovery"));
+}
+
+fn names(tools: &[&str]) -> Vec<String> {
+    tools.iter().map(|tool| (*tool).to_string()).collect()
 }
 
 #[test]
@@ -155,6 +199,10 @@ fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
     assert!(workflow.contains("coding workflow"));
     assert!(workflow.contains("File tools (read and grep)"));
     assert!(!workflow.contains("bash"));
+    let host = messages[3].text_content();
+    assert!(host.contains("use grep and read."));
+    assert!(!host.contains("Use the bash tool"));
+    assert!(host.contains("shell tool dialect="));
     assert!(!workflow.contains("todowrite"));
     assert!(!workflow.contains("ask a focused question"));
     assert!(messages[3].text_content().contains("host environment"));

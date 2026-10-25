@@ -38,7 +38,11 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
         Message::text("system", prompt::IDENTITY),
         Message::text("system", authority_guidance()),
         Message::text("system", prompt::workflow(context.allowed_tools)),
-        host_environment_message_with_context(context.non_interactive, context.host_capabilities),
+        host_environment_message_with_context(
+            context.non_interactive,
+            context.host_capabilities,
+            context.allowed_tools,
+        ),
     ];
     if let Some(role) = context.agent.role_prompt() {
         messages.push(Message::text("system", role));

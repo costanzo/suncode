@@ -158,14 +158,19 @@ pub(in crate::agent) fn slash_path(path: &Path) -> String {
 
 #[cfg(test)]
 pub(in crate::agent) fn host_environment_message() -> suncode_llm::Message {
-    host_environment_message_with_context(false, AgentHostCapabilities::default())
+    host_environment_message_with_context(false, AgentHostCapabilities::default(), &[])
 }
 
 /// Platform and host-mode facts. Provider, model, and session start time stay
 /// in [`session_context_message`] so they do not sit in the cacheable prefix.
+///
+/// `allowed_tools` is the turn's tool scope. Empty means the full catalog and
+/// keeps the bash and file-search sentences. A narrower scope drops a sentence
+/// when that tool is not offered.
 pub(in crate::agent) fn host_environment_message_with_context(
     non_interactive: bool,
     capabilities: AgentHostCapabilities,
+    allowed_tools: &[String],
 ) -> suncode_llm::Message {
     let shell = if cfg!(target_os = "windows") {
         "Windows PowerShell"
@@ -182,7 +187,7 @@ pub(in crate::agent) fn host_environment_message_with_context(
         content: vec![suncode_llm::ContentPart {
             kind: "text".into(),
             text: format!(
-                "SunCode host environment: project root=opened project, OS={}, architecture={}, shell tool dialect={}, path style={}, non-interactive={}, browser capability={}, computer capability={}. Use the bash tool for terminal commands and write commands in the stated shell dialect. For file discovery and content search, use glob, grep, and read instead of running find, grep, or rg through bash. The opened project is the authority boundary for ordinary project-relative paths; do not infer permissions from an absolute path.",
+                "SunCode host environment: project root=opened project, OS={}, architecture={}, shell tool dialect={}, path style={}, non-interactive={}, browser capability={}, computer capability={}. {}",
                 std::env::consts::OS,
                 std::env::consts::ARCH,
                 shell,
@@ -190,10 +195,60 @@ pub(in crate::agent) fn host_environment_message_with_context(
                 non_interactive,
                 capabilities.browser_use,
                 capabilities.computer_use,
+                host_tool_guidance(allowed_tools),
             ),
         }],
         tool_calls: Vec::new(),
         tool_call_id: None,
+    }
+}
+
+/// Tool sentences that follow the platform facts. The full-catalog wording stays
+/// byte-stable; a restricted scope names only the search tools it actually offers.
+fn host_tool_guidance(allowed_tools: &[String]) -> String {
+    let mut guidance = Vec::new();
+    if tool_offered(allowed_tools, "bash") {
+        guidance.push(
+            "Use the bash tool for terminal commands and write commands in the stated shell dialect."
+                .to_string(),
+        );
+    }
+    let search = ["glob", "grep", "read"]
+        .into_iter()
+        .filter(|name| tool_offered(allowed_tools, name))
+        .collect::<Vec<_>>();
+    if !search.is_empty() {
+        if search.len() == 3 && tool_offered(allowed_tools, "bash") {
+            guidance.push(
+                "For file discovery and content search, use glob, grep, and read instead of running find, grep, or rg through bash."
+                    .to_string(),
+            );
+        } else {
+            guidance.push(format!(
+                "For file discovery and content search, use {}.",
+                join_and(&search)
+            ));
+        }
+    }
+    guidance.push(
+        "The opened project is the authority boundary for ordinary project-relative paths; do not infer permissions from an absolute path."
+            .to_string(),
+    );
+    guidance.join(" ")
+}
+
+/// Empty scope is the full catalog, so every named tool is treated as offered.
+fn tool_offered(allowed_tools: &[String], name: &str) -> bool {
+    allowed_tools.is_empty() || allowed_tools.iter().any(|tool| tool == name)
+}
+
+/// `a`, `a and b`, `a, b, and c`.
+fn join_and(items: &[&str]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => (*one).to_string(),
+        [first, second] => format!("{first} and {second}"),
+        [rest @ .., last] => format!("{}, and {last}", rest.join(", ")),
     }
 }
 
