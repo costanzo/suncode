@@ -258,11 +258,11 @@ impl Store {
         }
     }
 
+
     pub fn provider_credential_status(
         &self,
         provider_id: &str,
     ) -> Result<&'static str, BusinessError> {
-        let _guard = self.credential_guard()?;
         let Some(record) = self.provider_credential(provider_id)? else {
             return Ok("missing");
         };
@@ -281,20 +281,12 @@ impl Store {
                     "missing"
                 },
             ),
-            CredentialStorageMode::Keychain => {
-                let Some(reference) = record.secret_ref.as_deref() else {
-                    return Ok("missing");
-                };
-                match self.secrets.get(&Self::credential_secret_id(reference)?) {
-                    Ok(Some(_)) => Ok("configured"),
-                    Ok(None) => Ok("missing"),
-                    Err(error) => match credential_store_error(error).code.as_str() {
-                        "credential_locked" => Ok("locked"),
-                        "credential_access_denied" => Ok("access_denied"),
-                        _ => Ok("unavailable"),
-                    },
-                }
-            }
+            // Reading the secret here would trigger a macOS KeyChain prompt on every startup.
+            CredentialStorageMode::Keychain => Ok(if record.secret_ref.is_some() {
+                "configured"
+            } else {
+                "missing"
+            }),
         }
     }
 
