@@ -90,9 +90,9 @@
               PointerReleased="TitleBarReleased"
               DoubleTapped="TitleBarDoubleTapped">
           <StackPanel x:Name="MacTitleBarControls" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center">
-            <controls:TrafficLightButton x:Name="ProjectCloseLight" Kind="Close" Click="CloseProjectWindow" ToolTip.Tip="{DynamicResource LocCloseWindow}" />
-            <controls:TrafficLightButton x:Name="ProjectMinimizeLight" Kind="Minimize" Click="MinimizeWindow" ToolTip.Tip="{DynamicResource LocMinimizeWindow}" />
-            <controls:TrafficLightButton x:Name="ProjectMaximizeLight" Kind="Maximize" Click="ToggleFullScreen" ToolTip.Tip="{DynamicResource LocEnterFullScreen}" />
+            <controls:TrafficLightButton x:Name="ProjectCloseLight" Kind="Close" Click="CloseProjectWindow" />
+            <controls:TrafficLightButton x:Name="ProjectMinimizeLight" Kind="Minimize" Click="MinimizeWindow" />
+            <controls:TrafficLightButton x:Name="ProjectMaximizeLight" Kind="Maximize" Click="ToggleFullScreen" />
           </StackPanel>
           <workspace:ProjectSwitcher x:Name="ProjectSwitcherControl"
                                      Grid.Column="0"
@@ -111,16 +111,16 @@
             </Button>
           </StackPanel>
           <StackPanel x:Name="WindowsTitleBarControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
-            <Button Classes="windows-titlebar-control" Click="OpenSettings" ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
+            <Button Classes="windows-titlebar-control" Click="OpenSettings" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
               <svg:Svg Width="14" Height="14" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="MinimizeWindow" ToolTip.Tip="{DynamicResource LocMinimizeWindow}" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
+            <Button Classes="windows-titlebar-control" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="ToggleWindowMaximized" ToolTip.Tip="{DynamicResource LocMaximizeWindow}" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
+            <Button Classes="windows-titlebar-control" Click="ToggleWindowMaximized" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-maximize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" ToolTip.Tip="{DynamicResource LocCloseWindow}" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
+            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-close.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
