@@ -23,12 +23,26 @@ public partial class WorkspaceWindow : Window
     private bool _isFullScreenTransition;
     private DesktopMenuController? _desktopMenus;
     private bool _restoringWindowGeometry;
+    private readonly ProjectWorkspace? _workspace;
+    private readonly bool _adoptedWorkspace;
     
     internal Window? OriginWindow { get; set; }
 
-    public WorkspaceWindow()
+    
+    internal bool IsReleasedForMerge { get; set; }
+    
+    public WorkspaceWindow() : this(new ProjectWorkspace(), adoptedWorkspace: false)
+    {
+    }
+    
+    
+    
+    internal WorkspaceWindow(ProjectWorkspace? workspace, bool adoptedWorkspace)
     {
         InitializeComponent();
+        _workspace = workspace;
+        _adoptedWorkspace = adoptedWorkspace;
+        if (workspace is not null) Content = workspace;
         WindowDecorations = Avalonia.Controls.WindowDecorations.BorderOnly;
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Icon = AppIcon.Window;
@@ -48,7 +62,7 @@ public partial class WorkspaceWindow : Window
         SizeChanged += (_, _) =>
         {
             ViewModel.Layout.UpdateLayoutSize(Bounds.Width, Bounds.Height);
-            ProjectWorkspaceView.ClampGitViewerHeight();
+            ActiveWorkspace?.ClampGitViewerHeight();
             SaveWindowGeometry();
         };
         PositionChanged += (_, _) => SaveWindowGeometry();
@@ -56,25 +70,34 @@ public partial class WorkspaceWindow : Window
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
-    internal ProjectWorkspace Workspace => ProjectWorkspaceView;
-    internal virtual ProjectWorkspace ActiveWorkspace => Workspace;
+    internal ProjectWorkspace Workspace =>
+        _workspace ?? throw new InvalidOperationException("A merged host has no workspace of its own.");
+    internal virtual ProjectWorkspace? ActiveWorkspace => _workspace;
     internal virtual bool IsMergedHost => false;
 
+    
+    internal void ReleaseForMerge()
+    {
+        IsReleasedForMerge = true;
+        Close();
+    }
+    
     private async void OnOpened(object? sender, EventArgs e)
     {
         if (_initialized) return;
         _initialized = true;
-        ViewModel.SessionEntered += SessionEntered;
+        if (!IsMergedHost) ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
-        if (IsMergedHost)
+        if (IsMergedHost || _adoptedWorkspace)
         {
-            RestoreWindowGeometry();
+            if (IsMergedHost) RestoreWindowGeometry();
+            StartMcpLoadPollingIfNeeded();
             UpdateNativeProjectMenu();
             UpdateTrafficLightFocus(IsActive);
             return;
         }
         await ViewModel.Mcp.StartProjectAsync();
-        if (ViewModel.Mcp.IsLoading) _mcpLoadTimer.Start();
+        StartMcpLoadPollingIfNeeded();
         RestoreWindowGeometry();
         if (!IsMergedHost) ConfigureProjectWindow();
         UpdateNativeProjectMenu();
@@ -84,14 +107,20 @@ public partial class WorkspaceWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        ProjectWorkspaceView.ClosePreview();
+        
+        if (!IsReleasedForMerge) _workspace?.ClosePreview();
         _mcpLoadTimer.Stop();
         SaveWindowGeometry();
         ViewModel.SavePanelGeometry();
         ViewModel.SaveRegionState();
-        ViewModel.SessionEntered -= SessionEntered;
+        if (!IsMergedHost) ViewModel.SessionEntered -= SessionEntered;
     }
 
+    internal void StartMcpLoadPollingIfNeeded()
+    {
+        if (ViewModel.Mcp.IsLoading) _mcpLoadTimer.Start();
+    }
+    
     private async void McpLoadTick(object? sender, EventArgs e)
     {
         await ViewModel.Mcp.RefreshLoadProgressAsync();
@@ -228,11 +257,11 @@ public partial class WorkspaceWindow : Window
     private void UpdateNativeProjectMenu() => _desktopMenus?.Refresh();
 
     private void SessionEntered() =>
-        ActiveWorkspace.ScrollConversationToEndForSessionEntry();
+        ActiveWorkspace?.ScrollConversationToEndForSessionEntry();
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && ActiveWorkspace.HandleEscape())
+        if (e.Key == Key.Escape && ActiveWorkspace?.HandleEscape() == true)
         {
             e.Handled = true;
             return;
@@ -256,7 +285,7 @@ public partial class WorkspaceWindow : Window
         if (ViewModel.Git.IsAvailable && IsToggleGitViewerShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
-            ActiveWorkspace.ToggleGitViewer();
+            ActiveWorkspace?.ToggleGitViewer();
         }
     }
 
@@ -316,7 +345,7 @@ public partial class WorkspaceWindow : Window
 
     protected virtual void UpdateTrafficLightFocus(bool isActive)
     {
-        ProjectWorkspaceView.SetTrafficLightFocus(isActive);
+        _workspace?.SetTrafficLightFocus(isActive);
     }
 
     internal void MinimizeWindow()

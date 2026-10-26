@@ -72,8 +72,7 @@ internal sealed class ProjectWindowManager
             }
 
             var window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
-            _registry.Register(project.ProjectId, window);
-            window.Closed += (_, _) => ProjectWindowClosed(project.ProjectId, viewModel);
+            Track(project.ProjectId, window, viewModel);
             _hubWindow.Hide();
             window.Show();
             window.Activate();
@@ -99,7 +98,7 @@ internal sealed class ProjectWindowManager
             {
                 if (existingMerged.ContainsProject(projectId)) continue;
                 existingMerged.AddProject(projectId, source);
-                source.Hide();
+                source.ReleaseForMerge();
             }
             existingMerged.Activate();
             return;
@@ -117,7 +116,7 @@ internal sealed class ProjectWindowManager
         foreach (var (projectId, source) in sources)
         {
             merged.AddProject(projectId, source);
-            source.Hide();
+            source.ReleaseForMerge();
         }
         _hubWindow.Hide();
         merged.Show();
@@ -162,7 +161,40 @@ internal sealed class ProjectWindowManager
 
     public void CloseAll()
     {
+        _mergedWindow?.Close();
         foreach (var (_, window) in _registry.Snapshot()) window.Close();
+    }
+
+    private void Track(string projectId, WorkspaceWindow window, DesktopViewModel viewModel)
+    {
+        _registry.Register(projectId, window);
+        window.Closed += (_, _) =>
+        {
+            if (!window.IsReleasedForMerge) ProjectWindowClosed(projectId, viewModel);
+        };
+    }
+
+    
+    private WorkspaceWindow ReopenReleaseProject(string projectId, WorkspaceWindow released, Window origin)
+    {
+        var viewModel = (DesktopViewModel)released.DataContext!;
+        var window = new WorkspaceWindow(released.Workspace, adoptedWorkspace: true)
+        {
+            DataContext = viewModel,
+            OriginWindow = origin,
+            RequestedThemeVariant = released.RequestedThemeVariant
+        };
+        Track(projectId, window, viewModel);
+        return window;
+    }
+    
+    private void CloseReleasedProject(string projectId, WorkspaceWindow released)
+    {
+        if (released.DataContext is not DesktopViewModel viewModel) return;
+        released.Workspace.ClosePreview();
+        viewModel.SavePanelGeometry();
+        viewModel.SaveRegionState();
+        ProjectWindowClosed(projectId, viewModel);
     }
 
     private void CloseMergedProject(string projectId)
@@ -170,7 +202,7 @@ internal sealed class ProjectWindowManager
         if (_mergedWindow is not { } merged) return;
         var source = merged.RemoveProject(projectId);
         if (source is null) return;
-        source.Close();
+        CloseReleasedProject(projectId, source);
 
         if (merged.ProjectIds.Count == 0)
         {
@@ -188,11 +220,10 @@ internal sealed class ProjectWindowManager
         if (_mergedWindow is not { } merged) return;
         var source = merged.RemoveProject(projectId);
         if (source is null) return;
-        source.Content = source.Workspace;
-        source.OriginWindow = merged;
-        source.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
-        source.RestoreAsProjectWindow();
-
+        var window = ReopenReleaseProject(projectId, source, merged);
+        window.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
+        window.RestoreAsProjectWindow();
+        
         if (merged.ProjectIds.Count == 0)
         {
             _mergedWindow = null;
@@ -210,9 +241,7 @@ internal sealed class ProjectWindowManager
         {
             var source = merged.RemoveProject(projectId);
             if (source is null) continue;
-            source.Content = source.Workspace;
-            source.OriginWindow = merged;
-            source.RestoreAsProjectWindow();
+            ReopenReleaseProject(projectId, source, merged).RestoreAsProjectWindow();
         }
         merged.CloseWithoutNotification();
     }
@@ -223,8 +252,7 @@ internal sealed class ProjectWindowManager
         _mergedWindow = null;
         foreach (var projectId in merged.ProjectIds.ToArray())
         {
-            merged.RemoveProject(projectId);
-            if (_registry.TryGet(projectId, out var source)) source.Close();
+            if (merged.RemoveProject(projectId) is { } source) CloseReleasedProject(projectId, source);
         }
     }
 

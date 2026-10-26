@@ -10,17 +10,18 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     private readonly MergedWorkspaceTabs _tabs = new();
     private readonly ContentControl _content = new();
     private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
+    private readonly Dictionary<string, Action> _sessionEnteredHandlers = [];
     private string? _activeProjectId;
     private bool _suppressCloseNotification;
 
     internal override bool IsMergedHost => true;
-    internal override ProjectWorkspace ActiveWorkspace => _content.Content as ProjectWorkspace ?? Workspace;
+    internal override ProjectWorkspace? ActiveWorkspace => _content.Content as ProjectWorkspace;
     internal event Action<string, PixelPoint>? ProjectTornOff;
     internal event Action<string>? ProjectCloseRequested;
     internal event Action<MergedWorkspaceWindow>? HostClosed;
     internal IReadOnlyList<string> ProjectIds => _tabs.Tabs.Select(item => item.ProjectId).ToArray();
 
-    internal MergedWorkspaceWindow(DesktopViewModel initialViewModel) : base()
+    internal MergedWorkspaceWindow(DesktopViewModel initialViewModel) : base(null, adoptedWorkspace: false)
     {
         DataContext = initialViewModel;
         _tabs.ProjectSelected += SelectProject;
@@ -37,10 +38,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
 
     protected override void UpdateTrafficLightFocus(bool isActive)
     {
-        if (_content.Content is ProjectWorkspace workspace)
-            workspace.SetTrafficLightFocus(isActive);
-        else
-            base.UpdateTrafficLightFocus(isActive);
+        ActiveWorkspace?.SetTrafficLightFocus(isActive);
     }
 
     internal void AddProject(string projectId, WorkspaceWindow source)
@@ -53,6 +51,12 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
             ? viewModel.ProjectTitle
             : projectId;
         _projectWindows[projectId] = source;
+        if (source.DataContext is DesktopViewModel projectViewModel)
+        {
+            Action handler = source.Workspace.ScrollConversationToEndForSessionEntry;
+            projectViewModel.SessionEntered += handler;
+            _sessionEnteredHandlers[projectId] = handler;
+        }
         _tabs.Tabs.Add(new MergedProjectTab(projectId, title));
         UpdateMergedTitle();
         if (_tabs.Tabs.Count == 1) SelectProject(projectId);
@@ -74,6 +78,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         DataContext = source.DataContext;
         _tabs.Select(projectId);
         UpdateMergedTitle();
+        if (IsVisible) StartMcpLoadPollingIfNeeded();
     }
 
     internal WorkspaceWindow? RemoveProject(string projectId)
@@ -89,6 +94,8 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         }
         _projectWindows.Remove(projectId);
         _tabs.Remove(projectId);
+        if (_sessionEnteredHandlers.Remove(projectId, out var handler) && source.DataContext is DesktopViewModel viewModel)
+            viewModel.SessionEntered -= handler;
         UpdateMergedTitle();
         if (_tabs.Tabs.Count > 0) SelectProject(_tabs.Tabs[0].ProjectId);
         return source;
