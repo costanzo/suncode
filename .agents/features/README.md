@@ -64,4 +64,4 @@ Completed dated requirements have been summarized into these current feature rec
 | OS-backed provider secret storage (2026-10-18) | [`providers-and-models`](providers-and-models/README.md) |
 | Follow-up queue and turn steering (2026-10-21) | [`agent-phase-1`](agent-phase-1/README.md), [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md) |
 | Computer accessibility tree (2026-10-23) | [`computer-use`](computer-use/README.md); Windows/Linux conformance remains open |
-| Native desktop menus and Dock menu (2026-10-23) | [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md); installed macOS click-through remains open |
+| Native desktop menus, Dock menu, and Windows Jump List (2026-10-23) | [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md); installed shell click-through remains open |

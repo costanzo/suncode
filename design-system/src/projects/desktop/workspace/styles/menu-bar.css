@@ -136,6 +136,11 @@ button.workspace-native-menu-item:disabled,
   white-space: nowrap;
 }
 
+.workspace-native-menu-category {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .workspace-native-menu-shortcut {
   margin-left: 12px;
   color: var(--text-muted);

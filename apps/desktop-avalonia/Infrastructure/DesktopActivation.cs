@@ -19,13 +19,18 @@ internal sealed record DesktopActivationRequest(
     string? ParentSessionId,
     string? ChildSessionId,
     string? CorrelationId,
-    string Source)
+    string Source,
+    string? ProjectPath = null)
 {
     public const int CurrentVersion = 1;
 
     public static DesktopActivationRequest Application(string source = "launch") => new(
         CurrentVersion, Guid.NewGuid().ToString("N"), "activate.application",
         null, null, null, null, null, source);
+
+    public static DesktopActivationRequest Project(string projectPath, string source = "jump-list") => new(
+        CurrentVersion, Guid.NewGuid().ToString("N"), "activate.project",
+        null, null, null, null, null, source, projectPath);
 
     public static DesktopActivationRequest Session(
         string projectId,
@@ -41,7 +46,7 @@ internal sealed record DesktopActivationRequest(
     {
         if (Version != CurrentVersion) throw new InvalidDataException("Unsupported activation protocol version");
         ValidateToken(RequestId, nameof(RequestId), required: true);
-        if (Kind is not ("activate.application" or "activate.session"))
+        if (Kind is not ("activate.application" or "activate.session" or "activate.project"))
             throw new InvalidDataException("Unsupported activation kind");
         ValidateToken(Source, nameof(Source), required: true);
         ValidateToken(ProjectId, nameof(ProjectId), Kind == "activate.session");
@@ -49,6 +54,9 @@ internal sealed record DesktopActivationRequest(
         ValidateToken(ParentSessionId, nameof(ParentSessionId), false);
         ValidateToken(ChildSessionId, nameof(ChildSessionId), false);
         ValidateToken(CorrelationId, nameof(CorrelationId), Kind == "activate.session");
+        ValidatePath(ProjectPath, Kind == "activate.project");
+        if (Kind != "activate.project" && ProjectPath is not null)
+            throw new InvalidDataException("Project path is only valid for project activation");
         if ((ParentSessionId is null) != (ChildSessionId is null))
             throw new InvalidDataException("Parent and child session IDs must be supplied together");
         if (ChildSessionId is not null && SessionId != ChildSessionId)
@@ -89,6 +97,14 @@ internal sealed record DesktopActivationRequest(
         if (required && string.IsNullOrWhiteSpace(value)) throw new InvalidDataException($"{name} is required");
         if (value is { Length: > 256 }) throw new InvalidDataException($"{name} is too long");
         if (value?.Any(char.IsControl) == true) throw new InvalidDataException($"{name} contains control characters");
+    }
+
+    private static void ValidatePath(string? value, bool required)
+    {
+        if (required && string.IsNullOrWhiteSpace(value)) throw new InvalidDataException("ProjectPath is required");
+        if (value is null) return;
+        if (value.Length > 32_768) throw new InvalidDataException("ProjectPath is too long");
+        if (value.Any(char.IsControl)) throw new InvalidDataException("ProjectPath contains control characters");
     }
 
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

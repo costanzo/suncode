@@ -21,6 +21,7 @@ public sealed partial class App : Application
     private ProjectHubWindow? _hubWindow;
     private ProjectWindowManager? _windows;
     private DesktopDockMenuController? _dockMenuController;
+    private WindowsTaskbarJumpList? _windowsJumpList;
     private DialogService? _dialogs;
     private BrowserHostBridge? _browserHost;
     private SessionAttentionCoordinator? _attentionCoordinator;
@@ -62,6 +63,11 @@ public sealed partial class App : Application
                 ShowProjectHub,
                 () => _hubWindow.IsEnabled && desktop.Windows.All(window => window.IsEnabled));
             if (OperatingSystem.IsMacOS()) NativeDock.SetMenu(this, _dockMenuController.Menu);
+            if (OperatingSystem.IsWindows() && WindowsTaskbarJumpList.IsEnabled)
+            {
+                _windowsJumpList = new WindowsTaskbarJumpList(() => _viewModel.Projects.ToArray());
+                _ = RefreshWindowsJumpListAsync();
+            }
             _dialogs = new DialogService(() => _viewModel, SetOtherWindowsEnabled);
             _browserHost = new BrowserHostBridge(new ProjectWindowBrowserHost(
                 _windows,
@@ -114,6 +120,7 @@ public sealed partial class App : Application
     private void ApplyLanguage(string locale)
     {
         _localization?.SetLocale(locale);
+        _ = _windowsJumpList?.RefreshAsync();
     }
 
     internal async Task OpenProjectPathAsync(string path)
@@ -123,6 +130,7 @@ public sealed partial class App : Application
         if (project is not null)
         {
             await OpenProjectWindowAsync(project);
+            _ = _windowsJumpList?.RefreshAsync();
         }
         else if (_hubWindow is not null)
         {
@@ -136,6 +144,14 @@ public sealed partial class App : Application
         if (_windows is null) return;
         await _windows.OpenProjectWindowAsync(project);
         if (_viewModel is not null) await _viewModel.RefreshProjectsAsync();
+        _ = _windowsJumpList?.RefreshAsync();
+    }
+
+    private async Task RefreshWindowsJumpListAsync()
+    {
+        if (_viewModel is null || _windowsJumpList is null) return;
+        await _viewModel.InitializeAsync();
+        await _windowsJumpList.RefreshAsync();
     }
 
     // Merging is synchronous. The Task shape is kept only for existing view callers.
@@ -220,12 +236,35 @@ public sealed partial class App : Application
                 ActivateFallbackWindow();
                 return;
             }
-            if (_viewModel is null || _windows is null || request.ProjectId is null || request.SessionId is null)
+            if (_viewModel is null || _windows is null)
             {
                 ActivateFallbackWindow();
                 return;
             }
             await _viewModel.InitializeAsync();
+            if (request.Kind == "activate.project")
+            {
+                var jumpProject = _viewModel.Projects.FirstOrDefault(item =>
+                    string.Equals(
+                        PathNormalization.FullPath(item.CanonicalRoot),
+                        PathNormalization.FullPath(request.ProjectPath!),
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+                if (jumpProject is null && Directory.Exists(request.ProjectPath))
+                    jumpProject = await _viewModel.RegisterProjectAsync(request.ProjectPath);
+                if (jumpProject is null)
+                {
+                    ActivateFallbackWindow();
+                    return;
+                }
+                await OpenProjectWindowAsync(jumpProject);
+                _ = _windowsJumpList?.RefreshAsync();
+                return;
+            }
+            if (request.ProjectId is null || request.SessionId is null)
+            {
+                ActivateFallbackWindow();
+                return;
+            }
             var project = _viewModel.Projects.FirstOrDefault(item => item.ProjectId == request.ProjectId);
             if (project is null)
             {

@@ -44,6 +44,23 @@ public sealed class DesktopActivationTests
     }
 
     [Fact]
+    public void Project_activation_round_trips_the_bounded_project_path()
+    {
+        var request = DesktopActivationRequest.Project(@"C:\code\sun-code");
+
+        Assert.True(DesktopActivationRequest.TryParseLaunchArgument(request.ToLaunchArgument(), out var parsed));
+        Assert.Equal(request, parsed);
+    }
+
+    [Fact]
+    public void Non_project_activation_cannot_carry_a_project_path()
+    {
+        var invalid = DesktopActivationRequest.Application() with { ProjectPath = @"C:\code" };
+
+        Assert.Throws<InvalidDataException>(invalid.Validate);
+    }
+
+    [Fact]
     public async Task Secondary_forwards_to_the_primary_instance_for_the_same_data_directory()
     {
         if (OperatingSystem.IsWindows()) return;

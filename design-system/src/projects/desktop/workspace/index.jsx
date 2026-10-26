@@ -74,8 +74,8 @@ export function WorkspacePage() {
       >
         <NativeMenuSpecimen />
       </Section>
-      <Section id="workspace-dock-menu" title="macOS Dock menu"
-        description="The running app exposes open project windows and recent projects from its Dock icon.">
+      <Section id="workspace-dock-menu" title="Native project launcher menus"
+        description="The running app exposes project navigation from the platform-owned Dock or taskbar launcher menu.">
         <DockMenuSpecimen />
       </Section>
       <Section id="workspace-modules" title="Focused workspace surfaces">

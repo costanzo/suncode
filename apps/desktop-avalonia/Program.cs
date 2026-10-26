@@ -20,6 +20,7 @@ internal static class Program
         AgentSdk.ConfigureDiagnosticConsoleOutput(false);
         DiagnosticLog.ConfigureConsoleOutput(false);
         DiagnosticLog.Initialize();
+        WindowsTaskbarJumpList.ConfigureProcessIdentity();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         Dispatcher.UIThread.UnhandledException += OnDispatcherUnhandledException;
