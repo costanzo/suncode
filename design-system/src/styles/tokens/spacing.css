@@ -23,4 +23,11 @@
   --conversation-compact-height: 102px;
   --conversation-composer-radius: 16px;
   --conversation-border-width: 1px;
+  --windows-menu-titlebar-height: 36px;
+  --windows-menu-caption-width: 46px;
+  --windows-menu-logo-size: 20px;
+  --windows-menu-popup-width: 320px;
+  --windows-menu-row-height: 30px;
+  --windows-menu-preview-height: 460px;
+  --windows-menu-preview-min-width: 620px;
 }

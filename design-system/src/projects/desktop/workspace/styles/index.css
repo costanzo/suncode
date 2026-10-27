@@ -5,6 +5,7 @@
 @import "./base.css";
 @import "./shell.css";
 @import "./menu-bar.css";
+@import "./windows-menu.css";
 @import "./sessions.css";
 @import "./editor.css";
 @import "./conversation.css";

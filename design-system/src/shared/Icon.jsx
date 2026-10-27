@@ -1,4 +1,5 @@
 const paths = {
+  "menu-lines": <path d="M4 4h16M4 8h16M4 12h16M4 16h16M4 20h16" />,
   home: (
     <>
       <path d="M3 10.5 12 3l9 7.5" />

@@ -1,0 +1,205 @@
+.windows-menu-preview {
+  position: relative;
+  min-width: var(--windows-menu-preview-min-width);
+  min-height: var(--windows-menu-preview-height);
+  color: var(--text);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.windows-menu-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.windows-menu-titlebar {
+  display: flex;
+  align-items: center;
+  height: var(--windows-menu-titlebar-height);
+  padding-left: var(--space-3);
+  background: var(--surface);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  user-select: none;
+}
+
+.windows-menu-logo {
+  flex: 0 0 auto;
+  width: var(--windows-menu-logo-size);
+  height: var(--windows-menu-logo-size);
+  margin-right: var(--space-2);
+}
+
+.windows-menu-region {
+  position: relative;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+.windows-menu-rest,
+.windows-menu-project,
+.windows-menu-labels {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: var(--space-2);
+}
+
+.windows-menu-rest {
+  gap: var(--space-4);
+}
+
+.windows-menu-trigger,
+.windows-menu-labels > button {
+  flex: 0 0 auto;
+  height: var(--windows-menu-row-height);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  font: 12px var(--font-ui);
+  cursor: default;
+}
+
+.windows-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: var(--windows-menu-titlebar-height);
+  padding: 0;
+}
+
+.windows-menu-trigger:hover,
+.windows-menu-labels > button:hover,
+.windows-menu-labels > button.is-open,
+.windows-menu-panel > button.is-open {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.windows-menu-trigger:active,
+.windows-menu-labels > button:active {
+  background: var(--surface-active);
+}
+
+.windows-menu-trigger:focus-visible,
+.windows-menu-labels > button:focus-visible,
+.windows-menu-panel > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.windows-menu-project {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.windows-menu-project strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.windows-menu-project > span {
+  color: var(--text-muted);
+}
+.windows-menu-labels {
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.windows-menu-popup-anchor {
+  position: absolute;
+  top: 100%;
+  z-index: 10;
+}
+
+.windows-menu-panel {
+  position: relative;
+  width: var(--windows-menu-popup-width);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-popover);
+}
+
+.windows-menu-panel > .workspace-native-menu-item {
+  min-height: var(--windows-menu-row-height);
+  border-radius: var(--radius-sm);
+}
+.windows-menu-submenu-anchor {
+  position: absolute;
+  left: 100%;
+  width: var(--windows-menu-popup-width);
+}
+.windows-menu-panel.opens-left {
+  transform: translateX(-200%);
+}
+.windows-menu-titlebar .windows-window-controls button {
+  width: var(--windows-menu-caption-width);
+}
+
+.windows-menu-client {
+  display: grid;
+  grid-template-columns: var(--workspace-navigation-width) minmax(0, 1fr);
+  min-height: calc(var(--windows-menu-preview-height) - var(--windows-menu-titlebar-height));
+}
+
+.windows-menu-client > aside {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.windows-menu-client strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.windows-menu-session {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--surface-active);
+  font-size: 12px;
+}
+
+.windows-menu-conversation {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--space-4);
+}
+.windows-menu-conversation p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.windows-menu-conversation label {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.windows-menu-conversation input {
+  width: 100%;
+  min-height: var(--control-md);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--surface-inset);
+  font: 12px var(--font-ui);
+}
+.windows-menu-conversation input::placeholder {
+  color: var(--text-muted);
+}

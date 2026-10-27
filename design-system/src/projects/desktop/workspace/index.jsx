@@ -17,6 +17,13 @@ export function WorkspacePage() {
         <WorkspaceWindow />
       </Section>
       <Section
+        id="workspace-windows-menu"
+        title="Windows compact menu bar"
+        description="A SunCode mark and five-line menu button keep the title bar compact. Open the button to reveal the application menus in place, following the IntelliJ / Rider interaction pattern."
+      >
+        <NativeMenuSpecimen presentation="windows" />
+      </Section>
+      <Section
         id="workspace-window-tabs"
         title="Project window tabs"
         description="Window > Merge All Windows groups open project windows into one workspace. Tabs keep each project's independent session and panel state, expose a close action on hover, and can be dragged beyond the tear-off threshold to return to a separate window."

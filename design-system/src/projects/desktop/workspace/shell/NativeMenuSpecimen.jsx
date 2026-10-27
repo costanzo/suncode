@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Icon } from "../../../../shared/Icon.jsx";
+import { WindowsMenuBar } from "./WindowsMenuBar.jsx";
 
 // Review fixtures only; the native Avalonia controller owns production commands.
-export function NativeMenuSpecimen() {
-  const [platform, setPlatform] = useState("macOS");
+export function NativeMenuSpecimen({ presentation = "reference" }) {
+  const windows = presentation === "windows";
+  const [platform, setPlatform] = useState(windows ? "Windows / Linux" : "macOS");
   const [context, setContext] = useState("active");
   const [selectedMenu, setSelectedMenu] = useState("View");
   const [left, setLeft] = useState("Sessions");
@@ -74,11 +76,44 @@ export function NativeMenuSpecimen() {
   return (
     <div className="workspace-native-menu-specimen">
       <div className="workspace-native-menu-controls">
-        <label>Platform<select value={platform} onChange={event => setPlatform(event.target.value)}><option>macOS</option><option>Windows / Linux</option></select></label>
+        {!windows && <label>Platform<select value={platform} onChange={event => setPlatform(event.target.value)}><option>macOS</option><option>Windows / Linux</option></select></label>}
         <label>Context<select value={context} onChange={event => { setContext(event.target.value); setFeedback(""); }}>
           <option value="active">Idle session</option><option value="running">Running turn</option><option value="approval">Pending approval</option><option value="question">Pending question</option><option value="archived">Archived session</option><option value="empty">Empty project</option><option value="hub">ProjectHub</option><option value="loading">Loading session</option><option value="no-git">Git unavailable</option>
         </select></label>
       </div>
+      {windows ? <>
+          <div className="windows-menu-scroll">
+            <WindowsMenuBar
+              menus={menus}
+              context={context}
+              onCommand={(item) => {
+                item.action?.();
+                setFeedback(`${item.label} selected in the review fixture.`);
+              }}
+            />
+          </div>
+          <div className="workspace-native-menu-notes">
+            <p>
+              Click the five-line button to reveal File, Edit, Navigate, Session, Agent, View,
+              Window, and Help. Move across the labels to switch menus.
+            </p>
+            <p>
+              The title bar and its open menus form one region. Leaving it collapses the menu after
+              a short pointer grace period; clicking elsewhere, choosing a command, or moving
+              keyboard focus away also collapses it.
+            </p>
+            <p>
+              Focus the preview and press F10 to open the menu. Use arrow keys to navigate, Enter to
+              select, and Escape to return to the five-line button. At narrow widths, menu labels
+              scroll horizontally while window controls stay fixed.
+            </p>
+            <p>
+              Design reference only. Commands reuse the hierarchy below; confirmation dialogs and
+              actual window actions belong to the desktop client.
+            </p>
+            <p role="status">{feedback}</p>
+          </div>
+      </> : <>
       <nav className="workspace-native-menu-bar" aria-label="Menu hierarchy">
         {Object.keys(menus).map(label => <button type="button" key={label} aria-pressed={current === label}
           className={current === label ? "is-open" : ""} onClick={() => setSelectedMenu(label)}>{label}</button>)}
@@ -94,6 +129,7 @@ export function NativeMenuSpecimen() {
           <p role="status">{feedback}</p>
         </div>
       </div>
+      </>}
     </div>
   );
 }
