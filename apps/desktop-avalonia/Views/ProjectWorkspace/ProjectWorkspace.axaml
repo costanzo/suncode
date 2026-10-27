@@ -117,8 +117,8 @@
             <Button Classes="windows-titlebar-control" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="ToggleWindowMaximized" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
-              <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-maximize.svg" Css="{DynamicResource IconSvgCss}" />
+            <Button x:Name="WindowsMaximizeButton" Classes="windows-titlebar-control" Click="ToggleWindowMaximized" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
+              <svg:Svg x:Name="WindowsMaximizeIcon" Width="12" Height="12" Path="/Assets/icons/windows-maximize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
             <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-close.svg" Css="{DynamicResource IconSvgCss}" />

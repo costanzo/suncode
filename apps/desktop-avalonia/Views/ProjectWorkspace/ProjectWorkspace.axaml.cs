@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -395,6 +396,20 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectMinimizeLight.IsWindowActive = isActive;
         ProjectMaximizeLight.IsWindowActive = isActive;
     }
+
+    internal void UpdateWindowsMaximizeButton(WindowState state)
+    {
+        WindowsMaximizeIcon.Path = $"/Assets/icons/{GetWindowsMaximizeIcon(state)}";
+        SvgControl.SetCss(WindowsMaximizeIcon, this.FindResource("IconSvgCss") as string);
+        AutomationProperties.SetName(
+            WindowsMaximizeButton,
+            LocalizationService.GetString(
+                state == WindowState.Maximized ? "LocRestoreWindow" : "LocMaximizeWindow",
+                state == WindowState.Maximized ? "Restore window" : "Maximize window"));
+    }
+
+    internal static string GetWindowsMaximizeIcon(WindowState state) =>
+        state == WindowState.Maximized ? "windows-restore.svg" : "windows-maximize.svg";
 
     private void WindowsCloseEntered(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "hover");
     private void WindowsCloseExited(object? sender, PointerEventArgs e) => SetWindowsCloseIconState(sender, "normal");

@@ -44,6 +44,14 @@ public sealed class NavigationShortcutTests
     }
 
     [Theory]
+    [InlineData(WindowState.Normal, "windows-maximize.svg")]
+    [InlineData(WindowState.Maximized, "windows-restore.svg")]
+    public void WindowsMaximizeButtonUsesTheMatchingWindowStateIcon(WindowState state, string expected)
+    {
+        Assert.Equal(expected, ProjectWorkspace.GetWindowsMaximizeIcon(state));
+    }
+
+    [Theory]
     [InlineData(true, true)]
     [InlineData(false, false)]
     public void OnlyMacOsUsesMaximizedStateForTitleBarDoubleClick(bool isMacOS, bool expected)

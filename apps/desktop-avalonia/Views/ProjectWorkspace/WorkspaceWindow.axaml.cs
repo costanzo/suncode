@@ -47,6 +47,11 @@ public partial class WorkspaceWindow : Window
         AddHandler(KeyDownEvent, WindowKeyDown, RoutingStrategies.Tunnel);
         Icon = AppIcon.Window;
         Opened += OnOpened;
+        PropertyChanged += (_, change) =>
+        {
+            if (_initialized && change.Property == Window.WindowStateProperty)
+                ActiveWorkspace?.UpdateWindowsMaximizeButton(WindowState);
+        };
         Closing += OnClosing;
         Activated += async (_, _) =>
         {
@@ -86,6 +91,7 @@ public partial class WorkspaceWindow : Window
     {
         if (_initialized) return;
         _initialized = true;
+        ActiveWorkspace?.UpdateWindowsMaximizeButton(WindowState);
         if (!IsMergedHost) ViewModel.SessionEntered += SessionEntered;
         await ViewModel.InitializeAsync();
         if (IsMergedHost || _adoptedWorkspace)

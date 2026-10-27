@@ -426,6 +426,7 @@
   <x:String x:Key="LocMinimizeWindow">最小化窗口</x:String>
   <x:String x:Key="LocEnterFullScreen">进入全屏</x:String>
   <x:String x:Key="LocMaximizeWindow">最大化窗口</x:String>
+  <x:String x:Key="LocRestoreWindow">还原窗口</x:String>
   <x:String x:Key="LocShowSourceControl">显示或隐藏源代码管理</x:String>
   <x:String x:Key="LocShowToolActivity">显示或隐藏工具活动</x:String>
   <x:String x:Key="LocShowProviderTrace">显示或隐藏提供商调用记录</x:String>
