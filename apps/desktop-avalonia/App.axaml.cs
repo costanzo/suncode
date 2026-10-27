@@ -36,7 +36,7 @@ public sealed partial class App : Application
         ConfigureNativeApplicationMenu();
         DiagnosticLog.Info("app.initialize", "xaml_load end");
 #if DEBUG
-        this.AttachDeveloperTools();
+        // this.AttachDeveloperTools();
 #endif
     }
 
