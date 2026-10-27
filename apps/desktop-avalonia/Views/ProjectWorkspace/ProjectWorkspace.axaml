@@ -8,6 +8,7 @@
              xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
              xmlns:preview="using:SunCode.Desktop.Views.ProjectWorkspace.Preview"
              xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
+             xmlns:chrome="using:Avalonia.Controls.Chrome"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
@@ -85,42 +86,41 @@
               Background="{StaticResource HitTestTransparentBrush}"
               ColumnDefinitions="*,280,*"
               ZIndex="110"
-              PointerPressed="TitleBarPressed"
-              PointerMoved="TitleBarMoved"
-              PointerReleased="TitleBarReleased"
-              DoubleTapped="TitleBarDoubleTapped">
-          <StackPanel x:Name="MacTitleBarControls" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center">
+              chrome:WindowDecorationProperties.ElementRole="{Binding $parent[Window].WindowState, Converter={x:Static workspace:WorkspaceWindow.TitleBarRoleConverter}}">
+          <StackPanel x:Name="MacTitleBarControls" chrome:WindowDecorationProperties.ElementRole="User" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0" VerticalAlignment="Center">
             <controls:TrafficLightButton x:Name="ProjectCloseLight" Kind="Close" Click="CloseProjectWindow" />
             <controls:TrafficLightButton x:Name="ProjectMinimizeLight" Kind="Minimize" Click="MinimizeWindow" />
             <controls:TrafficLightButton x:Name="ProjectMaximizeLight" Kind="Maximize" Click="ToggleFullScreen" />
           </StackPanel>
           <workspace:ProjectSwitcher x:Name="ProjectSwitcherControl"
+                                     chrome:WindowDecorationProperties.ElementRole="User"
                                      Grid.Column="0"
                                      MaxWidth="200"
                                      HorizontalAlignment="Left"
                                      VerticalAlignment="Center"
                                      Margin="84,0,0,0" />
           <workspace:ContentSwitcher x:Name="ContentSwitcherControl"
+                                      chrome:WindowDecorationProperties.ElementRole="User"
                                      Grid.Column="1"
                                      MaxWidth="280"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
-          <StackPanel x:Name="MacTitleBarActions" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
+          <StackPanel x:Name="MacTitleBarActions" chrome:WindowDecorationProperties.ElementRole="User" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="2" Margin="0,0,6,0">
             <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings" ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
               <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
           <StackPanel x:Name="WindowsTitleBarControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
-            <Button Classes="windows-titlebar-control" Click="OpenSettings" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
+            <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="User" Click="OpenSettings" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
               <svg:Svg Width="14" Height="14" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button Classes="windows-titlebar-control" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
+            <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="MinimizeButton" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button x:Name="WindowsMaximizeButton" Classes="windows-titlebar-control" Click="ToggleWindowMaximized" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
+            <Button x:Name="WindowsMaximizeButton" Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="MaximizeButton" Click="ToggleWindowMaximized" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
               <svg:Svg x:Name="WindowsMaximizeIcon" Width="12" Height="12" Path="/Assets/icons/windows-maximize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
-            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
+            <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" chrome:WindowDecorationProperties.ElementRole="CloseButton" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-close.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
@@ -150,7 +150,7 @@
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/workspace-files.svg" IsVisible="{Binding Layout.ExplorerSidebarVisible}" />
               </Grid>
             </Button>
-            <Border Grid.Row="3" PointerPressed="TitleBarPressed" PointerMoved="TitleBarMoved" PointerReleased="TitleBarReleased" Background="Transparent"/>
+            <Border Grid.Row="3" chrome:WindowDecorationProperties.ElementRole="{Binding $parent[Window].WindowState, Converter={x:Static workspace:WorkspaceWindow.TitleBarRoleConverter}}" Background="Transparent"/>
             <StackPanel Grid.Row="4" Spacing="6">
               <Button IsVisible="{Binding Git.IsAvailable}" Classes="icon gutter" Classes.active="{Binding Layout.GitVisible}" Click="ToggleGit" ToolTip.Tip="{DynamicResource LocShowSourceControl}" AutomationProperties.Name="{DynamicResource LocShowSourceControl}">
                 <Grid>

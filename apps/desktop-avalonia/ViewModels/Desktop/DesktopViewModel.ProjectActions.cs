@@ -85,7 +85,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             await Git.CheckAvailabilityAsync();
             RestoreProjectPresentationState();
             await LoadSessionsAsync();
-            await Git.RefreshAsync();
+            RunInBackground(Git.RefreshAsync, "git.refresh");
         }, "Project selected");
     }
 

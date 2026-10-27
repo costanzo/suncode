@@ -386,10 +386,6 @@ public sealed partial class ProjectWorkspace : UserControl
     private void MinimizeWindow(object? sender, RoutedEventArgs e) => Owner?.MinimizeWindow();
     private void ToggleWindowMaximized(object? sender, RoutedEventArgs e) => Owner?.ToggleWindowMaximized();
     private void ToggleFullScreen(object? sender, RoutedEventArgs e) => Owner?.ToggleFullScreen();
-    private void TitleBarPressed(object? sender, PointerPressedEventArgs e) => Owner?.TitleBarPressed(sender, e);
-    private void TitleBarMoved(object? sender, PointerEventArgs e) => Owner?.TitleBarMoved(sender, e);
-    private void TitleBarReleased(object? sender, PointerReleasedEventArgs e) => Owner?.TitleBarReleased(sender, e);
-    private void TitleBarDoubleTapped(object? sender, TappedEventArgs e) => Owner?.TitleBarDoubleTapped(sender, e);
     internal void SetTrafficLightFocus(bool isActive)
     {
         ProjectCloseLight.IsWindowActive = isActive;

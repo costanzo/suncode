@@ -23,6 +23,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
 
     internal MergedWorkspaceWindow(DesktopViewModel initialViewModel) : base(null, adoptedWorkspace: false)
     {
+        ExtendClientAreaToDecorationsHint = true;
         DataContext = initialViewModel;
         _tabs.ProjectSelected += SelectProject;
         _tabs.ProjectCloseRequested += projectId => ProjectCloseRequested?.Invoke(projectId);

@@ -176,6 +176,11 @@ public sealed partial class DesktopViewModel
             saved.WindowState = state;
         });
     }
+    
+    internal void SaveWindowState(string state)
+    {
+        SaveProjectUiState(saved => saved.WindowState = state);
+    }
 
     internal void SavePanelGeometry()
     {

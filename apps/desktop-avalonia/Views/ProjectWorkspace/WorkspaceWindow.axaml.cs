@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
@@ -15,10 +15,6 @@ public partial class WorkspaceWindow : Window
 {
     private readonly DispatcherTimer _mcpLoadTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _initialized;
-    private bool _windowDragActive;
-    private bool _windowDragStarted;
-    private PixelPoint _windowDragStartPointer;
-    private PixelPoint _windowDragStartPosition;
     private bool _isFullScreen;
     private bool _isFullScreenTransition;
     private DesktopMenuController? _desktopMenus;
@@ -173,11 +169,22 @@ public partial class WorkspaceWindow : Window
         if (_restoringWindowGeometry || !ViewModel.IsProjectOpen || WindowState != WindowState.Normal) return;
         ViewModel.SaveWindowGeometry(Position.X, Position.Y, Bounds.Width, Bounds.Height, "normal");
     }
-
-    private void SaveWindowState(string state)
+    
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        if (!ViewModel.IsProjectOpen) return;
-        ViewModel.SaveWindowGeometry(Position.X, Position.Y, Bounds.Width, Bounds.Height, state);
+        base.OnPropertyChanged(change);
+        if (change.Property != WindowStateProperty) return;
+        var state = WindowState;
+        _isFullScreen = state == WindowState.FullScreen;
+        if (_restoringWindowGeometry || DataContext is not DesktopViewModel { IsProjectOpen: true } model) return;
+        var saved = state switch
+        {
+            WindowState.Normal => "normal",
+            WindowState.Maximized => "maximized",
+            WindowState.FullScreen => "fullscreen",
+            _ => null
+        };
+        if (saved is not null) model.SaveWindowState(saved);
     }
 
     internal async Task OpenProjectPickerAsync()
@@ -303,52 +310,12 @@ public partial class WorkspaceWindow : Window
         key == Key.D9 &&
         (modifiers.HasFlag(KeyModifiers.Meta) || modifiers.HasFlag(KeyModifiers.Control));
 
-    internal void TitleBarPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (sender is not Control region || !e.GetCurrentPoint(region).Properties.IsLeftButtonPressed ||
-            OriginatesFromButton(e.Source) || _isFullScreen) return;
-        _windowDragActive = true;
-        _windowDragStarted = false;
-        _windowDragStartPointer = Avalonia.VisualExtensions.PointToScreen(this, e.GetPosition(this));
-        _windowDragStartPosition = Position;
-        e.Pointer.Capture(region);
-        e.Handled = true;
-    }
-
-    internal void TitleBarMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_windowDragActive || sender is not Control region) return;
-        var pointer = Avalonia.VisualExtensions.PointToScreen(this, e.GetPosition(this));
-        var deltaX = pointer.X - _windowDragStartPointer.X;
-        var deltaY = pointer.Y - _windowDragStartPointer.Y;
-        if (!_windowDragStarted && Math.Sqrt(deltaX * deltaX + deltaY * deltaY) < 8) return;
-        _windowDragStarted = true;
-        Position = new PixelPoint(_windowDragStartPosition.X + deltaX, _windowDragStartPosition.Y + deltaY);
-        e.Handled = true;
-    }
-
-    internal void TitleBarReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (sender is not Control region) return;
-        _windowDragActive = false;
-        _windowDragStarted = false;
-        e.Pointer.Capture(null);
-        e.Handled = true;
-    }
-
-    internal void TitleBarDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (OriginatesFromButton(e.Source)) return;
-        if (UsesMaximizedStateForTitleBarDoubleTap(OperatingSystem.IsMacOS())) ToggleWindowMaximized();
-        else ToggleFullScreen();
-        e.Handled = true;
-    }
-
-    internal static bool UsesMaximizedStateForTitleBarDoubleTap(bool isMacOS) => isMacOS;
-
-    internal static bool OriginatesFromButton(object? source) =>
-        source is Button || source is Visual visual && visual.FindAncestorOfType<Button>() is not null;
-
+    public static readonly IValueConverter TitleBarRoleConverter = 
+        new FuncValueConverter<WindowState, WindowDecorationsElementRole>(GetTitleBarRole);
+    
+    internal static WindowDecorationsElementRole GetTitleBarRole(WindowState state) =>
+        state == WindowState.FullScreen ? WindowDecorationsElementRole.None : WindowDecorationsElementRole.TitleBar;
+    
     protected virtual void UpdateTrafficLightFocus(bool isActive)
     {
         _workspace?.SetTrafficLightFocus(isActive);
@@ -364,7 +331,6 @@ public partial class WorkspaceWindow : Window
     {
         if (_isFullScreen || _isFullScreenTransition) return;
         WindowState = GetTitleBarDoubleTapTargetState(WindowState);
-        SaveWindowState(WindowState == WindowState.Maximized ? "maximized" : "normal");
     }
 
     internal static WindowState GetTitleBarDoubleTapTargetState(WindowState currentState) =>
@@ -382,7 +348,6 @@ public partial class WorkspaceWindow : Window
         _isFullScreenTransition = true;
         _isFullScreen = true;
         WindowState = WindowState.FullScreen;
-        SaveWindowState("fullscreen");
         await Task.Delay(900);
         _isFullScreenTransition = false;
     }
@@ -392,7 +357,6 @@ public partial class WorkspaceWindow : Window
         _isFullScreenTransition = true;
         _isFullScreen = false;
         WindowState = WindowState.Normal;
-        SaveWindowState("normal");
         await Task.Delay(900);
         _isFullScreenTransition = false;
     }
