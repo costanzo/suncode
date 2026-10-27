@@ -138,12 +138,10 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
   const regionRef = useRef(null);
   const triggerRef = useRef(null);
   const labelsRef = useRef(null);
-  const leaveTimer = useRef(null);
   const previousFocus = useRef(null);
   const labels = Object.keys(menus);
 
   function close(restore = false) {
-    clearTimeout(leaveTimer.current);
     setExpanded(false);
     setSelected(null);
     if (restore) requestAnimationFrame(() => triggerRef.current?.focus());
@@ -179,12 +177,10 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
       if (!regionRef.current?.contains(event.target)) close();
     };
     document.addEventListener("pointerdown", outside);
-    document.addEventListener("focusin", outside);
     const blur = () => close();
     window.addEventListener("blur", blur);
     return () => {
       document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("focusin", outside);
       window.removeEventListener("blur", blur);
     };
   }, [expanded]);
@@ -192,7 +188,6 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
   useEffect(() => {
     close();
   }, [context]);
-  useEffect(() => () => clearTimeout(leaveTimer.current), []);
 
   useLayoutEffect(() => {
     if (!selected) return;
@@ -228,15 +223,7 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
     >
       <header className="windows-menu-titlebar">
         <img className="windows-menu-logo" src={logoUrl} alt="SunCode" />
-        <div
-          className="windows-menu-region"
-          ref={regionRef}
-          onPointerEnter={() => clearTimeout(leaveTimer.current)}
-          onPointerLeave={(event) => {
-            if (expanded && event.pointerType !== "touch")
-              leaveTimer.current = setTimeout(() => close(), 160);
-          }}
-        >
+        <div className="windows-menu-region" ref={regionRef}>
           {expanded ? (
             <nav
               ref={labelsRef}

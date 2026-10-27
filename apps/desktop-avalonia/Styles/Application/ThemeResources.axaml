@@ -11,6 +11,7 @@
   <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
+      <BoxShadows x:Key="WindowsMenuPopoverShadow">0 16 36 0 #42000000</BoxShadows>
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#d4d7d6" />
       <SolidColorBrush x:Key="FileIconBlueBrush" Color="#519aba" />
       <SolidColorBrush x:Key="FileIconYellowBrush" Color="#cbcb41" />
@@ -114,6 +115,7 @@
       <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#1d2d29" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
+      <BoxShadows x:Key="WindowsMenuPopoverShadow">0 16 36 0 #24162634</BoxShadows>
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#bfc2c1" />
       <SolidColorBrush x:Key="FileIconBlueBrush" Color="#498ba7" />
       <SolidColorBrush x:Key="FileIconYellowBrush" Color="#b7b73b" />

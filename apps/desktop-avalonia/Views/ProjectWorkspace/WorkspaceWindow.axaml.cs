@@ -58,7 +58,11 @@ public partial class WorkspaceWindow : Window
                 await model.Git.RefreshAsync();
             }
         };
-        Deactivated += (_, _) => UpdateTrafficLightFocus(false);
+        Deactivated += (_, _) =>
+        {
+            UpdateTrafficLightFocus(false);
+            ActiveWorkspace?.CloseWindowsMenu();
+        };
         _mcpLoadTimer.Tick += McpLoadTick;
         SizeChanged += (_, _) =>
         {
@@ -264,16 +268,37 @@ public partial class WorkspaceWindow : Window
             () => DataContext as DesktopViewModel,
             () => ActiveWorkspace,
             OpenProjectPickerAsync);
+        ActiveWorkspace?.SetWindowsMenuItems(_desktopMenus.BarGroups);
         NativeMenu.SetMenu(this, _desktopMenus.Menu);
     }
 
-    private void UpdateNativeProjectMenu() => _desktopMenus?.Refresh();
+    private void UpdateNativeProjectMenu()
+    {
+        _desktopMenus?.Refresh();
+        ActiveWorkspace?.SetWindowsMenuItems(_desktopMenus?.BarGroups ?? []);
+    }
+
+    internal void RefreshDesktopMenus() => UpdateNativeProjectMenu();
 
     private void SessionEntered() =>
         ActiveWorkspace?.ScrollConversationToEndForSessionEntry();
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {
+        if (OperatingSystem.IsWindows() && e.Key == Key.F10)
+        {
+            e.Handled = ActiveWorkspace?.IsWindowsMenuExpanded == true
+                ? ActiveWorkspace.CloseWindowsMenu(restoreFocus: true)
+                : ToggleWindowsMenu();
+            return;
+        }
+
+        if (e.Key == Key.Escape && ActiveWorkspace?.CloseWindowsMenu(restoreFocus: true) == true)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && ActiveWorkspace?.HandleEscape() == true)
         {
             e.Handled = true;
@@ -300,6 +325,13 @@ public partial class WorkspaceWindow : Window
             e.Handled = true;
             ActiveWorkspace?.ToggleGitViewer();
         }
+    }
+
+    private bool ToggleWindowsMenu()
+    {
+        if (ActiveWorkspace is not { } workspace) return false;
+        workspace.ToggleWindowsMenu(this, new RoutedEventArgs());
+        return true;
     }
 
     internal static bool IsToggleNavigationShortcut(Key key, KeyModifiers modifiers) =>

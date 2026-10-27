@@ -34,6 +34,24 @@ public sealed class DesktopMenuControllerTests
     }
 
     [Fact]
+    public void WindowsMenuGroupsMirrorTheNativeCommandHierarchy()
+    {
+        var controller = Create();
+        Assert.Equal(
+            controller.Menu.Items.OfType<NativeMenuItem>().Select(item => item.Header?.ToString()),
+            controller.BarGroups.Select(item => item.Header?.ToString()));
+
+        var nativeFile = Item(controller.Menu, "File").Menu!;
+        var barFile = controller.BarGroups.Single(item => item.Header?.ToString() == "File");
+        Assert.Equal(nativeFile.Items.Count, barFile.Items.Count);
+        Assert.Equal("Open Project…", Assert.IsType<MenuItem>(barFile.Items[0]).Header);
+        Assert.Equal(new KeyGesture(Key.O, OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control),
+            Assert.IsType<MenuItem>(barFile.Items[0]).InputGesture);
+        Assert.False(Assert.IsType<MenuItem>(barFile.Items[1]).IsEnabled);
+        Assert.Equal("No Recent Projects", Assert.IsType<MenuItem>(Assert.IsType<MenuItem>(barFile.Items[1]).Items[0]).Header);
+    }
+
+    [Fact]
     public void DynamicMenusIncludeAnExplicitEmptyState()
     {
         var controller = new DesktopMenuController(

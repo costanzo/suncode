@@ -79,6 +79,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         DataContext = source.DataContext;
         _tabs.Select(projectId);
         UpdateMergedTitle();
+        RefreshDesktopMenus();
         if (IsVisible) StartMcpLoadPollingIfNeeded();
     }
 

@@ -99,6 +99,21 @@
                                      HorizontalAlignment="Left"
                                      VerticalAlignment="Center"
                                      Margin="84,0,0,0" />
+          <svg:Svg x:Name="WindowsMenuLogo" Grid.Column="0" Width="20" Height="20"
+                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0"
+                   Path="/Assets/logo/suncode-logo-small.svg" IsVisible="False"
+                   chrome:WindowDecorationProperties.ElementRole="User" />
+          <StackPanel x:Name="WindowsCompactMenu" Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                      VerticalAlignment="Center" Margin="32,0,0,0" IsVisible="False"
+                      chrome:WindowDecorationProperties.ElementRole="User">
+            <Button x:Name="WindowsMenuToggle" Classes="titlebar" Width="36" Height="30"
+                    Click="ToggleWindowsMenu" AutomationProperties.Name="Open main menu" ToolTip.Tip="Main menu (F10)">
+              <svg:Svg Width="22" Height="22" Path="/Assets/icons/menu-lines.svg" Css="{DynamicResource IconSvgCss}" />
+            </Button>
+          </StackPanel>
+          <Menu x:Name="WindowsMenuBar" Grid.Column="0" Grid.ColumnSpan="3" Classes="windows-menu-bar" IsVisible="False"
+                VerticalAlignment="Center" HorizontalAlignment="Left" Margin="36,0,138,0"
+                chrome:WindowDecorationProperties.ElementRole="User" />
           <workspace:ContentSwitcher x:Name="ContentSwitcherControl"
                                       chrome:WindowDecorationProperties.ElementRole="User"
                                      Grid.Column="1"
@@ -111,9 +126,6 @@
             </Button>
           </StackPanel>
           <StackPanel x:Name="WindowsTitleBarControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
-            <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="User" Click="OpenSettings" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
-              <svg:Svg Width="14" Height="14" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
-            </Button>
             <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="MinimizeButton" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>

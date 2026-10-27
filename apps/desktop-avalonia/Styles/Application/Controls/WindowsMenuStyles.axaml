@@ -1,0 +1,108 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia">
+  <!-- Scope every item explicitly: submenu visuals live in a separate PopupRoot.
+       Keep Fluent's menu input/placement mechanics, but paint its template parts
+       with the Windows compact menu specification. -->
+  <Style Selector="Menu.windows-menu-bar">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+        </ScrollViewer>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-group">
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-group /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item:selected /template/ Border#PART_LayoutRoot, MenuItem.windows-menu-item:open /template/ Border#PART_LayoutRoot, MenuItem.windows-menu-item:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item:selected /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.windows-menu-item:open /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.windows-menu-item:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item:disabled /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item:disabled /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ Popup#PART_Popup > Border">
+    <Setter Property="Width" Value="320" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MaxWidth" Value="320" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="BoxShadow" Value="{DynamicResource WindowsMenuPopoverShadow}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-group /template/ Popup#PART_Popup">
+    <Setter Property="VerticalOffset" Value="3" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item:not(.windows-menu-group) /template/ Popup#PART_Popup">
+    <Setter Property="HorizontalOffset" Value="5" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ ItemsPresenter#PART_ItemsPresenter">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ ContentControl#PART_ToggleIconPresenter">
+    <Setter Property="IsVisible" Value="True" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Margin" Value="0,0,4,0" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <!-- Fluent's check geometry fills the entire slot. Use the same 12-DIP
+         check asset as the specimen, retaining a 16-DIP slot for unchecked rows. -->
+    <Setter Property="Template">
+      <ControlTemplate>
+        <svg:Svg Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Center"
+                 Path="/Assets/icons/check.svg" Css="{DynamicResource AccentSvgCss}"
+                 IsVisible="{Binding $parent[MenuItem].IsChecked}" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Margin" Value="12,0,0,0" />
+    <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="MenuItem.windows-menu-item /template/ Path#PART_ChevronPath">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Margin" Value="4,0,0,0" />
+    <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Separator.windows-menu-separator">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Height" Value="1" />
+    <Setter Property="MinHeight" Value="1" />
+    <Setter Property="Margin" Value="4,5" />
+    <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+  </Style>
+</Styles>

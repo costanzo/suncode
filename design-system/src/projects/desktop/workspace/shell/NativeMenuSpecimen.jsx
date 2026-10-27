@@ -98,9 +98,8 @@ export function NativeMenuSpecimen({ presentation = "reference" }) {
               Window, and Help. Move across the labels to switch menus.
             </p>
             <p>
-              The title bar and its open menus form one region. Leaving it collapses the menu after
-              a short pointer grace period; clicking elsewhere, choosing a command, or moving
-              keyboard focus away also collapses it.
+              The menu stays expanded when the pointer leaves it. Click elsewhere, choose a command,
+              or press Escape to collapse it. Moving keyboard focus alone does not collapse it.
             </p>
             <p>
               Focus the preview and press F10 to open the menu. Use arrow keys to navigate, Enter to

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
@@ -29,11 +30,13 @@ public sealed partial class ProjectWorkspace : UserControl
         MacTitleBarControls.IsVisible = !isWindows;
         MacTitleBarActions.IsVisible = !isWindows;
         WindowsTitleBarControls.IsVisible = isWindows;
+        WindowsCompactMenu.IsVisible = isWindows;
+        WindowsMenuLogo.IsVisible = isWindows;
+        WindowsMenuBar.Closed += (_, _) => CloseWindowsMenu();
+        ProjectSwitcherControl.IsVisible = true;
         if (isWindows)
         {
-            // The Windows title bar has no leading traffic lights, so keep
-            // the project switcher aligned with the client-area edge.
-            ProjectSwitcherControl.Margin = new Thickness(12, 0, 0, 0);
+            ProjectSwitcherControl.Margin = new Thickness(84, 0, 0, 0);
         }
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
@@ -42,6 +45,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
         ContentSwitcherControl.ContentRequested += ContentRequested;
         AddHandler(PointerPressedEvent, LayoutResizePressed);
+        AddHandler(PointerPressedEvent, WindowsMenuOutsidePressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerMovedEvent, LayoutResizeMoved);
         AddHandler(PointerReleasedEvent, LayoutResizeReleased);
     }
@@ -54,6 +58,47 @@ public sealed partial class ProjectWorkspace : UserControl
         ChatArea.ScrollConversationToEndForSessionEntry();
 
     internal bool HasMenuBlockingOverlay => ExpandedComposerModal.IsOpen || LongUserMessageModal.IsOpen;
+
+    internal bool IsWindowsMenuExpanded => WindowsMenuBar.IsVisible;
+
+    internal void SetWindowsMenuItems(IReadOnlyList<MenuItem> items) => WindowsMenuBar.ItemsSource = items;
+
+    internal void ToggleWindowsMenu(object? sender, RoutedEventArgs e)
+    {
+        var expanded = !WindowsMenuBar.IsVisible;
+        WindowsMenuBar.IsVisible = expanded;
+        WindowsCompactMenu.IsVisible = !expanded;
+        ProjectSwitcherControl.IsVisible = !expanded;
+        ContentSwitcherControl.IsVisible = !expanded;
+        if (expanded)
+        {
+            Owner?.RefreshDesktopMenus();
+            WindowsMenuBar.Focus();
+        }
+    }
+
+    internal bool CloseWindowsMenu(bool restoreFocus = false)
+    {
+        if (!WindowsMenuBar.IsVisible) return false;
+        WindowsMenuBar.IsVisible = false;
+        WindowsMenuBar.Close();
+        WindowsCompactMenu.IsVisible = true;
+        ProjectSwitcherControl.IsVisible = true;
+        ContentSwitcherControl.IsVisible = true;
+        if (restoreFocus) WindowsMenuToggle.Focus();
+        return true;
+    }
+
+    private void WindowsMenuOutsidePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!WindowsMenuBar.IsVisible) return;
+        if (e.Source is Visual source &&
+            (ReferenceEquals(source, WindowsMenuBar) || source.GetVisualAncestors().Any(ancestor => ReferenceEquals(ancestor, WindowsMenuBar))))
+            return;
+        if (e.Source is ILogical logical && logical.GetLogicalAncestors().Contains(WindowsMenuBar))
+            return;
+        CloseWindowsMenu();
+    }
 
     internal async Task FocusConversationAsync()
     {

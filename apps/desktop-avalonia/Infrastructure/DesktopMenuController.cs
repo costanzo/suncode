@@ -18,8 +18,11 @@ internal sealed class DesktopMenuController
     private readonly Func<Task> _openProject;
     private readonly List<Action> _refresh = [];
     private readonly List<Action> _populate = [];
+    private readonly List<MenuItem> _barGroups = [];
+    private readonly Dictionary<NativeMenu, MenuItem> _barMenus = [];
 
     internal NativeMenu Menu { get; } = new();
+    internal IReadOnlyList<MenuItem> BarGroups => _barGroups;
     private Window? Owner => _owner();
     private DesktopViewModel? Model => _model();
     private ProjectWorkspace? Workspace => _workspace();
@@ -63,9 +66,15 @@ internal sealed class DesktopMenuController
     {
         var menu = new NativeMenu();
         var group = new NativeMenuItem { Header = L(name, fallback), Menu = menu };
+        var barGroup = BarItem();
+        barGroup.Header = L(name, fallback);
+        barGroup.Classes.Add("windows-menu-group");
         _refresh.Add(() => group.Header = L(name, fallback));
+        _refresh.Add(() => barGroup.Header = L(name, fallback));
         menu.NeedsUpdate += (_, _) => Refresh();
         Menu.Items.Add(group);
+        _barGroups.Add(barGroup);
+        _barMenus[menu] = barGroup;
         return menu;
     }
 
@@ -73,23 +82,37 @@ internal sealed class DesktopMenuController
         Func<bool>? enabled = null, KeyGesture? gesture = null, Func<bool>? check = null)
     {
         var item = new NativeMenuItem { Gesture = gesture };
+        var barItem = BarItem();
+        barItem.HotKey = gesture;
+        barItem.InputGesture = gesture;
         if (check is not null) item.ToggleType = MenuItemToggleType.CheckBox;
+        if (check is not null) barItem.ToggleType = MenuItemToggleType.CheckBox;
         void Update()
         {
             item.Header = L(name, fallback);
             item.IsEnabled = Enabled && (enabled?.Invoke() ?? true);
-            if (check is not null) item.IsChecked = check();
+            barItem.Header = L(name, fallback);
+            barItem.IsEnabled = Enabled && (enabled?.Invoke() ?? true);
+            if (check is not null)
+            {
+                item.IsChecked = check();
+                barItem.IsChecked = check();
+            }
         }
-        item.Click += (_, _) =>
+        void Execute()
         {
             // Recheck at invocation: context can change while a native menu is open.
             if (!Enabled || enabled?.Invoke() == false) return;
             execute();
+            if (OperatingSystem.IsWindows()) Workspace?.CloseWindowsMenu();
             Refresh();
-        };
+        }
+        item.Click += (_, _) => Execute();
+        barItem.Click += (_, _) => Execute();
         _refresh.Add(Update);
         Update();
         menu.Items.Add(item);
+        FindBarMenu(menu).Items.Add(barItem);
         return item;
     }
 
@@ -98,41 +121,82 @@ internal sealed class DesktopMenuController
     {
         var menu = new NativeMenu();
         var item = new NativeMenuItem { Menu = menu };
+        var barItem = BarItem();
         _refresh.Add(() =>
         {
             item.Header = L(name, fallback);
             item.IsEnabled = Enabled && (enabled?.Invoke() ?? true);
+            barItem.Header = L(name, fallback);
+            barItem.IsEnabled = Enabled && (enabled?.Invoke() ?? true);
         });
         _populate.Add(() =>
         {
             menu.Items.Clear();
+            barItem.Items.Clear();
             populate(menu);
         });
         menu.NeedsUpdate += (_, _) => Refresh();
         parent.Items.Add(item);
+        FindBarMenu(parent).Items.Add(barItem);
+        _barMenus[menu] = barItem;
         populate(menu);
         return menu;
+    }
+
+    private MenuItem FindBarMenu(NativeMenu menu) => _barMenus.TryGetValue(menu, out var item)
+        ? item
+        : throw new InvalidOperationException("Menu is not registered.");
+
+    private static MenuItem BarItem()
+    {
+        var item = new MenuItem();
+        item.Classes.Add("windows-menu-item");
+        return item;
     }
 
     private void DynamicAction(NativeMenu menu, string title, Action execute, Func<bool> enabled, bool? selected = null)
     {
         var item = new NativeMenuItem { Header = title, IsEnabled = Enabled && enabled() };
+        var barItem = BarItem();
+        barItem.Header = title;
+        barItem.IsEnabled = Enabled && enabled();
         if (selected is { } check)
         {
             item.ToggleType = MenuItemToggleType.Radio;
             item.IsChecked = check;
+            barItem.ToggleType = MenuItemToggleType.Radio;
+            barItem.IsChecked = check;
         }
-        item.Click += (_, _) =>
+        void Execute()
         {
             if (!Enabled || !enabled()) return;
             execute();
+            if (OperatingSystem.IsWindows()) Workspace?.CloseWindowsMenu();
             Refresh();
-        };
+        }
+        item.Click += (_, _) => Execute();
+        barItem.Click += (_, _) => Execute();
         menu.Items.Add(item);
+        FindBarMenu(menu).Items.Add(barItem);
     }
 
-    private static void Empty(NativeMenu menu, string name, string fallback) =>
-        menu.Items.Add(new NativeMenuItem { Header = L(name, fallback), IsEnabled = false });
+    private void Empty(NativeMenu menu, string name, string fallback)
+    {
+        var label = L(name, fallback);
+        menu.Items.Add(new NativeMenuItem { Header = label, IsEnabled = false });
+        var barItem = BarItem();
+        barItem.Header = label;
+        barItem.IsEnabled = false;
+        FindBarMenu(menu).Items.Add(barItem);
+    }
+
+    private void Separator(NativeMenu menu)
+    {
+        menu.Items.Add(new NativeMenuItemSeparator());
+        var separator = new Separator();
+        separator.Classes.Add("windows-menu-separator");
+        FindBarMenu(menu).Items.Add(separator);
+    }
 
     private async Task RunAsync(Func<Task> operation)
     {
@@ -150,7 +214,7 @@ internal sealed class DesktopMenuController
         Action(file, "OpenProject", "Open Project…", () => _ = RunAsync(_openProject),
             () => Model?.ConnectionState == "connected", new KeyGesture(Key.O, CommandModifier));
         Dynamic(file, "OpenRecentProject", "Open Recent Project", PopulateProjects);
-        file.Items.Add(new NativeMenuItemSeparator());
+        Separator(file);
         Action(file, "BackToProjects", "Back to Projects", () =>
         {
             (Application.Current as App)?.ShowProjectHub();
@@ -158,10 +222,10 @@ internal sealed class DesktopMenuController
         }, () => ProjectReady);
         if (!OperatingSystem.IsMacOS())
         {
-            file.Items.Add(new NativeMenuItemSeparator());
+            Separator(file);
             Action(file, "Settings", "Settings…", () => ShowSettings(), gesture: new KeyGesture(Key.OemComma, CommandModifier));
         }
-        file.Items.Add(new NativeMenuItemSeparator());
+        Separator(file);
         Action(file, "CloseWindow", "Close Window", () => Owner?.Close(), gesture: new KeyGesture(Key.W, CommandModifier));
     }
 
@@ -170,7 +234,7 @@ internal sealed class DesktopMenuController
         var edit = Group("Edit", "Edit");
         EditAction(edit, DesktopEditAction.Undo, "Undo", "Undo", Key.Z);
         EditAction(edit, DesktopEditAction.Redo, "Redo", "Redo", Key.Z, KeyModifiers.Shift);
-        edit.Items.Add(new NativeMenuItemSeparator());
+        Separator(edit);
         EditAction(edit, DesktopEditAction.Cut, "Cut", "Cut", Key.X);
         EditAction(edit, DesktopEditAction.Copy, "Copy", "Copy", Key.C);
         EditAction(edit, DesktopEditAction.Paste, "Paste", "Paste", Key.V);
@@ -188,7 +252,7 @@ internal sealed class DesktopMenuController
         Dynamic(navigate, "Projects", "Projects", PopulateProjects);
         Dynamic(navigate, "Sessions", "Sessions", menu => PopulateSessions(menu, false), () => ProjectReady);
         Dynamic(navigate, "ArchivedSessions", "Archived Sessions", menu => PopulateSessions(menu, true), () => ProjectReady);
-        navigate.Items.Add(new NativeMenuItemSeparator());
+        Separator(navigate);
         Action(navigate, "FocusConversation", "Focus Conversation", () => _ = RunAsync(() => Workspace?.FocusConversationAsync() ?? Task.CompletedTask), () => EditableSession);
     }
 
@@ -241,7 +305,7 @@ internal sealed class DesktopMenuController
         {
             if (Model?.SelectedSession is { } selected) Workspace?.ShowPermanentDeleteDialog(selected);
         }, () => SessionReady && Model is { IsBusy: false, SelectedSession.IsArchived: true });
-        session.Items.Add(new NativeMenuItemSeparator());
+        Separator(session);
         Action(session, "RetryLastTurn", "Retry Last Turn", () => _ = RunAsync(() => Model!.RetryLastTurnAsync()),
             () => IdleSession && Model?.Messages.Count > 0 && Model?.HasPendingApproval == false && Model?.HasPendingQuestion == false);
         Dynamic(session, "UndoAgentChanges", "Undo Agent Changes…", PopulateCheckpoints, () => IdleSession);
@@ -262,7 +326,7 @@ internal sealed class DesktopMenuController
         var agent = Group("Agent", "Agent");
         Action(agent, "StopTurn", "Stop Current Turn", () => _ = RunAsync(() => Model!.CancelTurnAsync()),
             () => EditableSession && Model?.IsTurnActive == true);
-        agent.Items.Add(new NativeMenuItemSeparator());
+        Separator(agent);
         Dynamic(agent, "Model", "Model", PopulateModels, () => ProjectReady && Model?.CanChooseModel == true);
         Dynamic(agent, "ReasoningEffort", "Reasoning Effort", menu =>
         {
@@ -272,7 +336,7 @@ internal sealed class DesktopMenuController
                     Model?.SelectedReasoningEffort == effort);
             if (menu.Items.Count == 0) Empty(menu, "ReasoningUnavailable", "Unavailable for This Model");
         }, () => ProjectReady && Model?.CanChooseReasoningEffort == true);
-        agent.Items.Add(new NativeMenuItemSeparator());
+        Separator(agent);
         Action(agent, "PendingApproval", "Show Pending Approval", () => _ = RunAsync(() => Workspace?.ShowPendingApprovalAsync() ?? Task.CompletedTask),
             () => SessionReady && Model?.HasPendingApproval == true);
         Action(agent, "PendingQuestion", "Show Pending Question", () => _ = RunAsync(() => Workspace?.ShowPendingQuestionAsync() ?? Task.CompletedTask),
@@ -284,6 +348,10 @@ internal sealed class DesktopMenuController
         foreach (var provider in Model?.Models.GroupBy(item => item.Provider) ?? [])
         {
             var choices = new NativeMenu();
+            var barChoices = BarItem();
+            barChoices.Header = provider.First().ProviderLabel;
+            FindBarMenu(menu).Items.Add(barChoices);
+            _barMenus[choices] = barChoices;
             foreach (var model in provider)
                 DynamicAction(choices, model.Display, () => Model!.SelectedModel = model,
                     () => ProjectReady && Model?.CanChooseModel == true && Model.Models.Contains(model), Model?.SelectedModel?.Id == model.Id);
@@ -303,14 +371,14 @@ internal sealed class DesktopMenuController
         {
             if (Model is { } model) model.Layout.NavigationVisible = !model.Layout.NavigationVisible;
         }, () => ProjectReady, new KeyGesture(Key.D1, CommandModifier), () => Model?.Layout.NavigationVisible == true);
-        view.Items.Add(new NativeMenuItemSeparator());
+        Separator(view);
         Action(view, "Browser", "Built-in Browser", () => Workspace?.ToggleBrowserPanel(), () => ProjectReady,
             check: () => Model?.Layout.PreviewVisible == true);
         Action(view, "Review", "Review", () => Workspace?.ToggleReviewPanel(), () => ProjectReady,
             check: () => Model?.Layout.ReviewVisible == true && Model?.Layout.PreviewVisible == false);
         Action(view, "ChildSessions", "Child Sessions", () => _ = RunAsync(() => Workspace?.ToggleChildSessionsPanelAsync() ?? Task.CompletedTask), () => SessionReady,
             check: () => Model?.Layout.ChildSessionsVisible == true && Model?.Layout.PreviewVisible == false);
-        view.Items.Add(new NativeMenuItemSeparator());
+        Separator(view);
         var git = Action(view, "SourceControl", "Source Control", () => Workspace?.ToggleGitViewer(),
             () => ProjectReady && Model?.Git.IsAvailable == true, new KeyGesture(Key.D9, CommandModifier), () => Model?.Layout.GitVisible == true);
         _refresh.Add(() => git.IsVisible = Workspace is null || Model?.Git.IsAvailable == true);
@@ -334,7 +402,7 @@ internal sealed class DesktopMenuController
             if (Owner is WorkspaceWindow workspace) workspace.ToggleFullScreen();
             else if (Owner is { } owner) owner.WindowState = owner.WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen;
         }, check: () => Owner?.WindowState == WindowState.FullScreen);
-        window.Items.Add(new NativeMenuItemSeparator());
+        Separator(window);
         Action(window, "MergeAllWindows", "Merge All Windows", () => _ = RunAsync(() => (Application.Current as App)?.MergeAllProjectWindowsAsync() ?? Task.CompletedTask),
             () => (Application.Current as App)?.CanMergeWindows == true);
         Dynamic(window, "OpenWindows", "Open Windows", menu =>
