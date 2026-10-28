@@ -372,8 +372,9 @@ internal sealed class DesktopMenuController
             if (Model is { } model) model.Layout.NavigationVisible = !model.Layout.NavigationVisible;
         }, () => ProjectReady, new KeyGesture(Key.D1, CommandModifier), () => Model?.Layout.NavigationVisible == true);
         Separator(view);
-        Action(view, "Browser", "Built-in Browser", () => Workspace?.ToggleBrowserPanel(), () => ProjectReady,
-            check: () => Model?.Layout.PreviewVisible == true);
+        if (CefPreviewRuntime.Bundled)
+            Action(view, "Browser", "Built-in Browser", () => Workspace?.ToggleBrowserPanel(), () => ProjectReady,
+                check: () => Model?.Layout.PreviewVisible == true);
         Action(view, "Review", "Review", () => Workspace?.ToggleReviewPanel(), () => ProjectReady,
             check: () => Model?.Layout.ReviewVisible == true && Model?.Layout.PreviewVisible == false);
         Action(view, "ChildSessions", "Child Sessions", () => _ = RunAsync(() => Workspace?.ToggleChildSessionsPanelAsync() ?? Task.CompletedTask), () => SessionReady,
