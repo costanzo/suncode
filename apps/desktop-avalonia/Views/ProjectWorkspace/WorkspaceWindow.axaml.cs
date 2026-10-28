@@ -19,6 +19,7 @@ public partial class WorkspaceWindow : Window
     private bool _isFullScreenTransition;
     private DesktopMenuController? _desktopMenus;
     private bool _restoringWindowGeometry;
+    private bool _windowGeometryPrepared;
     private readonly ProjectWorkspace? _workspace;
     private readonly bool _adoptedWorkspace;
     
@@ -95,21 +96,17 @@ public partial class WorkspaceWindow : Window
         if (!IsMergedHost) ViewModel.SessionEntered += SessionEntered;
         if (ViewModel.IsProjectOpening)
         {
-            RestoreWindowGeometry();
-            ConfigureProjectWindow();
             UpdateTrafficLightFocus(IsActive);
             return;
         }
         await ViewModel.InitializeAsync();
         if (IsMergedHost || _adoptedWorkspace)
         {
-            if (IsMergedHost) RestoreWindowGeometry();
             StartMcpLoadPollingIfNeeded();
             UpdateNativeProjectMenu();
             UpdateTrafficLightFocus(IsActive);
             return;
         }
-        RestoreWindowGeometry();
         ConfigureProjectWindow();
         await CompleteProjectOpenAsync();
     }
@@ -148,44 +145,34 @@ public partial class WorkspaceWindow : Window
         if (!ViewModel.Mcp.IsLoading) _mcpLoadTimer.Stop();
     }
 
-    private void RestoreWindowGeometry()
+    // Apply native chrome and geometry before Show; Opened is too late on Windows.
+    internal void PrepareForShow()
     {
-        if (!ViewModel.IsProjectOpen && !ViewModel.IsProjectOpening) return;
+        if (_windowGeometryPrepared) return;
+        ConfigureProjectWindow();
         var saved = ViewModel.SavedUiProjectState;
+        var screen = saved.WindowX is { } x && saved.WindowY is { } y
+            ? Screens.ScreenFromPoint(new PixelPoint((int)Math.Round(x), (int)Math.Round(y)))
+            : null;
+        screen ??= OriginWindow is { } origin ? Screens.ScreenFromWindow(origin) : null;
+        screen ??= Screens.Primary;
+        var geometry = WorkspaceWindowGeometry.Resolve(saved, screen?.WorkingArea, screen?.Scaling ?? 1);
         _restoringWindowGeometry = true;
         try
         {
-            var width = saved.WindowWidth is { } savedWidth ? Math.Clamp(savedWidth, MinWidth, 2400) : Width;
-            var height = saved.WindowHeight is { } savedHeight ? Math.Clamp(savedHeight, MinHeight, 1600) : Height;
-            Width = width;
-            Height = height;
-            if (saved.WindowX is { } x && saved.WindowY is { } y)
-            {
-                var px = (int)Math.Round(x);
-                var py = (int)Math.Round(y);
-                PixelRect? area = Screens.ScreenFromPoint(new PixelPoint(px, py))?.WorkingArea;
-                area ??= OriginWindow is { } origin ? Screens.ScreenFromWindow(origin)?.WorkingArea : null;
-                area ??= Screens.Primary?.WorkingArea;
-                if (area is { } workArea)
-                {
-                    px = Math.Clamp(px, workArea.X, Math.Max(workArea.X, workArea.Right - (int)Math.Round(width)));
-                    py = Math.Clamp(py, workArea.Y, Math.Max(workArea.Y, workArea.Bottom - (int)Math.Round(height)));
-                }
-                Position = new PixelPoint(px, py);
-            }
-            WindowState = saved.WindowState switch
-            {
-                "maximized" => WindowState.Maximized,
-                "fullscreen" => WindowState.FullScreen,
-                _ => WindowState.Normal
-            };
+            Width = geometry.Size.Width;
+            Height = geometry.Size.Height;
+            if (geometry.Position is { } position) Position = position;
+            WindowState = geometry.State;
+            ViewModel.Layout.UpdateLayoutSize(Width, Height);
+            _windowGeometryPrepared = true;
         }
         finally { _restoringWindowGeometry = false; }
     }
 
     private void SaveWindowGeometry()
     {
-        if (_restoringWindowGeometry || !ViewModel.IsProjectOpen || WindowState != WindowState.Normal) return;
+        if (!_initialized || _restoringWindowGeometry || !ViewModel.IsProjectOpen || WindowState != WindowState.Normal) return;
         ViewModel.SaveWindowGeometry(Position.X, Position.Y, Bounds.Width, Bounds.Height, "normal");
     }
     
@@ -195,7 +182,7 @@ public partial class WorkspaceWindow : Window
         if (change.Property != WindowStateProperty) return;
         var state = WindowState;
         _isFullScreen = state == WindowState.FullScreen;
-        if (_restoringWindowGeometry || DataContext is not DesktopViewModel { IsProjectOpen: true } model) return;
+        if (!_initialized || _restoringWindowGeometry || DataContext is not DesktopViewModel { IsProjectOpen: true } model) return;
         var saved = state switch
         {
             WindowState.Normal => "normal",
@@ -410,36 +397,13 @@ public partial class WorkspaceWindow : Window
 
     private void ConfigureProjectWindow()
     {
-        ExtendClientAreaToDecorationsHint = true;
-        Title = ViewModel.ProjectTitle;
-        MinWidth = 620;
-        MinHeight = 620;
-        ResizeAndCenter(1440, 900);
-        ViewModel.Layout.UpdateLayoutWidth(1440);
+        if (!IsMergedHost) Title = ViewModel.ProjectTitle;
     }
 
     internal void RestoreAsProjectWindow()
     {
-        ConfigureProjectWindow();
+        PrepareForShow();
         Show();
         Activate();
-    }
-
-    private void ResizeAndCenter(double width, double height)
-    {
-        Width = width;
-        Height = height;
-        var area = ResolveOriginWorkingArea();
-        Position = new PixelPoint(
-            area.X + Math.Max(0, (area.Width - (int)width) / 2),
-            area.Y + Math.Max(0, (area.Height - (int)height) / 2));
-    }
-    
-    private PixelRect ResolveOriginWorkingArea()
-    {
-        if (OriginWindow is { } origin&& Screens.ScreenFromWindow(origin) is { } originScreen)
-            return originScreen.WorkingArea;
-        if (Screens.Primary is { } primary) return primary.WorkingArea;
-        return new PixelRect(Position, PixelSize.FromSize(Bounds.Size, 1));
     }
 }

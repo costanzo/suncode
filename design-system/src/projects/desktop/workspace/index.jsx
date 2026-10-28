@@ -13,7 +13,8 @@ export function WorkspacePage() {
         description="The active project window, composed from the Avalonia session, conversation, review, and observability surfaces."
       />
       <WindowSizeNote width="1440" height="900" minimumWidth="620" minimumHeight="620" />
-      <Section id="workspace-window" title="Project workspace">
+      <Section id="workspace-window" title="Project workspace"
+        description="The first visible frame uses the saved project size, position, and normal/maximized/full-screen state. New windows start at 1440 × 900 DIP, centered and fitted to the originating display's scaled working area, with a 620 × 620 DIP minimum. Custom chrome is ready before the window appears; project loading does not resize or recenter it.">
         <WorkspaceWindow />
       </Section>
       <Section

@@ -70,6 +70,7 @@ internal sealed class ProjectWindowManager
             viewModel.BeginProjectOpening(project);
             window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
             window.Closed += OnClosedWhileOpening;
+            window.PrepareForShow();
             window.Show();
             window.Activate();
             _hubWindow.Hide();
@@ -133,11 +134,12 @@ internal sealed class ProjectWindowManager
         var first = sources[0].Value;
         if (first.DataContext is not DesktopViewModel firstViewModel) return;
 
-        var merged = new MergedWorkspaceWindow(firstViewModel);
+        var merged = new MergedWorkspaceWindow(firstViewModel) { OriginWindow = first };
         merged.ProjectTornOff += TearOffProject;
         merged.ProjectCloseRequested += CloseMergedProject;
         merged.HostClosed += MergedHostClosed;
         _mergedWindow = merged;
+        merged.PrepareForShow();
         foreach (var (projectId, source) in sources)
         {
             merged.AddProject(projectId, source);
@@ -246,6 +248,7 @@ internal sealed class ProjectWindowManager
         var source = merged.RemoveProject(projectId);
         if (source is null) return;
         var window = ReopenReleaseProject(projectId, source, merged);
+        window.PrepareForShow();
         window.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
         window.RestoreAsProjectWindow();
         
