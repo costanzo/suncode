@@ -68,6 +68,39 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (!await EnsureSdkReadyAsync()) return;
         await RunAsync(LoadProjectsAsync);
     }
+    
+    internal void BeginProjectOpening(ProjectItem project)
+    {
+        _openingProject = project;
+        NotifyProjectOpeningChanged();
+        _ = RevealProjectOpeningAsync(project);
+    }
+    
+    internal void EndProjectOpening()
+    {
+        if (_openingProject is null) return;
+        _openingProject = null;
+        _isProjectOpeningVisible = false;
+        NotifyProjectOpeningChanged();
+    }
+    
+    
+    private async Task RevealProjectOpeningAsync(ProjectItem project)
+    {
+        await Task.Delay(120);
+        if (_disposed || !ReferenceEquals(_openingProject, project)) return;
+        _isProjectOpeningVisible = true;
+        OnPropertyChanged(nameof(IsWorkspaceLoadingVisible));
+    }
+    
+    private void NotifyProjectOpeningChanged()
+    {
+        OnPropertyChanged(nameof(IsProjectOpening));
+        OnPropertyChanged(nameof(IsWorkspaceLoadingVisible));
+        OnPropertyChanged(nameof(ShowNoSessionSelected));
+        OnPropertyChanged(nameof(ShowNoSessions));
+        OnPropertyChanged(nameof(ProjectTitle));
+    }
 
     public async Task SelectProjectAsync(ProjectItem project)
     {

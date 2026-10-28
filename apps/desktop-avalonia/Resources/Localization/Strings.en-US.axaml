@@ -120,6 +120,7 @@
   <x:String x:Key="LocThinking">Thinking</x:String>
   <x:String x:Key="LocCompactingContext">Compacting context</x:String>
   <x:String x:Key="LocLoadingConversation">Loading conversation...</x:String>
+  <x:String x:Key="LocOpeningProject">Opening project...</x:String>
   <x:String x:Key="LocConversationLoadFailed">Conversation could not be loaded</x:String>
   <x:String x:Key="LocRetry">Retry</x:String>
   <x:String x:Key="LocNoSessionSelected">No session selected</x:String>

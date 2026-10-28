@@ -55,7 +55,7 @@ public partial class WorkspaceWindow : Window
             if (DataContext is DesktopViewModel model)
             {
                 await model.Git.CheckAvailabilityAsync();
-                await model.Git.RefreshAsync();
+                await model.Git.RefreshOnActivationAsync();
             }
         };
         Deactivated += (_, _) =>
@@ -93,6 +93,13 @@ public partial class WorkspaceWindow : Window
         _initialized = true;
         ActiveWorkspace?.UpdateWindowsMaximizeButton(WindowState);
         if (!IsMergedHost) ViewModel.SessionEntered += SessionEntered;
+        if (ViewModel.IsProjectOpening)
+        {
+            RestoreWindowGeometry();
+            ConfigureProjectWindow();
+            UpdateTrafficLightFocus(IsActive);
+            return;
+        }
         await ViewModel.InitializeAsync();
         if (IsMergedHost || _adoptedWorkspace)
         {
@@ -102,13 +109,19 @@ public partial class WorkspaceWindow : Window
             UpdateTrafficLightFocus(IsActive);
             return;
         }
-        await ViewModel.Mcp.StartProjectAsync();
-        StartMcpLoadPollingIfNeeded();
         RestoreWindowGeometry();
-        if (!IsMergedHost) ConfigureProjectWindow();
+        ConfigureProjectWindow();
+        await CompleteProjectOpenAsync();
+    }
+    
+    internal async Task CompleteProjectOpenAsync()
+    {
+        Title = ViewModel.ProjectTitle;
         UpdateNativeProjectMenu();
         if (ViewModel.SelectedSession != null) SessionEntered();
         UpdateTrafficLightFocus(IsActive);
+        await ViewModel.Mcp.StartProjectAsync();
+        StartMcpLoadPollingIfNeeded();
     }
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
@@ -116,10 +129,12 @@ public partial class WorkspaceWindow : Window
         
         if (!IsReleasedForMerge) _workspace?.ClosePreview();
         _mcpLoadTimer.Stop();
+        if (!IsMergedHost) ViewModel.SessionEntered -= SessionEntered;
+        // Panels have not been restored yet, so saving now would overwrite the project's layout.
+        if (ViewModel.IsProjectOpening) return;
         SaveWindowGeometry();
         ViewModel.SavePanelGeometry();
         ViewModel.SaveRegionState();
-        if (!IsMergedHost) ViewModel.SessionEntered -= SessionEntered;
     }
 
     internal void StartMcpLoadPollingIfNeeded()
@@ -135,7 +150,7 @@ public partial class WorkspaceWindow : Window
 
     private void RestoreWindowGeometry()
     {
-        if (!ViewModel.IsProjectOpen) return;
+        if (!ViewModel.IsProjectOpen && !ViewModel.IsProjectOpening) return;
         var saved = ViewModel.SavedUiProjectState;
         _restoringWindowGeometry = true;
         try

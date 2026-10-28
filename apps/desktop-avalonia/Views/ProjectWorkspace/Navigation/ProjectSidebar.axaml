@@ -58,7 +58,7 @@
             </ListBox.ItemTemplate>
           </ListBox>
         </ScrollViewer>
-        <StackPanel Grid.Row="0" IsVisible="{Binding !HasSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Grid.Row="0" IsVisible="{Binding ShowNoSessions}" Margin="0,44,0,32" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
           <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
           <TextBlock Text="{DynamicResource LocNoSessionsYet}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" HorizontalAlignment="Center" />
           <TextBlock Text="{DynamicResource LocUsePlusToCreateOne}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />

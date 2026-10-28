@@ -6,8 +6,11 @@ namespace SunCode.Desktop.ViewModels;
 
 public sealed class RemoteServerViewModel : ObservableObject, IDisposable
 {
+    
+    private static readonly List<RemoteServerViewModel> Subscribers = [];
+    private static DispatcherTimer? _sharedTimer;
+    private static RemoteServerStatus? _lastStatus;
     private readonly IViewModelHost _host;
-    private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private bool _configured;
     private bool _connected;
     private bool _connecting;
@@ -77,11 +80,15 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
     // Loads the current status and polls it while the owning window lives.
     internal async Task StartPollingAsync()
     {
-        if (_disposed || _host.Sdk is not { } sdk) return;
-        ApplyStatus(await sdk.GetRemoteServerStatusAsync());
-        _statusTimer.Tick -= StatusTick;
-        _statusTimer.Tick += StatusTick;
-        _statusTimer.Start();
+        if (_disposed || _host.Sdk is not { } sdk || Subscribers.Contains(this)) return;
+        Subscribers.Add(this);
+        if (_sharedTimer is null)
+        {
+            _sharedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _sharedTimer.Tick += SharedStatusTick;
+            _sharedTimer.Start();
+        }
+        ApplyStatus(_lastStatus ?? await sdk.GetRemoteServerStatusAsync());
     }
 
     internal void RefreshLocalizedText() => OnPropertyChanged(nameof(StatusText));
@@ -94,11 +101,17 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(StatusText));
         StatusChanged?.Invoke(this, status);
     }
-
-    private async void StatusTick(object? sender, EventArgs e)
+    
+    private static async void SharedStatusTick(object? sender, EventArgs e)
     {
-        if (_disposed || _host.Sdk is not { } sdk) return;
-        try { ApplyStatus(await sdk.GetRemoteServerStatusAsync()); }
+        if (Subscribers.Select(subscriber => subscriber._host.Sdk).FirstOrDefault(sdk => sdk is not null) is not { } sdk) return;
+        try
+        {
+            var status = await sdk.GetRemoteServerStatusAsync();
+            if (Subscribers.Count == 0) return;
+            _lastStatus = status;
+            foreach (var subscriber in Subscribers.ToArray()) subscriber.ApplyStatus(status);
+        }
         catch (Exception exception) { DiagnosticLog.Error("remote.status", exception, "operation=poll"); }
     }
 
@@ -106,7 +119,10 @@ public sealed class RemoteServerViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _statusTimer.Stop();
-        _statusTimer.Tick -= StatusTick;
+        if (!Subscribers.Remove(this) || Subscribers.Count > 0 || _sharedTimer is null) return;
+        _sharedTimer.Stop();
+        _sharedTimer.Tick -= SharedStatusTick;
+        _sharedTimer = null;
+        _lastStatus = null;
     }
 }

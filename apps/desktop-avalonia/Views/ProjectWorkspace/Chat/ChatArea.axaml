@@ -382,9 +382,10 @@
       </Button>
       <TextBlock x:Name="ConversationAnnouncement" IsVisible="False" AutomationProperties.LiveSetting="Polite" />
 
-      <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsSessionLoadingVisible}">
+      <StackPanel ZIndex="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding IsWorkspaceLoadingVisible}">
         <ProgressBar Width="160" Height="3" IsIndeterminate="True" />
-        <TextBlock Text="{DynamicResource LocLoadingConversation}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{DynamicResource LocOpeningProject}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" IsVisible="{Binding IsProjectOpening}" />
+        <TextBlock Text="{DynamicResource LocLoadingConversation}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" IsVisible="{Binding !IsProjectOpening}"/>
       </StackPanel>
 
       <StackPanel MaxWidth="420" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" IsVisible="{Binding HasSessionLoadError}">
@@ -398,7 +399,7 @@
         </Button>
       </StackPanel>
 
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7" IsVisible="{Binding !HasSelectedSession}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="7" IsVisible="{Binding ShowNoSessionSelected}">
         <svg:Svg Width="24" Height="24" Path="/Assets/icons/panel-left.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" />
         <TextBlock Text="{DynamicResource LocNoSessionSelected}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <TextBlock Text="{DynamicResource LocCreateOrSelectSession}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" />

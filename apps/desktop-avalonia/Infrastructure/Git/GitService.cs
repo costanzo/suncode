@@ -6,11 +6,18 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
     internal const int MaxPatchBytes = 2 * 1024 * 1024;
     internal const int MaxLines = 12_000;
     internal const int MaxHunks = 2_000;
+    private static GitCommandRunner? _discoveredDefault;
     private GitCommandRunner? _runner;
     private readonly SemaphoreSlim _discovery = new(1);
 
     public async Task<bool> CheckAvailabilityAsync(CancellationToken cancellation = default)
     {
+
+        if (candidates is null && Volatile.Read(ref _discoveredDefault) is { } cached && File.Exists(cached.Executable))
+        {
+            _runner = cached;
+            return true;
+        }
         await _discovery.WaitAsync(cancellation);
         try
         {
@@ -34,6 +41,7 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
                 catch (GitException) { }
             }
             _runner = found;
+            if (candidates is null) Volatile.Write(ref _discoveredDefault, found);
             return found is not null;
         }
         finally { _discovery.Release(); }
