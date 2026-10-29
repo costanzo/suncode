@@ -1,6 +1,8 @@
 using System.Runtime.Versioning;
 using SunCode.Desktop.Models;
+#if WINDOWS
 using Windows.UI.StartScreen;
+#endif
 
 namespace SunCode.Desktop.Infrastructure;
 
@@ -26,6 +28,7 @@ internal sealed class WindowsTaskbarJumpList
     {
     }
 
+#if WINDOWS
     internal async Task RefreshAsync()
     {
         if (!IsEnabled || !JumpList.IsSupported()) return;
@@ -62,6 +65,9 @@ internal sealed class WindowsTaskbarJumpList
             DiagnosticLog.Warn("windows.jump-list", $"refresh_failed=true error={exception.Message}");
         }
     }
+#else
+    internal Task RefreshAsync() => Task.CompletedTask;
+#endif
 
     private static string ProjectLabel(ProjectItem project) =>
         string.IsNullOrWhiteSpace(project.DisplayName) ? project.CanonicalRoot : project.DisplayName;
