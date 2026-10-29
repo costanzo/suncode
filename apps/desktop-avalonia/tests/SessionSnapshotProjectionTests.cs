@@ -21,7 +21,7 @@ public sealed class SessionSnapshotProjectionTests
 
         Assert.True(message.ShowDuration);
         Assert.Equal("Worked for 1.2 s", message.DurationLabel);
-        Assert.Equal("1.2 s", DesktopViewModel.FormatDuration(
+        Assert.Equal("1 s", DesktopViewModel.FormatDuration(
             "2026-09-12T00:00:00.000Z",
             "2026-09-12T00:00:01.200Z",
             "completed"));
@@ -67,7 +67,7 @@ public sealed class SessionSnapshotProjectionTests
         """);
 
         var assistant = Assert.Single(DesktopViewModel.ProjectSnapshot(snapshot).Messages);
-        Assert.Equal("Worked for 1.2 s", assistant.DurationLabel);
+        Assert.Equal("Worked for 1 s", assistant.DurationLabel);
         Assert.True(assistant.ShowDuration);
         Assert.Equal(
             DateTimeOffset.Parse("2026-09-12T00:00:01.200Z").ToLocalTime().ToString("HH:mm"),

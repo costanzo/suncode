@@ -6,7 +6,8 @@ using SunCode.Desktop.ViewModels;
 
 namespace SunCode.Desktop.Tests;
 
-public sealed class DesktopMenuControllerTests
+[Collection("Avalonia UI")]
+public sealed class DesktopMenuControllerTests(AvaloniaUiFixture ui)
 {
     private static NativeMenuItem Item(NativeMenu menu, string label) =>
         menu.Items.OfType<NativeMenuItem>().Single(item => item.Header == label);
@@ -15,7 +16,7 @@ public sealed class DesktopMenuControllerTests
         new(() => null, model ?? (() => null), () => null, () => Task.CompletedTask);
 
     [Fact]
-    public void ProjectMenuUsesTheCompleteIdeHierarchy()
+    public Task ProjectMenuUsesTheCompleteIdeHierarchy() => ui.Run(() =>
     {
         var controller = new DesktopMenuController(
             () => null,
@@ -31,10 +32,10 @@ public sealed class DesktopMenuControllerTests
         Assert.Equal(
             ["File", "Edit", "Navigate", "Session", "Agent", "View", "Window", "Help"],
             headers);
-    }
+    });
 
     [Fact]
-    public void WindowsMenuGroupsMirrorTheNativeCommandHierarchy()
+    public Task WindowsMenuGroupsMirrorTheNativeCommandHierarchy() => ui.Run(() =>
     {
         var controller = Create();
         Assert.Equal(
@@ -49,10 +50,10 @@ public sealed class DesktopMenuControllerTests
             Assert.IsType<MenuItem>(barFile.Items[0]).InputGesture);
         Assert.False(Assert.IsType<MenuItem>(barFile.Items[1]).IsEnabled);
         Assert.Equal("No Recent Projects", Assert.IsType<MenuItem>(Assert.IsType<MenuItem>(barFile.Items[1]).Items[0]).Header);
-    }
+    });
 
     [Fact]
-    public void DynamicMenusIncludeAnExplicitEmptyState()
+    public Task DynamicMenusIncludeAnExplicitEmptyState() => ui.Run(() =>
     {
         var controller = new DesktopMenuController(
             () => null,
@@ -69,10 +70,10 @@ public sealed class DesktopMenuControllerTests
 
         Assert.Contains(openWindows.Menu!.Items.OfType<NativeMenuItem>(), item =>
             item.Header == "No Open Windows" && !item.IsEnabled);
-    }
+    });
 
     [Fact]
-    public void NoWindowOrProjectDisablesSessionAndAgentActions()
+    public Task NoWindowOrProjectDisablesSessionAndAgentActions() => ui.Run(() =>
     {
         var controller = Create();
         var session = Item(controller.Menu, "Session").Menu!;
@@ -80,10 +81,10 @@ public sealed class DesktopMenuControllerTests
 
         Assert.All(session.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator), item => Assert.False(item.IsEnabled));
         Assert.All(agent.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator), item => Assert.False(item.IsEnabled));
-    }
+    });
 
     [Fact]
-    public void RefreshRebuildsDynamicEntriesForTheCurrentProjectContext()
+    public Task RefreshRebuildsDynamicEntriesForTheCurrentProjectContext() => ui.Run(() =>
     {
         using var first = new DesktopViewModel();
         using var second = new DesktopViewModel();
@@ -109,10 +110,10 @@ public sealed class DesktopMenuControllerTests
         var empty = Assert.Single(sessions.Items.OfType<NativeMenuItem>());
         Assert.Equal("No Sessions", empty.Header);
         Assert.False(empty.IsEnabled);
-    }
+    });
 
     [Fact]
-    public void ViewChecksFollowStoredDestinationsEvenAtCompactWidths()
+    public Task ViewChecksFollowStoredDestinationsEvenAtCompactWidths() => ui.Run(() =>
     {
         using var model = new DesktopViewModel();
         model.Layout.NavigationVisible = true;
@@ -134,10 +135,10 @@ public sealed class DesktopMenuControllerTests
         Assert.False(Item(view, "Review").IsChecked);
         Assert.True(Item(view, "Child Sessions").IsChecked);
         Assert.False(model.Layout.EffectiveExplorerSidebarVisible);
-    }
+    });
 
     [Fact]
-    public void CheckpointMenuOnlyListsRestorableChangesAndUpdatesAfterRemoval()
+    public Task CheckpointMenuOnlyListsRestorableChangesAndUpdatesAfterRemoval() => ui.Run(() =>
     {
         using var model = new DesktopViewModel();
         model.Checkpoints.Add(new CheckpointItem("available", "turn-1", "available", ["file.cs"]));
@@ -151,7 +152,7 @@ public sealed class DesktopMenuControllerTests
         var empty = Assert.Single(undo.Items.OfType<NativeMenuItem>());
         Assert.Equal("No Restorable Changes", empty.Header);
         Assert.False(empty.IsEnabled);
-    }
+    });
 
     [Theory]
     [InlineData("File", "Open Project…", Key.O)]
@@ -160,7 +161,7 @@ public sealed class DesktopMenuControllerTests
     [InlineData("View", "Project Navigation", Key.D1)]
     [InlineData("View", "Source Control", Key.D9)]
     [InlineData("Window", "Minimize", Key.M)]
-    public void MenuGesturesUseThePlatformCommandModifier(string group, string label, Key key)
+    public Task MenuGesturesUseThePlatformCommandModifier(string group, string label, Key key) => ui.Run(() =>
     {
         var controller = Create();
         var gesture = Item(Item(controller.Menu, group).Menu!, label).Gesture;
@@ -168,15 +169,15 @@ public sealed class DesktopMenuControllerTests
         Assert.NotNull(gesture);
         Assert.Equal(key, gesture.Key);
         Assert.Equal(OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control, gesture.KeyModifiers);
-    }
+    });
 
     [Fact]
-    public void ReadOnlyTextSupportsSelectionButNeverEditing()
+    public Task ReadOnlyTextSupportsSelectionButNeverEditing() => ui.Run(() =>
     {
         var text = new TextBox { Text = "Read-only source", IsReadOnly = true };
         Assert.True(DesktopEditCommands.CanExecuteTarget(text, DesktopEditAction.SelectAll));
         foreach (var action in new[] { DesktopEditAction.Undo, DesktopEditAction.Redo, DesktopEditAction.Cut, DesktopEditAction.Paste })
             Assert.False(DesktopEditCommands.CanExecuteTarget(text, action));
         Assert.False(DesktopEditCommands.CanExecuteTarget(new Border(), DesktopEditAction.Copy));
-    }
+    });
 }

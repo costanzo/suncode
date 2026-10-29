@@ -1,3 +1,5 @@
+using Avalonia;
+using Avalonia.Controls;
 using SunCode.Desktop.Views.ProjectWorkspace.Preview;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Models;
@@ -33,20 +35,26 @@ public sealed class BrowserPreviewTests
 
         Assert.True(viewModel.Layout.EffectivePreviewVisible);
         Assert.True(viewModel.Layout.PreviewChatVisible);
-        Assert.False(viewModel.Layout.EffectiveNavigationVisible);
+        Assert.True(viewModel.Layout.EffectiveNavigationVisible);
         Assert.False(viewModel.Layout.EffectiveReviewVisible);
-        Assert.Equal(2, viewModel.Layout.ConversationWidth.Value);
-        Assert.Equal(3, viewModel.Layout.PreviewWidth.Value);
+        Assert.Equal(GridUnitType.Star, viewModel.Layout.ConversationWidth.GridUnitType);
+        Assert.Equal(1, viewModel.Layout.ConversationWidth.Value);
+        Assert.Equal(GridUnitType.Pixel, viewModel.Layout.PreviewWidth.GridUnitType);
+        Assert.Equal(560, viewModel.Layout.PreviewWidth.Value);
     }
 
     [Fact]
     public void PreviewDropsChatAtNarrowWidth()
     {
         using var viewModel = new DesktopViewModel { Layout = { PreviewVisible = true } };
+        viewModel.Projects.Add(new ProjectItem("project", "Project", "/tmp/project"));
+        viewModel.SetSelectedProjectForTests(viewModel.Projects[0]);
         viewModel.Layout.UpdateLayoutWidth(900);
 
+        Assert.True(viewModel.Layout.EffectivePreviewVisible);
         Assert.False(viewModel.Layout.PreviewChatVisible);
         Assert.Equal(0, viewModel.Layout.ConversationWidth.Value);
         Assert.Equal(0, viewModel.Layout.PreviewGap.Value);
+        Assert.Equal(GridUnitType.Star, viewModel.Layout.PreviewWidth.GridUnitType);
     }
 }

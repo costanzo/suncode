@@ -4,7 +4,8 @@ using SunCode.Desktop.Models;
 
 namespace SunCode.Desktop.Tests;
 
-public sealed class DesktopDockMenuControllerTests
+[Collection("Avalonia UI")]
+public sealed class DesktopDockMenuControllerTests(AvaloniaUiFixture ui)
 {
     private static NativeMenuItem Item(NativeMenu menu, string label) =>
         menu.Items.OfType<NativeMenuItem>().Single(item => item.Header == label);
@@ -18,7 +19,7 @@ public sealed class DesktopDockMenuControllerTests
             () => Task.CompletedTask, () => { }, enabled);
 
     [Fact]
-    public void OpenWindowsUsesTheRegistryEvenWhenTheRecentCatalogIsStale()
+    public Task OpenWindowsUsesTheRegistryEvenWhenTheRecentCatalogIsStale() => ui.Run(() =>
     {
         var open = new ProjectItem("open", "Open project", "/open");
         var controller = Create(
@@ -30,10 +31,10 @@ public sealed class DesktopDockMenuControllerTests
                 .Select(item => item.Header ?? string.Empty).ToArray());
         Assert.Equal("Open project", Assert.Single(Item(controller.Menu, "Open Windows").Menu!.Items.OfType<NativeMenuItem>()).Header);
         Assert.Equal("Recent project", Assert.Single(Item(controller.Menu, "Recent Projects").Menu!.Items.OfType<NativeMenuItem>()).Header);
-    }
+    });
 
     [Fact]
-    public void RefreshRemovesClosedProjectsAndProvidesDisabledEmptyRows()
+    public Task RefreshRemovesClosedProjectsAndProvidesDisabledEmptyRows() => ui.Run(() =>
     {
         var projects = new List<ProjectItem> { new("project", "Project", "/project") };
         var controller = Create(() => projects, () => projects);
@@ -46,27 +47,27 @@ public sealed class DesktopDockMenuControllerTests
         Assert.Equal("No Recent Projects", noRecent.Header);
         Assert.False(noOpen.IsEnabled);
         Assert.False(noRecent.IsEnabled);
-    }
+    });
 
     [Fact]
-    public void RecentProjectsPreservesCatalogOrderAndLimitsItsLength()
+    public Task RecentProjectsPreservesCatalogOrderAndLimitsItsLength() => ui.Run(() =>
     {
         var projects = Enumerable.Range(0, 14).Select(index => new ProjectItem($"{index}", $"Project {index}", $"/{index}")).ToArray();
         var controller = Create(() => projects);
         Assert.Equal(projects.Take(10).Select(item => item.DisplayName),
             Item(controller.Menu, "Recent Projects").Menu!.Items.OfType<NativeMenuItem>().Select(item => item.Header ?? string.Empty));
-    }
+    });
 
     [Fact]
-    public void ProjectsWithTheSameNameIncludeTheirPaths()
+    public Task ProjectsWithTheSameNameIncludeTheirPaths() => ui.Run(() =>
     {
         var controller = Create(() => [new("first", "Project", "/first"), new("second", "Project", "/second")]);
         Assert.Equal(["Project — /first", "Project — /second"],
             Item(controller.Menu, "Recent Projects").Menu!.Items.OfType<NativeMenuItem>().Select(item => item.Header ?? string.Empty).ToArray());
-    }
+    });
 
     [Fact]
-    public async Task OpenProjectSelectionRechecksTheLiveRegistryBeforeInvoking()
+    public Task OpenProjectSelectionRechecksTheLiveRegistryBeforeInvoking() => ui.Run(async () =>
     {
         var project = new ProjectItem("project", "Project", "/project");
         var open = new List<ProjectItem> { project };
@@ -80,10 +81,10 @@ public sealed class DesktopDockMenuControllerTests
         open.Clear();
         await command.ExecuteAsync();
         Assert.Null(activated);
-    }
+    });
 
     [Fact]
-    public async Task ModalStateDisablesAndRechecksCommandsAtInvocation()
+    public Task ModalStateDisablesAndRechecksCommandsAtInvocation() => ui.Run(async () =>
     {
         bool enabled = true;
         bool activated = false;
@@ -98,5 +99,5 @@ public sealed class DesktopDockMenuControllerTests
         enabled = true;
         controller.Refresh();
         Assert.All(controller.Menu.Items.OfType<NativeMenuItem>().Where(item => item is not NativeMenuItemSeparator), item => Assert.True(item.IsEnabled));
-    }
+    });
 }

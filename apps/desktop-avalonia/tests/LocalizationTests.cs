@@ -4,7 +4,8 @@ using System.Xml.Linq;
 
 namespace SunCode.Desktop.Tests;
 
-public sealed class LocalizationTests
+[Collection("Avalonia UI")]
+public sealed class LocalizationTests(AvaloniaUiFixture ui)
 {
     [Fact]
     public void SupportedLocalesUseStableCodesAndNativeNames()
@@ -17,14 +18,14 @@ public sealed class LocalizationTests
     }
 
     [Fact]
-    public void InvalidLocaleFallsBackToEnglish()
+    public Task InvalidLocaleFallsBackToEnglish() => ui.Run(() =>
     {
-        var service = new LocalizationService(new Application());
+        var service = new LocalizationService(Application.Current!);
 
         Assert.Equal(LocalizationService.DefaultLocale, service.Normalize("fr-FR"));
         Assert.Equal(LocalizationService.DefaultLocale, service.Normalize(null));
         Assert.Equal(LocalizationService.SimplifiedChineseLocale, service.Normalize("ZH-cn"));
-    }
+    });
 
     [Fact]
     public void CreateDictionarySetsSource()

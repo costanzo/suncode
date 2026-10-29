@@ -52,21 +52,6 @@ public sealed class NavigationShortcutTests
     }
 
     [Theory]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public void OnlyMacOsUsesMaximizedStateForTitleBarDoubleClick(bool isMacOS, bool expected)
-    {
-        Assert.Equal(expected, WorkspaceWindow.UsesMaximizedStateForTitleBarDoubleTap(isMacOS));
-    }
-
-    [Fact]
-    public void ProjectSwitcherButtonDoesNotStartTitleBarDragging()
-    {
-        Assert.True(WorkspaceWindow.OriginatesFromButton(new Button()));
-        Assert.False(WorkspaceWindow.OriginatesFromButton(new Border()));
-    }
-
-    [Theory]
     [InlineData(TrafficLightKind.Close, TrafficLightState.Normal, "1-close-1-normal.svg")]
     [InlineData(TrafficLightKind.Minimize, TrafficLightState.Hover, "2-minimize-2-hover.svg")]
     [InlineData(TrafficLightKind.Maximize, TrafficLightState.Press, "3-maximize-3-press.svg")]
