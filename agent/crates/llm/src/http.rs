@@ -361,7 +361,14 @@ mod tests {
             Some("req_1".into()),
         );
         assert_eq!(error.code, "invalid_request");
-        assert_eq!(error.message, "bad tool");
+        assert_eq!(
+            error.message,
+            "Gateway request failed with status 400 Bad Request"
+        );
+        assert_eq!(
+            error.details["response_body"],
+            serde_json::json!(r#"{"error":{"message":"bad tool"}}"#)
+        );
         assert_eq!(error.provider_request_id.as_deref(), Some("req_1"));
 
         let error = error_from_body(StatusCode::BAD_GATEWAY, b"<html>", "Gateway", None);

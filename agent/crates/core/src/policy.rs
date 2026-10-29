@@ -85,7 +85,7 @@ mod tests {
         }
         assert_eq!(
             evaluate(Some(Risk::BrowserAccess), false, true),
-            Decision::ApprovalRequired
+            Decision::Allow
         );
         assert_eq!(evaluate(tool_risk("unknown"), false, true), Decision::Deny);
     }

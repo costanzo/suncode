@@ -258,7 +258,6 @@ impl Store {
         }
     }
 
-
     pub fn provider_credential_status(
         &self,
         provider_id: &str,
@@ -486,7 +485,7 @@ mod tests {
     }
 
     #[test]
-    fn access_failure_states_preserve_mask_and_error_codes() {
+    fn access_failure_states_preserve_configured_status_mask_and_error_codes() {
         let backend = Arc::new(FailingStore::default());
         let store = Store::open_memory()
             .unwrap()
@@ -498,21 +497,21 @@ mod tests {
                 CredentialStorageMode::Keychain,
             )
             .unwrap();
-        for (error, status, code) in [
-            (SecretStoreError::Locked, "locked", "credential_locked"),
-            (
-                SecretStoreError::AccessDenied,
-                "access_denied",
-                "credential_access_denied",
-            ),
+        for (error, code) in [
+            (SecretStoreError::Locked, "credential_locked"),
+            (SecretStoreError::AccessDenied, "credential_access_denied"),
             (
                 SecretStoreError::Unavailable,
-                "unavailable",
                 "credential_store_unavailable",
             ),
         ] {
             *backend.get_error.lock().unwrap() = Some(error);
-            assert_eq!(store.provider_credential_status("openai").unwrap(), status);
+            // Status reflects persisted configuration and must not probe the
+            // keychain, which could trigger an OS credential prompt.
+            assert_eq!(
+                store.provider_credential_status("openai").unwrap(),
+                "configured"
+            );
             assert_eq!(
                 store
                     .resolve_provider_credential("openai")
