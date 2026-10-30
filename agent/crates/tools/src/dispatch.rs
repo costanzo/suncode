@@ -2,11 +2,12 @@
 
 use crate::arguments::{
     CheckpointRestoreArguments, EditArguments, GlobArguments, GrepArguments, ProcessArguments,
-    ReadArguments, WebfetchArguments, WriteArguments,
+    ReadArguments, WebfetchArguments, WriteArguments, DocumentInspectArguments, DocumentReadArguments,
+    DocumentSearchArguments, SpreadsheetReadArguments,
 };
 use crate::context::ExecutionContext;
 use crate::error::fatal;
-use crate::{checkpoint, edit, process, read, search, webfetch, write};
+use crate::{checkpoint, edit, process, read, search, webfetch, write, documents};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use suncode_common::BusinessError;
@@ -22,6 +23,7 @@ pub(crate) fn dispatch(
         cancellation,
         output_callback,
         network,
+        documents,
     } = context;
     match method {
         "tool/read" => {
@@ -38,6 +40,18 @@ pub(crate) fn dispatch(
         }),
         "tool/grep" => run_typed(params, |args: GrepArguments| {
             search::find(project_root, &args)
+        }),
+        "tool/document_inspect" => run_typed(params, |args: DocumentInspectArguments| {
+            documents::inspect(project_root, documents, &args, cancellation)
+        }),
+        "tool/document_read" => run_typed(params, |args: DocumentReadArguments| {
+            documents::read(project_root, documents, &args, cancellation)
+        }),
+        "tool/document_search" => run_typed(params, |args: DocumentSearchArguments| {
+            documents::search(project_root, documents, &args, cancellation)
+        }),
+        "tool/spreadsheet_read" => run_typed(params, |args: SpreadsheetReadArguments| {
+            documents::spreadsheet(project_root, documents, &args, cancellation)
         }),
         "tool/webfetch" => run_typed(params, |args: WebfetchArguments| {
             webfetch::execute(checkpoint_root, args, cancellation, &network)

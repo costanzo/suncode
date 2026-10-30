@@ -53,6 +53,9 @@ pub fn workflow(allowed_tools: &[String]) -> String {
     if let Some(rule) = file_path_rule(allowed_tools) {
         rules.push(rule);
     }
+    if let Some(rule) = document_rule(allowed_tools) {
+        rules.push(rule);
+    }
     // Mutation, todos, verification, and questions are each tied to one tool.
     if offers(allowed_tools, "write") || offers(allowed_tools, "edit") {
         rules.push(KEEP_CHANGES_FOCUSED.to_string());
@@ -153,6 +156,24 @@ fn file_path_rule(allowed_tools: &[String]) -> Option<String> {
         );
     }
     Some(rule)
+}
+
+fn document_rule(allowed_tools: &[String]) -> Option<String> {
+    let tools = [
+        "document_inspect",
+        "document_read",
+        "document_search",
+        "spreadsheet_read",
+    ]
+        .into_iter()
+        .filter(|name| offers(allowed_tools, name))
+        .collect::<Vec<_>>();
+    (!tools.is_empty()).then(|| {
+        format!(
+            "- For PDF, Word (.docx), PowerPoint (.pptx), and Excel (.xlsx) files, use {} instead of read.",
+            join_and(&tools)
+        )
+    })
 }
 
 /// The `delegate_agent` tool description: what delegation does and, for each

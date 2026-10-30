@@ -47,11 +47,7 @@ pub fn responses_input_items(messages: &[Message]) -> Vec<Value> {
             if !message.text_content().is_empty() {
                 items.push(json!({
                     "role": message.role,
-                    "content": if message.role == "assistant" {
-                        json!([{"type":"output_text","text":message.text_content()}])
-                    } else {
-                        json!(message.text_content())
-                    },
+                    "content": message.text_content(),
                 }));
             }
             for call in &message.tool_calls {
@@ -65,12 +61,10 @@ pub fn responses_input_items(messages: &[Message]) -> Vec<Value> {
             continue;
         }
 
+        // Strict Responses gateways reject `output_text` parts in input messages
+        // that lack an output-message `id` and `status`; string content is universal.
         let content = if message.content.iter().all(|part| part.kind == "text") {
-            if message.role == "assistant" {
-                json!([{"type":"output_text","text":message.text_content()}])
-            } else {
-                json!(message.text_content())
-            }
+            json!(message.text_content())
         } else {
             Value::Array(
                 message

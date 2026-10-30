@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use suncode_common::{BusinessError, HttpProxyConfiguration};
+use suncode_documents::Documents;
 
 pub type CertificatePath = Arc<RwLock<Option<PathBuf>>>;
 pub type ProxyConfiguration = Arc<RwLock<HttpProxyConfiguration>>;
@@ -21,6 +22,8 @@ pub struct Operations {
     use_system_certificates: Arc<AtomicBool>,
     certificate_path: CertificatePath,
     proxy_configuration: ProxyConfiguration,
+    /// Parsed documents shared by the document tools.
+    documents: Documents,
 }
 
 impl Operations {
@@ -42,6 +45,7 @@ impl Operations {
             use_system_certificates: Arc::new(AtomicBool::new(true)),
             certificate_path: Arc::new(RwLock::new(None)),
             proxy_configuration: Arc::new(RwLock::new(HttpProxyConfiguration::default())),
+            documents: Documents::new(),
         })
     }
 
@@ -121,6 +125,7 @@ impl Operations {
             cancellation,
             output_callback,
             network: self.network_settings(),
+            documents: &self.documents,
         };
         dispatch::dispatch(method, &params, context)
     }

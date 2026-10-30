@@ -116,7 +116,11 @@ public sealed partial class ProjectWorkspace : UserControl
     }
 
     internal void ToggleReviewPanel() => Layout.ToggleReview();
-    internal void ToggleBrowserPanel() => Layout.PreviewVisible = !Layout.PreviewVisible;
+
+    internal void ToggleBrowserPanel()
+    {
+        if (CefPreviewRuntime.Bundled) Layout.PreviewVisible = !Layout.PreviewVisible; 
+    }
 
     internal async Task ToggleChildSessionsPanelAsync()
     {
@@ -260,6 +264,11 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
     {
+        if (!CefPreviewRuntime.Bundled)
+        {
+            initialized.TrySetResult(false);
+            return;
+        }
         Layout.PreviewVisible = true;
         BrowserPreview.EnsureBrowserUsePage(initialized);
     }

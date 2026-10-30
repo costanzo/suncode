@@ -54,12 +54,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             ConnectionState = "connected";
             StatusText = "Connected to local agent";
             await LoadModelsAsync();
-            await LoadAgentsAsync();
-            await LoadSettingsAsync();
-            await Remote.StartPollingAsync();
-            await LoadCredentialsAsync();
-            await LoadProjectsAsync();
-            await RefreshDiagnosticsAsync();
+            
+            await Task.WhenAll(
+                LoadAgentsAsync(),
+                LoadSettingsAsync(),
+                Remote.StartPollingAsync(),
+                LoadCredentialsAsync(),
+                LoadProjectsAsync(),
+                RefreshDiagnosticsAsync());
         }
         catch (Exception exception)
         {

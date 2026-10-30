@@ -5,7 +5,8 @@
         x:DataType="vm:DesktopViewModel"
         Title="SunCode"
         Width="1440" Height="900"
-        MinWidth="380" MinHeight="480"
+        MinWidth="620" MinHeight="620"
+        ExtendClientAreaToDecorationsHint="True"
         Background="{DynamicResource CanvasBrush}"
         WindowDecorations="BorderOnly" />
 

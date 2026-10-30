@@ -120,6 +120,7 @@
   <x:String x:Key="LocThinking">思考中</x:String>
   <x:String x:Key="LocCompactingContext">正在压缩上下文</x:String>
   <x:String x:Key="LocLoadingConversation">正在加载对话…</x:String>
+  <x:String x:Key="LocOpeningProject">正在打开项目…</x:String>
   <x:String x:Key="LocConversationLoadFailed">无法加载对话</x:String>
   <x:String x:Key="LocRetry">重试</x:String>
   <x:String x:Key="LocNoSessionSelected">未选择会话</x:String>

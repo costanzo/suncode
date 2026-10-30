@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/types", "crates/common", "crates/events", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/secrets", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
+members = ["crates/types", "crates/common", "crates/events", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/secrets", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core", "crates/documents"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,7 @@ suncode-common = { path = "crates/common" }
 suncode-computer = { path = "crates/computer" }
 suncode-config = { path = "crates/config" }
 suncode-data = { path = "crates/data" }
+suncode-documents = { path = "crates/documents" }
 suncode-events = { path = "crates/events" }
 suncode-database = { path = "crates/database" }
 suncode-http = { path = "crates/http" }
@@ -31,11 +32,13 @@ aes-gcm = "0.10"
 axum = "0.8"
 base64 = "0.22"
 bytes = "1"
+calamine = { version = "0.37.0", default-features = false }
 chromiumoxide = "0.9.1"
 chrono = "0.4"
 core-foundation = "=0.10.1"
 dbus = "=0.9.12"
 diesel = { version = "2.2", features = ["sqlite"] }
+docx-rs = { version = "0.4.22", default-features = false }
 encoding_rs = "0.8"
 enigo = { git = "https://github.com/costanzo/enigo.git", rev = "707ab1300c004336a58cbfa4c64ad14a38894b65" }
 fs2 = "0.4"
@@ -56,6 +59,9 @@ jsonschema = { version = "0.55", default-features = false }
 libc = "0.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 keyring = { version = "3.6.3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+lopdf = { version = "0.42.0", default-features = false }
+pdf-extract = "0.12.1"
+quick-xml = "0.42.0"
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 rmcp = { version = "=3.2.0", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }
 serde = { version = "1", features = ["derive"] }
@@ -65,8 +71,10 @@ sha2 = "0.10"
 tempfile = "3"
 tokio = "1"
 tokio-util = "0.7"
+unicode-normalization = "0.1.26"
 url = "2"
 uuid = { version = "1", features = ["v4", "v7"] }
 zeroize = "1"
+zip = { version = "9", default-features = false }
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }

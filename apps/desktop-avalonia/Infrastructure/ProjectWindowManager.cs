@@ -60,34 +60,60 @@ internal sealed class ProjectWindowManager
         if (!_registry.TryBeginOpening(project.ProjectId)) return;
 
         var viewModel = new DesktopViewModel(_uiStateStore, _appSettings);
+        WorkspaceWindow? window = null;
+        var closedWhileOpening = false;
+        void OnClosedWhileOpening(object? sender, EventArgs e) => closedWhileOpening = true;
         try
         {
             DiagnosticLog.Info("project.window", $"open begin project={project.ProjectId}");
-            await viewModel.InitializeAsync();
-            await viewModel.SelectProjectAsync(project);
-            if (!viewModel.IsProjectOpen)
-            {
-                viewModel.Dispose();
-                return;
-            }
-
-            var window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
-            Track(project.ProjectId, window, viewModel);
-            _hubWindow.Hide();
+            
+            viewModel.BeginProjectOpening(project);
+            window = new WorkspaceWindow { DataContext = viewModel, OriginWindow = ResolveOriginWindow() };
+            window.Closed += OnClosedWhileOpening;
+            window.PrepareForShow();
             window.Show();
             window.Activate();
-            DiagnosticLog.Info("project.window", $"open end project={project.ProjectId}");
+            _hubWindow.Hide();
+            DiagnosticLog.Info("project.window", $"open window shown project={project.ProjectId}");
+            
+            await viewModel.InitializeAsync();
+            await viewModel.SelectProjectAsync(project);
+            viewModel.EndProjectOpening();
+            window.Closed -= OnClosedWhileOpening;
+            if (closedWhileOpening || !viewModel.IsProjectOpen)
+            {
+                AbandongOpening(window, closedWhileOpening, viewModel);
+                return;
+            }
+            
+            Track(project.ProjectId, window, viewModel);
+            DiagnosticLog.Info("project.window", $"open complete project={project.ProjectId}");
+            await window.CompleteProjectOpenAsync();
         }
         catch (Exception exception)
         {
             DiagnosticLog.Error("project.window", exception, $"project={project.ProjectId}");
-            viewModel.Dispose();
+            if (window is null) viewModel.Dispose();
+            else if (!_registry.TryGet(project.ProjectId, out _))
+            {
+                window.Closed -= OnClosedWhileOpening;
+                AbandongOpening(window, closedWhileOpening, viewModel);
+            }
             throw;
         }
         finally
         {
             _registry.EndOpening(project.ProjectId);
         }
+    }
+    
+    private void AbandongOpening(WorkspaceWindow window, bool alreadyClosed, DesktopViewModel viewModel)
+    {
+        if (!alreadyClosed) window.Close();
+        viewModel.Dispose();
+        if (_registry.Count > 0) return;
+        _hubWindow.Show();
+        _hubWindow.Activate();
     }
 
     public void MergeAllProjectWindows()
@@ -108,11 +134,12 @@ internal sealed class ProjectWindowManager
         var first = sources[0].Value;
         if (first.DataContext is not DesktopViewModel firstViewModel) return;
 
-        var merged = new MergedWorkspaceWindow(firstViewModel);
+        var merged = new MergedWorkspaceWindow(firstViewModel) { OriginWindow = first };
         merged.ProjectTornOff += TearOffProject;
         merged.ProjectCloseRequested += CloseMergedProject;
         merged.HostClosed += MergedHostClosed;
         _mergedWindow = merged;
+        merged.PrepareForShow();
         foreach (var (projectId, source) in sources)
         {
             merged.AddProject(projectId, source);
@@ -221,6 +248,7 @@ internal sealed class ProjectWindowManager
         var source = merged.RemoveProject(projectId);
         if (source is null) return;
         var window = ReopenReleaseProject(projectId, source, merged);
+        window.PrepareForShow();
         window.Position = new PixelPoint(pointer.X - 240, pointer.Y - 18);
         window.RestoreAsProjectWindow();
         

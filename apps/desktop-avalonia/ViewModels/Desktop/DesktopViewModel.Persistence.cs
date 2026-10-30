@@ -71,6 +71,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         RefreshRecentSessionReferences();
         PruneSessionPresentationCache();
         OnPropertyChanged(nameof(HasSessions));
+        OnPropertyChanged(nameof(ShowNoSessions));
         OnPropertyChanged(nameof(HasArchivedSessions));
         NotifyRunningSessionsChanged();
         var savedState = RestoreRecentContentState();

@@ -11,6 +11,7 @@ mod skill;
 mod todowrite;
 mod webfetch;
 mod write;
+mod documents;
 
 pub use suncode_common::tool::ToolDefinition;
 
@@ -19,6 +20,10 @@ pub fn all() -> Vec<ToolDefinition> {
         read::definition(),
         glob::definition(),
         grep::definition(),
+        documents::inspect(),
+        documents::read(),
+        documents::search(),
+        documents::spreadsheet(),
         lsp::diagnostics(),
         lsp::definition(),
         lsp::references(),

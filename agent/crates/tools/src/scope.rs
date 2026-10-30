@@ -33,6 +33,15 @@ pub(crate) fn open_project(path: &Path) -> Result<(PathBuf, Value), BusinessErro
 }
 
 pub(crate) fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>), BusinessError> {
+    let canonical = existing_file_path(root, path)?;
+    let bytes =
+        fs::read(&canonical).map_err(|_| retryable("read_failed", "file could not be read"))?;
+    Ok((canonical, bytes))
+}
+
+/// The canonical path of regular file `path` inside project root `root`; symbolic links
+/// are rejected.
+pub(crate) fn existing_file_path(root: &Path, path: &str) -> Result<PathBuf, BusinessError> {
     let relative = safe_relative_path(path)?;
     let candidate = root.join(relative);
     let metadata = fs::symlink_metadata(&candidate)
@@ -49,9 +58,7 @@ pub(crate) fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>
     if !metadata.is_file() {
         return Err(fatal("not_a_file", "path is not a regular file"));
     }
-    let bytes =
-        fs::read(&canonical).map_err(|_| retryable("read_failed", "file could not be read"))?;
-    Ok((canonical, bytes))
+    Ok(canonical)
 }
 
 pub(crate) fn require_project(project_root: Option<&Path>) -> Result<&Path, BusinessError> {

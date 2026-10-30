@@ -72,7 +72,9 @@ pub(super) fn dependency_path(path: &str) -> Option<(&str, &str)> {
 }
 
 /// Resolves `dependency:` aliases against the project's registered
-/// dependencies. Other paths stay project-relative.
+/// dependencies, and maps absolute paths inside the project or a registered
+/// dependency to their scoped relative form. Other paths stay
+/// project-relative; other absolute paths are denied.
 pub(super) struct StorePathScopes<'a> {
     pub(super) store: &'a Store,
     pub(super) project_id: &'a str,
@@ -80,9 +82,78 @@ pub(super) struct StorePathScopes<'a> {
     pub(super) project_root: &'a std::path::Path,
 }
 
+impl StorePathScopes<'_> {
+    fn resolve_absolute(&self, path: &std::path::Path) -> Result<ScopedPath, BusinessError> {
+        let denied = || {
+            BusinessError::new(
+                "scope_denied",
+                "absolute paths must be inside the project or a registered dependency",
+            )
+        };
+        if path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+        {
+            return Err(denied());
+        }
+        // Compare the path as given and its canonical form, so aliases such as
+        // `/tmp` for `/private/tmp` still match.
+        let candidates = std::iter::once(path.to_path_buf())
+            .chain(canonical_prefix(path))
+            .collect::<Vec<_>>();
+        let relative = |root: &std::path::Path| {
+            candidates.iter().find_map(|candidate| {
+                candidate.strip_prefix(root).ok().map(|relative| {
+                    let relative = relative.to_string_lossy().replace('\\', "/");
+                    if relative.is_empty() {
+                        ".".to_string()
+                    } else {
+                        relative
+                    }
+                })
+            })
+        };
+        if let Some(relative) = relative(self.project_root) {
+            return Ok(ScopedPath::Project { relative });
+        }
+        for dependency in self.store.project_dependencies(self.project_id)? {
+            if let Some(relative) = relative(std::path::Path::new(&dependency.canonical_root)) {
+                return Ok(ScopedPath::Dependency {
+                    dependency_id: dependency.dependency_id,
+                    root: dependency.canonical_root.into(),
+                    relative,
+                });
+            }
+        }
+        Err(denied())
+    }
+}
+
+/// `path` with its longest existing ancestor canonicalized, so paths to files
+/// that do not exist yet still resolve.
+fn canonical_prefix(path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut existing = path;
+    let mut missing = Vec::new();
+    loop {
+        if let Ok(canonical) = existing.canonicalize() {
+            return Some(
+                missing
+                    .iter()
+                    .rev()
+                    .fold(canonical, |path, part| path.join(part)),
+            );
+        }
+        missing.push(existing.file_name()?);
+        existing = existing.parent()?;
+    }
+}
+
 impl PathScopes for StorePathScopes<'_> {
     fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError> {
         if !path.starts_with(DEPENDENCY_PREFIX) {
+            if std::path::Path::new(path).is_absolute() {
+                return self.resolve_absolute(std::path::Path::new(path));
+            }
             return Ok(ScopedPath::Project {
                 relative: path.to_string(),
             });

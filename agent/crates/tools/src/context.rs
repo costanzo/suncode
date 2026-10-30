@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use suncode_common::HttpProxyConfiguration;
+use suncode_documents::Documents;
 
 /// Callback for bounded, best-effort streaming process output chunks.
 pub type ProcessOutputCallback = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
@@ -34,4 +35,5 @@ pub(crate) struct ExecutionContext<'a> {
     pub(crate) cancellation: Option<&'a AtomicBool>,
     pub(crate) output_callback: Option<ProcessOutputCallback>,
     pub(crate) network: NetworkSettings,
+    pub(crate) documents: &'a Documents,
 }

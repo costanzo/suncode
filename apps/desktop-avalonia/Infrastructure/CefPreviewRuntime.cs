@@ -8,6 +8,12 @@ namespace SunCode.Desktop.Infrastructure;
 
 internal static class CefPreviewRuntime
 {
+    
+#if SUNCODE_CEF
+    internal static readonly bool Bundled = true;
+#else
+    internal static readonly bool Bundled = false;
+#endif
     // Rust connects to this CEF-owned CDP endpoint; CEF remains the sole browser process owner.
     internal const int RemoteDebuggingPort = 9222;
     private static bool _initialized;
@@ -21,6 +27,12 @@ internal static class CefPreviewRuntime
     {
         if (_initialized) return;
         _initialized = true;
+        if (!Bundled)
+        {
+            Error = "The embedded Chromium runtime is unavailable.";
+            DiagnosticLog.Error("browser.preview", new InvalidOperationException(Error), "cef_not_bundled=true");
+            return;
+        }
         try
         {
             Directory.CreateDirectory(CacheRoot);

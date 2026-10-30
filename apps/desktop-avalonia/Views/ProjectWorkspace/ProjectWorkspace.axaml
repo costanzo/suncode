@@ -245,7 +245,7 @@
           </Grid>
 
           <StackPanel Grid.Column="2" Margin="4,7" IsVisible="{Binding Layout.WorkspaceGuttersVisible}">
-            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="{Binding BrowserGutterTip}" AutomationProperties.Name="{Binding BrowserGutterTip}" Margin="0,0,0,6">
+            <Button Classes="icon gutter" Classes.active="{Binding Layout.PreviewVisible}" Click="TogglePreview" ToolTip.Tip="{Binding BrowserGutterTip}" AutomationProperties.Name="{Binding BrowserGutterTip}" Margin="0,0,0,6" IsVisible="{Binding IsBrowserAvailable}">
               <Grid>
                 <svg:Svg Width="15" Height="15" Path="/Assets/icons/computer.svg" />
                 <Grid Classes="gutter-live" IsVisible="{Binding IsBrowserConnected}">

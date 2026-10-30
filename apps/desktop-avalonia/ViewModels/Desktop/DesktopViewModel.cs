@@ -20,6 +20,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private IDisposable? _subscription;
     private BulkObservableCollection<MessageItem> _messages = [];
     private ProjectItem? _selectedProject;
+    private ProjectItem? _openingProject;
+    private bool _isProjectOpeningVisible;
     private SessionItem? _selectedSession;
     private ModelItem? _selectedModel;
     private IReadOnlyList<ComposerAttachment> _submittedAttachments = [];
@@ -168,6 +170,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(CanChooseModel));
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
             OnPropertyChanged(nameof(HasSelectedSession));
+            OnPropertyChanged(nameof(ShowNoSessionSelected));
             OnPropertyChanged(nameof(ShowChatInput));
             OnPropertyChanged(nameof(ComposerPlaceholder));
             OnPropertyChanged(nameof(IsModelUnavailable));
@@ -331,7 +334,16 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(CanChooseModel));
         }
     }
-    public bool IsSessionLoadingVisible { get => _isSessionLoadingVisible; private set => SetProperty(ref _isSessionLoadingVisible, value); }
+    public bool IsSessionLoadingVisible
+    {
+        get => _isSessionLoadingVisible;
+        private set { if (SetProperty(ref _isSessionLoadingVisible, value)) OnPropertyChanged(nameof(IsWorkspaceLoadingVisible)); }
+    }
+    
+    public bool IsProjectOpening => _openingProject is not null;
+    public bool IsWorkspaceLoadingVisible => IsSessionLoadingVisible || _isProjectOpeningVisible;
+    public bool ShowNoSessionSelected => !HasSelectedSession && !IsProjectOpening;
+    public bool ShowNoSessions => !HasSessions && !IsProjectOpening;
 
     public bool IsProjectOpen => SelectedProject is not null;
     public bool CanOpenProjects => ConnectionState == "connected";
@@ -431,7 +443,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         OnPropertyChanged(nameof(IsReviewCheckpointVisible));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
     }
-    public string ProjectTitle => SelectedProject?.DisplayName ?? "SunCode";
+    public string ProjectTitle => (SelectedProject ?? _openingProject)?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";
     public string SelectedModelName => SelectedModel?.Id ?? string.Empty;
     public string LatestActivityText => Activities.LastOrDefault()?.Text ?? "No tool activity yet";

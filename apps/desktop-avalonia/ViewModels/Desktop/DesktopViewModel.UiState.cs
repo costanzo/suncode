@@ -56,7 +56,7 @@ public sealed partial class DesktopViewModel
         AttachSessionCollectionListeners();
     }
 
-    internal UiProjectState SavedUiProjectState => SelectedProject is { } project
+    internal UiProjectState SavedUiProjectState => (SelectedProject ?? _openingProject) is { } project
         ? _uiStateStore?.Project(project.ProjectId) ?? new UiProjectState()
         : new UiProjectState();
 

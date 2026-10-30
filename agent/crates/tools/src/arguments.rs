@@ -96,3 +96,39 @@ pub(crate) struct WebfetchArguments {
 pub(crate) struct CheckpointRestoreArguments {
     pub(crate) checkpoint_id: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct DocumentInspectArguments {
+    pub(crate) path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct DocumentReadArguments {
+    pub(crate) path: String,
+    pub(crate) unit: String,
+    pub(crate) start: u32,
+    pub(crate) end: u32,
+    #[serde(default)]
+    pub(crate) offset: Option<usize>,
+    #[serde(default)]
+    pub(crate) max_chars: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct DocumentSearchArguments {
+    pub(crate) path: String,
+    pub(crate) query: String,
+    #[serde(default)]
+    pub(crate) offset: Option<usize>,
+    #[serde(default)]
+    pub(crate) max_results: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct SpreadsheetReadArguments {
+    pub(crate) path: String,
+    pub(crate) sheet: String,
+    pub(crate) range: String,
+    #[serde(default)]
+    pub(crate) include_formulas: Option<bool>,
+}

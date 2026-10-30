@@ -16,7 +16,7 @@ internal static class Program
         // CEF relaunches this executable with --type=... for its renderer, GPU,
         // and utility processes on every platform. Divert them before any app
         // startup work (logging, single-instance IPC, Avalonia).
-        CefSubProcess.Run(args, true);
+        if (CefPreviewRuntime.Bundled) CefSubProcess.Run(args, true);
         AgentSdk.ConfigureDiagnosticConsoleOutput(false);
         DiagnosticLog.ConfigureConsoleOutput(false);
         DiagnosticLog.Initialize();

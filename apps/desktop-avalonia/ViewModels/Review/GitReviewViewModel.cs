@@ -9,11 +9,13 @@ namespace SunCode.Desktop.ViewModels;
 // Drawer visibility and list sizing stay with the window layout.
 public sealed class GitReviewViewModel : ObservableObject, IDisposable
 {
+    private const long ActivationRefreshIntervalMs = 2_000;
     private readonly IViewModelHost _host;
     private readonly IGitService _service;
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _refresh;
     private CancellationTokenSource? _diff;
+    private long _refreshStartedAt = long.MinValue / 2;
     private bool _availabilityChecked;
     private bool _available;
     private bool _disposed;
@@ -189,6 +191,7 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
             Clear();
             return;
         }
+        _refreshStartedAt = Environment.TickCount64;
         _refresh?.Cancel();
         _refresh?.Dispose();
         var refresh = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
@@ -235,6 +238,12 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
         }
         catch (Exception) when (cancellation.IsCancellationRequested || _host.SelectedProject != project) { }
     }
+    
+    
+    internal Task RefreshOnActivationAsync() =>
+        State == "loading" || Environment.TickCount64 - _refreshStartedAt < ActivationRefreshIntervalMs
+            ? Task.CompletedTask
+            : RefreshAsync();
 
     public async Task LoadDiffAsync(GitFileItem file, string scope = "all")
     {
