@@ -1,17 +1,17 @@
 [package]
 name = "suncode-documents"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-calamine = { version = "0.37.0", default-features = false}
-docx-rs = { version = "0.4.22" ,default-features = false}
-pdf-extract = "0.12.1"
-quick-xml = "0.42.0"
-serde_json = "1.0.151"
-sha2 = "0.10"
-unicode-normalization = "0.1.26"
-zip = { version = "9", default-features = false, features = ["deflate"] }
+calamine.workspace = true
+docx-rs.workspace = true
+pdf-extract.workspace = true
+quick-xml.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+unicode-normalization.workspace = true
+zip = { workspace = true, features = ["deflate"] }
 
 [dev-dependencies]
-lopdf = { version = "0.42.0", default-features = false}
+lopdf.workspace = true
