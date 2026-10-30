@@ -979,6 +979,23 @@ impl TurnLoop<'_> {
         let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
             return Ok(());
         };
+        let scopes = providers::StorePathScopes {
+            store: &self.services.store,
+            project_id: &self.context.project_id,
+            project_root: Path::new(&self.context.project_root),
+        };
+        if Path::new(path).is_absolute() {
+            // Only an absolute path into a dependency is checked here; tools
+            // judge other absolute paths themselves.
+            let into_dependency = matches!(
+                suncode_common::tool::PathScopes::resolve(&scopes, path),
+                Ok(suncode_common::tool::ScopedPath::Dependency { .. })
+            );
+            if into_dependency && !self.allows_dependency_paths(call) {
+                return Err(dependency_scope_denied());
+            }
+            return Ok(());
+        }
         if !path.starts_with("dependency:") {
             return Ok(());
         }
@@ -988,24 +1005,25 @@ impl TurnLoop<'_> {
                 "dependency path must include a dependency ID",
             ));
         }
-        let allowed = self
-            .services
-            .tool_providers
-            .find(&call.name)
-            .is_some_and(|provider| provider.allows_dependency_paths(&call.name));
-        if !allowed {
-            return Err(BusinessError::new(
-                "scope_denied",
-                "dependencies are read-only and support only read, glob, and grep",
-            ));
+        if !self.allows_dependency_paths(call) {
+            return Err(dependency_scope_denied());
         }
-        let scopes = providers::StorePathScopes {
-            store: &self.services.store,
-            project_id: &self.context.project_id,
-            project_root: Path::new(&self.context.project_root),
-        };
         suncode_common::tool::PathScopes::resolve(&scopes, path).map(|_| ())
     }
+
+    fn allows_dependency_paths(&self, call: &ToolCall) -> bool {
+        self.services
+            .tool_providers
+            .find(&call.name)
+            .is_some_and(|provider| provider.allows_dependency_paths(&call.name))
+    }
+}
+
+fn dependency_scope_denied() -> BusinessError {
+    BusinessError::new(
+        "scope_denied",
+        "dependencies are read-only and support only read-only file tools",
+    )
 }
 
 pub(super) fn is_recoverable_tool_error(code: &str) -> bool {

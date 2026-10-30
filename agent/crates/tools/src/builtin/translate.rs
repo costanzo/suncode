@@ -266,7 +266,10 @@ pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Opti
         }
     }
     if let Some(dependency_id) = dependency_id {
-        if name == "read" {
+        if matches!(
+            name,
+            "read" | "document_inspect" | "document_read" | "document_search" | "spreadsheet_read"
+        ) {
             prefix_result_path(&mut value, "path", dependency_id);
         }
         if name == "glob" {

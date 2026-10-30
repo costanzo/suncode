@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/types", "crates/common", "crates/events", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/secrets", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core"]
+members = ["crates/types", "crates/common", "crates/events", "crates/agents", "crates/http", "crates/config", "crates/tools", "crates/skills", "crates/database", "crates/secrets", "crates/data", "crates/llm", "crates/mcp", "crates/lsp", "crates/browser", "crates/computer", "crates/remote", "crates/core", "crates/documents"]
 
 [workspace.package]
 version = "0.1.0"

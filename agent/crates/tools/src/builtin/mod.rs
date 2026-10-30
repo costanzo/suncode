@@ -1,5 +1,6 @@
 //! The built-in tools as a [`ToolProvider`]: `read`, `glob`, `grep`, `write`,
-//! `edit`, `bash`, and `webfetch`, backed by [`Operations`].
+//! `edit`, `bash`, and `webfetch`, and the read-only document tools,
+//! backed by [`Operations`].
 //!
 //! The core's turn-level tools (`question`, `todowrite`, `skill`,
 //! `delegate_agent`) are not here; they act on the turn itself.
@@ -39,12 +40,28 @@ fn method(name: &str) -> Option<&'static str> {
         "read" => Some("tool/read"),
         "glob" => Some("tool/glob"),
         "grep" => Some("tool/grep"),
+        "document_inspect" => Some("tool/document_inspect"),
+        "document_read" => Some("tool/document_read"),
+        "document_search" => Some("tool/document_search"),
+        "spreadsheet_read" => Some("tool/spreadsheet_read"),
         "write" => Some("tool/write"),
         "edit" => Some("tool/edit"),
         "bash" => Some("tool/bash"),
         "webfetch" => Some("tool/webfetch"),
         _ => None,
     }
+}
+
+fn is_document_tool(name: &str) -> bool {
+    matches!(
+        name,
+        "document_inspect" | "document_read" | "document_search" | "spreadsheet_read"
+    )
+}
+
+/// Dependencies are read-only, so only read-only file tools may target them.
+fn reads_dependencies(name: &str) -> bool {
+    matches!(name, "read" | "glob" | "grep") || is_document_tool(name)
 }
 
 impl ToolProvider for BuiltinTools {
@@ -75,6 +92,7 @@ impl ToolProvider for BuiltinTools {
     fn risk(&self, name: &str) -> Option<Risk> {
         match name {
             "read" | "glob" | "grep" => Some(Risk::ReadOnly),
+            name if is_document_tool(name) => Some(Risk::ReadOnly),
             "webfetch" => Some(Risk::NetworkAccess),
             "write" | "edit" => Some(Risk::ProjectWrite),
             "bash" => Some(Risk::ProcessExecution),
@@ -83,7 +101,7 @@ impl ToolProvider for BuiltinTools {
     }
 
     fn allows_dependency_paths(&self, name: &str) -> bool {
-        matches!(name, "read" | "glob" | "grep")
+        reads_dependencies(name)
     }
 
     fn execute<'a>(
@@ -111,12 +129,22 @@ fn prepare(
     let (root, dependency_id) = match arguments.get("path").and_then(Value::as_str) {
         None => (context.project_root.to_path_buf(), None),
         Some(path) => match context.paths.resolve(path)? {
-            ScopedPath::Project { .. } => (context.project_root.to_path_buf(), None),
+            ScopedPath::Project { relative } => {
+                // Authorized absolute paths arrive here already made relative
+                arguments["path"] = json!(relative);
+                (context.project_root.to_path_buf(), None)
+            }
             ScopedPath::Dependency {
                 dependency_id,
                 root,
                 relative,
             } => {
+                if !reads_dependencies(invocation.name) {
+                    return Err(BusinessError::new(
+                        "scope_denied",
+                        "dependencies are read-only",
+                    ));
+                }
                 arguments["path"] = json!(relative);
                 (root, Some(dependency_id))
             }

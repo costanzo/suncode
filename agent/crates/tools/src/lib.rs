@@ -38,3 +38,4 @@ pub use process::BackgroundProcess;
 
 #[cfg(test)]
 mod tests;
+mod documents;

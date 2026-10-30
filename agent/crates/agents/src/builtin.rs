@@ -3,12 +3,26 @@
 use crate::{AgentDefinition, ModelPolicy, ToolScope};
 
 /// Read-only research and review tools.
-pub const READ_TOOLS: &[&str] = &["read", "glob", "grep", "webfetch", "todowrite"];
+pub const READ_TOOLS: &[&str] = &[
+    "read",
+    "glob",
+    "grep",
+    "document_inspect",
+    "document_read",
+    "document_search",
+    "spreadsheet_read",
+    "webfetch",
+    "todowrite",
+];
 /// Read tools plus project changes and processes.
 pub const IMPLEMENTATION_TOOLS: &[&str] = &[
     "read",
     "glob",
     "grep",
+    "document_inspect",
+    "document_read",
+    "document_search",
+    "spreadsheet_read",
     "write",
     "edit",
     "bash",
