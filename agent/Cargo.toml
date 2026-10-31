@@ -38,7 +38,6 @@ chrono = "0.4"
 core-foundation = "=0.10.1"
 dbus = "=0.9.12"
 diesel = { version = "2.2", features = ["sqlite"] }
-docx-rs = { version = "0.4.22", default-features = false }
 encoding_rs = "0.8"
 enigo = { git = "https://github.com/costanzo/enigo.git", rev = "707ab1300c004336a58cbfa4c64ad14a38894b65" }
 fs2 = "0.4"
@@ -60,6 +59,7 @@ libc = "0.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 keyring = { version = "3.6.3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 lopdf = { version = "0.42.0", default-features = false }
+office_oxide = { version = "0.1.16", default-features = false }
 pdf-extract = "0.12.1"
 quick-xml = "0.42.0"
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }

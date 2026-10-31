@@ -1,23 +1,25 @@
-//! Read-only parsing of PDF, DOCX, PPTX, and XLSX files into a normalized
+//! Read-only parsing of PDF, Word, PowerPoint, and spreadsheet files into a normalized
 //! model, with bounded range reading, plain-text search, spreadsheet ranges,
 //! and an in-memory parse cache shared across ccalls.
 //!
 //! - `detect`: format detection from file content.
-//! - `pdf`, `docx`, `pptx`, `xlsx`: one parser per format.
+//! - `pdf`, `office`, `xlsx`: parser adapters for the supported formats.
 //! - `ooxml`: bounded package part and relationship reading for PPTX.
 //! - `query`: inspect, read, and search over the normzalized model.
 //! - `text`: text cleanup and search folding.
 //!
-mod text;
-mod model;
 mod cache;
 mod detect;
+mod model;
+mod office;
 mod ooxml;
 mod pdf;
-mod xlsx;
-mod docx;
-mod pptx;
 mod query;
+mod text;
+mod xlsx;
+
+#[cfg(test)]
+mod tests;
 
 pub use model::Format;
 
@@ -29,13 +31,10 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-
-
-
 /// Files larger than this are rejected before parsing
 pub const MAX_DOCUMENT_BYTES: u64 = 64 * 1024 * 1024;
 /// Part of every fingerprint; bump it when parser output changes
-const PARSER_VERSION: u64 = 1;
+const PARSER_VERSION: u64 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocumentError {
@@ -88,7 +87,6 @@ pub struct SpreadsheetRequest {
     pub include_formulas: bool,
 }
 
-
 #[derive(Default)]
 pub struct Documents {
     cache: cache::Cache,
@@ -127,9 +125,10 @@ impl Documents {
         let loaded = self.load(path, cancellation)?;
         match loaded.parsed.as_ref() {
             Parsed::Document(document) => query::read(document, &loaded.fingerprint, request),
-            Parsed::Workbook(workbook) => Err(DocumentError::invalid(
-                "document_read does not support xlsx files; use spreadsheet_read",
-            ))
+            Parsed::Workbook(workbook) => Err(DocumentError::invalid(format!(
+                "document_read does not support {} files; use spreadsheet_read",
+                workbook.format.name()
+            ))),
         }
     }
 
@@ -155,7 +154,7 @@ impl Documents {
                 xlsx::read_range(workbook, &loaded.bytes, &loaded.fingerprint, request)
             }
             Parsed::Document(document) => Err(DocumentError::invalid(format!(
-                "spreadsheet_read supports only xlsx files; this is a {} file",
+                "spreadsheet_read supports only spreadsheet files; this is a {} file",
                 document.format.name()
             ))),
         }
@@ -210,9 +209,10 @@ impl Documents {
 fn parse(format: Format, bytes: &[u8]) -> Result<Parsed, DocumentError> {
     Ok(match format {
         Format::Pdf => Parsed::Document(pdf::parse(bytes)?),
-        Format::Docx => Parsed::Document(docx::parse(bytes)?),
-        Format::Pptx => Parsed::Document(pptx::parse(bytes)?),
-        Format::Xlsx => Parsed::Workbook(xlsx::parse(bytes)?),
+        Format::Doc | Format::Docx | Format::Ppt | Format::Pptx => {
+            Parsed::Document(office::parse(bytes, format)?)
+        }
+        Format::Xls | Format::Xlsx | Format::Ods => Parsed::Workbook(xlsx::parse(bytes, format)?),
     })
 }
 
@@ -230,7 +230,7 @@ fn check_cancelled(cancellation: Option<&AtomicBool>) -> Result<(), DocumentErro
     if cancellation.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
         return Err(DocumentError::new(
             "cancelled",
-            "document parsing was cancelled"
+            "document parsing was cancelled",
         ));
     }
     Ok(())

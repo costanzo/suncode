@@ -5,7 +5,7 @@ const PATH: &str = "File path relative to the project, a dependency:<dependencyI
 pub fn inspect() -> (&'static str, &'static str, Value) {
     (
         "document_inspect",
-        "Summarize a PDF, Word (.docx), PowerPoint (.pptx), or Excel (.xlsx) file before reading it: format, fingerprint, warnings, and available locators (page count and text layer, slide count and hidden slides, block counts, or sheets with used ranges). Use document_read, document_search, or spreadsheet_read next.",
+        "Summarize a PDF, Word (.doc/.docx), PowerPoint (.ppt/.pptx), Excel (.xls/.xlsx), or OpenDocument Spreadsheet (.ods) file before reading it: format, fingerprint, warnings, and available locators (page count and text layer, slide count and hidden slides, block counts, or sheets with used ranges). Use document_read, document_search, or spreadsheet_read next.",
         json!({"type": "object", "required": ["path"], "properties": {"path": {"type": "string", "description": PATH}}, "additionalProperties": false}),
     )
 }
@@ -57,7 +57,7 @@ pub fn search() -> (&'static str, &'static str, Value) {
 pub fn spreadsheet() -> (&'static str, &'static str, Value) {
     (
         "spreadsheet_read",
-        "Read cells from one sheet of an Excel (.xlsx) file. range is a cell (A1) or a rectangle (A1:F50) of at most 3000 cells, whole rows or columns are not accepted. Returns non-empty cells with their cached values typed as string, number, boolean, datetime (ISO 8601 plus serial), duration, or error. Formulas are not recalculated; set include_formulas to also return formula text.",
+        "Read cells from one sheet of an Excel (.xls/.xlsx) or OpenDocument Spreadsheet (.ods) file. range is a cell (A1) or a rectangle (A1:F50) of at most 3000 cells, whole rows or columns are not accepted. Returns non-empty cells with their cached values typed as string, number, boolean, datetime (ISO 8601 plus serial), duration, or error. Formulas are not recalculated; set include_formulas to also return formula text.",
         json!(
             {
                 "type": "object",

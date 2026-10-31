@@ -28,7 +28,7 @@ pub(crate) fn inspect(parsed: &Parsed, fingerprint: &str, bytes: usize) -> Value
                 .collect(),
             document_summary(document),
         ),
-        Parsed::Workbook(workbook) => (Format::Xlsx, Vec::new(), workbook_summary(workbook)),
+        Parsed::Workbook(workbook) => (workbook.format, Vec::new(), workbook_summary(workbook)),
     };
     json!({
         "format": format.name(),
@@ -44,7 +44,7 @@ fn document_summary(document: &ParsedDocument) -> Value {
     match document.format {
         Format::Pdf => {
             let empty = numbers(units, |unit| unit.text.is_empty());
-            let text_layer = if empty.is_empty(){
+            let text_layer = if empty.is_empty() {
                 "full"
             } else if empty.len() == units.len() {
                 "none"
@@ -58,7 +58,7 @@ fn document_summary(document: &ParsedDocument) -> Value {
                 "pages_without_text_truncated": empty.len() > MAX_LISTED,
             })
         }
-        Format::Pptx => {
+        Format::Ppt | Format::Pptx => {
             let hidden = numbers(units, |unit| unit.hidden);
             json!({
                 "slide_count": units.len(),
@@ -67,7 +67,7 @@ fn document_summary(document: &ParsedDocument) -> Value {
                 "has_speaker_notes": units.iter().any(|unit| unit.has_notes),
             })
         }
-        Format::Docx | Format::Xlsx => {
+        Format::Doc | Format::Docx => {
             let mut kinds = Map::new();
             for name in ["heading", "paragraph", "list_item", "table"] {
                 let count = units
@@ -78,6 +78,7 @@ fn document_summary(document: &ParsedDocument) -> Value {
             }
             json!({"block_count": units.len(), "blocks_by_kind": kinds})
         }
+        Format::Xls | Format::Xlsx | Format::Ods => unreachable!("workbooks use workbook_summary"),
     }
 }
 
@@ -282,7 +283,7 @@ pub(crate) fn search(
         }
         Parsed::Workbook(workbook) => {
             search_workbook(workbook, &query, &mut matches);
-            Format::Xlsx
+            workbook.format
         }
     };
     let returned = matches.found.len();

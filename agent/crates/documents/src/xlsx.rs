@@ -1,9 +1,13 @@
-//! XLSX workbooks through calamine: cached cell values per worksheet,
+//! XLS, XLSX, and ODS workbooks through calamine: cached cell values per worksheet,
 //! typed cell output, and A1 range reading.
 
+use crate::model::Format;
 use crate::model::{ParsedWorkbook, Sheet};
 use crate::{DocumentError, SpreadsheetRequest};
-use calamine::{open_workbook_from_rs, Data, ExcelDateTime, Reader, SheetType, SheetVisible, Xlsx};
+use calamine::{
+    open_workbook_from_rs, Data, ExcelDateTime, Ods, Reader, SheetType, SheetVisible, Sheets, Xls,
+    Xlsx,
+};
 use serde_json::{json, Value};
 use std::io::Cursor;
 
@@ -14,8 +18,8 @@ const MAX_COLUMNS: u32 = 16_384;
 /// Cells listed by name in one warning.
 const MAX_WARNING_CELLS: usize = 20;
 
-pub(crate) fn parse(bytes: &[u8]) -> Result<ParsedWorkbook, DocumentError> {
-    let mut workbook = open(bytes)?;
+pub(crate) fn parse(bytes: &[u8], format: Format) -> Result<ParsedWorkbook, DocumentError> {
+    let mut workbook = open(bytes, format)?;
     let metadata = workbook.sheets_metadata().to_vec();
     let mut sheets = Vec::new();
     for sheet in metadata {
@@ -35,12 +39,27 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<ParsedWorkbook, DocumentError> {
             cells,
         });
     }
-    Ok(ParsedWorkbook { sheets })
+    Ok(ParsedWorkbook { format, sheets })
 }
 
-fn open(bytes: &[u8]) -> Result<Xlsx<Cursor<&[u8]>>, DocumentError> {
-    open_workbook_from_rs(Cursor::new(bytes))
-        .map_err(|error| { DocumentError::parse(format!("workbook could not be opened: {error}")) })
+fn open<'a>(bytes: &'a [u8], format: Format) -> Result<Sheets<Cursor<&'a [u8]>>, DocumentError> {
+    let result = match format {
+        Format::Xls => open_workbook_from_rs::<Xls<_>, _>(Cursor::new(bytes))
+            .map(Sheets::Xls)
+            .map_err(|error| error.to_string()),
+        Format::Xlsx => open_workbook_from_rs::<Xlsx<_>, _>(Cursor::new(bytes))
+            .map(Sheets::Xlsx)
+            .map_err(|error| error.to_string()),
+        Format::Ods => open_workbook_from_rs::<Ods<_>, _>(Cursor::new(bytes))
+            .map(Sheets::Ods)
+            .map_err(|error| error.to_string()),
+        _ => {
+            return Err(DocumentError::invalid(
+                "spreadsheet parser received a non-spreadsheet format",
+            ))
+        }
+    };
+    result.map_err(|error| DocumentError::parse(format!("workbook could not be opened: {error}")))
 }
 
 pub(crate) fn read_range(
@@ -76,11 +95,11 @@ pub(crate) fn read_range(
     }
     let formulas = if request.include_formulas {
         Some(
-            open(bytes)?
+            open(bytes, workbook.format)?
                 .worksheet_formula(&sheet.name)
                 .map_err(|error| {
                     DocumentError::parse(format!("formulas could not be read: {error}"))
-                })?
+                })?,
         )
     } else {
         None
@@ -133,7 +152,7 @@ pub(crate) fn read_range(
         }));
     }
     Ok(json!({
-        "format": "xlsx",
+        "format": workbook.format.name(),
         "fingerprint": fingerprint,
         "sheet": sheet.name,
         "range": format!(
@@ -237,8 +256,8 @@ pub(crate) fn parse_range(range: &str) -> Result<(CellPosition, CellPosition), D
     let first = parse_cell(first).ok_or_else(invalid)?;
     let last = parse_cell(last).ok_or_else(invalid)?;
     Ok((
-        (first.0.min(last.0),first.1.min(last.1)),
-        (first.0.max(last.0),first.1.max(last.1)),
+        (first.0.min(last.0), first.1.min(last.1)),
+        (first.0.max(last.0), first.1.max(last.1)),
     ))
 }
 
@@ -246,11 +265,7 @@ fn parse_cell(cell: &str) -> Option<(u32, u32)> {
     let cell = cell.trim().replace('$', "");
     let split = cell.find(|c: char| c.is_ascii_digit())?;
     let (letters, digits) = cell.split_at(split);
-    if letters.is_empty()
-        || !letters
-            .chars()
-            .all(|c| c.is_ascii_alphabetic())
-    {
+    if letters.is_empty() || !letters.chars().all(|c| c.is_ascii_alphabetic()) {
         return None;
     }
     let mut column = 0_u32;

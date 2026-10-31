@@ -3,6 +3,7 @@
 use crate::context::{ExecutionContext, NetworkSettings};
 use crate::scope::{open_project, safe_relative_path};
 use crate::Operations;
+use suncode_documents::Documents;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use serde_json::{json, Value};
@@ -22,6 +23,7 @@ fn dispatch(
         cancellation: None,
         output_callback: None,
         network: NetworkSettings::default(),
+        documents: &Documents::new(),
     };
     Some(match crate::dispatch::dispatch(method, &params, context) {
         Ok(value) => json!({"result":value}),

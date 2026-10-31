@@ -62,6 +62,9 @@ mod tests {
             names,
             BTreeSet::from([
                 "bash",
+                "document_inspect",
+                "document_read",
+                "document_search",
                 "edit",
                 "glob",
                 "grep",
@@ -73,6 +76,7 @@ mod tests {
                 "question",
                 "read",
                 "skill",
+                "spreadsheet_read",
                 "todowrite",
                 "webfetch",
                 "write",

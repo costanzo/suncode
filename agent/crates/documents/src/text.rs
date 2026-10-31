@@ -66,7 +66,6 @@ impl Folded {
         Self { text, origins }
     }
 
-
     pub(crate) fn source_range(&self, start: usize, end: usize) -> (usize, usize) {
         (self.origins[start], self.origins[end - 1] + 1)
     }

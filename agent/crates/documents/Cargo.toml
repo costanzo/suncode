@@ -5,9 +5,8 @@ edition.workspace = true
 
 [dependencies]
 calamine.workspace = true
-docx-rs.workspace = true
+office_oxide.workspace = true
 pdf-extract.workspace = true
-quick-xml.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 unicode-normalization.workspace = true

@@ -1,33 +1,37 @@
-
-
-
 use calamine::{Data, Range};
 
-#[derive(Clone, Copy, Debug,PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Format {
     Pdf,
+    Doc,
     Docx,
+    Ppt,
     Pptx,
+    Xls,
     Xlsx,
+    Ods,
 }
 
 impl Format {
     pub fn name(self) -> &'static str {
         match self {
             Format::Pdf => "pdf",
+            Format::Doc => "doc",
             Format::Docx => "docx",
+            Format::Ppt => "ppt",
             Format::Pptx => "pptx",
             Format::Xlsx => "xlsx",
+            Format::Xls => "xls",
+            Format::Ods => "ods",
         }
     }
-
 
     pub(crate) fn unit(self) -> &'static str {
         match self {
             Format::Pdf => "page",
-            Format::Docx => "block",
-            Format::Pptx => "slide",
-            Format::Xlsx => "cell",
+            Format::Doc | Format::Docx => "block",
+            Format::Ppt | Format::Pptx => "slide",
+            Format::Xls | Format::Xlsx | Format::Ods => "cell",
         }
     }
 }
@@ -53,7 +57,6 @@ impl UnitKind {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub(crate) struct Unit {
@@ -94,6 +97,7 @@ pub(crate) struct Sheet {
 }
 
 pub(crate) struct ParsedWorkbook {
+    pub(crate) format: Format,
     pub(crate) sheets: Vec<Sheet>,
 }
 

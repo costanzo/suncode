@@ -284,6 +284,7 @@ fn unknown_arguments_are_rejected_at_the_boundary() {
             cancellation: None,
             output_callback: None,
             network: NetworkSettings::default(),
+            documents: &suncode_documents::Documents::new(),
         },
     )
     .unwrap_err();

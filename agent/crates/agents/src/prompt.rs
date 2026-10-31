@@ -170,7 +170,7 @@ fn document_rule(allowed_tools: &[String]) -> Option<String> {
         .collect::<Vec<_>>();
     (!tools.is_empty()).then(|| {
         format!(
-            "- For PDF, Word (.docx), PowerPoint (.pptx), and Excel (.xlsx) files, use {} instead of read.",
+            "- For PDF, Word (.doc/.docx), PowerPoint (.ppt/.pptx), Excel (.xls/.xlsx), and OpenDocument Spreadsheet (.ods) files, use {} instead of read.",
             join_and(&tools)
         )
     })

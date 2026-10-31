@@ -3,6 +3,8 @@
 use crate::model::Format;
 use crate::ooxml::Package;
 use crate::DocumentError;
+use office_oxide::cfb::CfbReader;
+use std::io::Cursor;
 
 const PDF_SIGNATURE: &[u8] = b"%PDF-";
 const ZIP_SIGNATURE: &[u8] = b"PK\x03\x04";
@@ -12,21 +14,32 @@ const COMPOUND_FILE_SIGNATURE: &[u8] = &[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1
 pub(crate) fn detect(bytes: &[u8]) -> Result<Format, DocumentError> {
     // Some producers write a few bytes before the PDF header.
     if bytes.len() >= PDF_SIGNATURE.len()
-        && bytes[.. bytes.len().min(1024)]
+        && bytes[..bytes.len().min(1024)]
             .windows(PDF_SIGNATURE.len())
             .any(|window| window == PDF_SIGNATURE)
     {
         return Ok(Format::Pdf);
     }
     if bytes.starts_with(COMPOUND_FILE_SIGNATURE) {
-        if contains_utf16(bytes, "EncryptionInfo") {
+        let reader = CfbReader::new(Cursor::new(bytes))
+            .map_err(|_| unsupported("the legacy Office container is unreadable"))?;
+        if reader.has_stream("EncryptionInfo") && reader.has_stream("EncryptedPackage") {
             return Err(DocumentError::new(
                 "encrypted_document",
                 "the document is encrypted or password-protected",
             ));
         }
+        if reader.has_stream("WordDocument") {
+            return Ok(Format::Doc);
+        }
+        if reader.has_stream("PowerPoint Document") || reader.has_stream("PP97_DUALSTORAGE") {
+            return Ok(Format::Ppt);
+        }
+        if reader.has_stream("Workbook") || reader.has_stream("Book") {
+            return Ok(Format::Xls);
+        }
         return Err(unsupported(
-            "legacy binary Office formats (.doc, .xls, .ppt) are not supported",
+            "the legacy Office document type is not supported",
         ));
     }
     if bytes.starts_with(ZIP_SIGNATURE) {
@@ -52,20 +65,24 @@ pub(crate) fn detect(bytes: &[u8]) -> Result<Format, DocumentError> {
         ]) {
             return Ok(Format::Xlsx);
         }
+        if package_mimetype(bytes)?.as_deref()
+            == Some("application/vnd.oasis.opendocument.spreadsheet")
+        {
+            return Ok(Format::Ods);
+        }
     }
     Err(unsupported(
-        "supported formats are .pdf, .docx, .pptx, and .xlsx",
+        "supported formats are .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, and .ods",
     ))
+}
+
+fn package_mimetype(bytes: &[u8]) -> Result<Option<String>, DocumentError> {
+    let mut package = Package::open(bytes)?;
+    Ok(package
+        .part("mimetype")?
+        .map(|value| value.trim().to_string()))
 }
 
 fn unsupported(message: &str) -> DocumentError {
     DocumentError::new("unsupported_format", message)
-}
-
-fn contains_utf16(bytes: &[u8], text: &str) -> bool {
-    let needle = text
-        .encode_utf16()
-        .flat_map(u16::to_le_bytes)
-        .collect::<Vec<_>>();
-    bytes.windows(needle.len()).any(|window| window == needle)
 }
