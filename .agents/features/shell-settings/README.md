@@ -20,5 +20,5 @@ Contracts and behavior: `contracts/agent-sdk/README.md`, `DESIGN.md`, and `.agen
 
 ## Existing broader verification failures
 
-The full Rust SDK suite has one pre-existing catalog assertion that omits the Office document tools now present in the built-in specialist catalog. Strict whole-boundary Clippy is also blocked by pre-existing document-crate lints and missing safety documentation on older C ABI functions. Shell-focused SDK tests and no-dependency lint of the affected agent packages pass. These unrelated failures are retained rather than changing the document/catalog delivery in this work.
+Strict whole-boundary Clippy is blocked by pre-existing document-crate lints and missing safety documentation on older C ABI functions. Shell-focused SDK tests and no-dependency lint of the affected agent packages pass.
 
