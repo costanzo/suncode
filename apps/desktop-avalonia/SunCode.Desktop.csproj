@@ -49,6 +49,7 @@
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
+    <ProjectReference Include="ThirdParty/RoyalTerminal.Pty.Windows/RoyalTerminal.Pty.Windows.csproj" />
     <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj" />
     <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
@@ -124,6 +125,7 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="ThirdParty/**/*.cs" />
     <Compile Remove="Compatibility/**/*.cs" />
     <Compile Remove="artifacts/**/*.cs" />
     <AvaloniaResource Include="Assets/**" />

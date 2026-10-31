@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261031-windows-conpty-standard-handles
+
+- Date: 2026-10-31
+- Status: Accepted and implemented; Windows 10 integration verified
+- Context: RoyalTerminal 0.7.0 starts ConPTY children without explicit standard-handle initialization. On Windows 10, shells can retain the parent's handles, leaving the embedded terminal blank and unable to accept input. The same failure reproduces with PowerShell 7 and cmd, independently of shell discovery or profiles. No corrected official package is available.
+- Decision: Override only the Windows PTY package with a client-local source project retaining the upstream 0.7.0 package/assembly identity and MIT license. Pin the original package's source commit and set `STARTF_USESTDHANDLES` with null handles before process creation. Keep the existing RoyalTerminal factory, Avalonia control, Unix backend, and interactive arguments.
+- Consequences: The two upstream source files and license are maintained under Desktop ThirdParty until an official release passes the Windows regression tests. Do not patch the NuGet cache, change process-global handles, enable broad handle inheritance, or require PowerShell reinstallation. Windows 10 integration covers both shell versions and the production terminal control; Windows 11/ARM64 and release packaging remain unverified.
+- Details: `apps/desktop-avalonia/ThirdParty/RoyalTerminal.Pty.Windows/README.md`, `specs/shell-settings.md`
+
 ## ADR-20261031-independent-shell-configuration
 
 - Date: 2026-10-31

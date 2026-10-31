@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>RoyalTerminal.Terminal.Pty.Windows</AssemblyName>
+    <PackageId>RoyalApps.RoyalTerminal.Terminal.Pty.Windows</PackageId>
+    <Version>0.7.0</Version>
+    <AssemblyVersion>0.7.0.0</AssemblyVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RoyalApps.RoyalTerminal.Terminal" Version="0.7.0" />
+    <None Update="LICENSE" Link="ThirdPartyNotices/RoyalTerminal.Pty.Windows.LICENSE"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
