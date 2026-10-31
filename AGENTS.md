@@ -35,6 +35,7 @@ Root `DESIGN.md` is the repository-wide design authority. The `design-system/` p
 - Implement production UI, including Avalonia views, consistently with the corresponding design-system specification. Reuse established tokens, dimensions, typography, spacing, colors, states, and interaction behavior instead of introducing local alternatives.
 - If the required UI or state is not specified, add or update the design-system specimen as part of the same change before treating the production implementation as complete.
 - After every UI or interaction change, compare the result with the relevant design-system page and verify all affected states, themes, sizing, alignment, overflow, and interaction behavior.
+- Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 - Any intentional deviation from the design system must be explicitly justified and must update the design-system specification so the prototype and production client do not diverge.
 - The React/Vite design-system project is specification and review tooling only. It must not become a production runtime dependency of the Avalonia desktop client.
 
