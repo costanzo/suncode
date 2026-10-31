@@ -22,6 +22,9 @@
   .workspace-tool-body {
     grid-template-columns: 230px 1fr;
   }
+  .workspace-terminal-cwd {
+    max-width: 180px;
+  }
   .workspace-child-detail-state-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -259,6 +262,18 @@
   .workspace-tool-activity > header > span,
   .workspace-tool-activity > header > div:not(.workspace-tool-activity-actions) {
     display: none;
+  }
+  .workspace-terminal-header {
+    display: flex;
+  }
+  .workspace-terminal-cwd {
+    display: none;
+  }
+  .workspace-terminal-tabs {
+    justify-self: start;
+  }
+  .workspace-terminal-body {
+    min-width: 0;
   }
   .workspace-git > header {
     grid-template-columns: 16px 8px minmax(0, 1fr) 26px 8px 26px 8px 26px;

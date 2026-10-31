@@ -18,6 +18,7 @@ import { SessionPanel } from "../panels/sessions/SessionPanel.jsx";
 import { SourceControlPanel } from "../panels/source-control/SourceControlPanel.jsx";
 import { ProviderTracePanel } from "../panels/provider-trace/ProviderTracePanel.jsx";
 import { ToolActivityPanel } from "../panels/tool-activity/ToolActivityPanel.jsx";
+import { TerminalPanel } from "../panels/terminal/TerminalPanel.jsx";
 import { BrowserPreviewPanel } from "../panels/browser-preview/BrowserPreviewPanel.jsx";
 import { childSessionStateLabels, childSessions } from "../data/sessions.js";
 import { completedTurnChangeSet } from "../data/review.js";
@@ -284,6 +285,12 @@ export function WorkspaceWindow({
               active={drawer === "tools"}
               onClick={() => toggleDrawer("tools")}
             />
+            <IconButton
+              icon="terminal"
+              label="Show terminal"
+              active={drawer === "terminal"}
+              onClick={() => toggleDrawer("terminal")}
+            />
           </div>
         </aside>
         <div className="workspace-main-stack">
@@ -338,6 +345,7 @@ export function WorkspaceWindow({
           )}
           {drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}
           {drawer === "tools" && <ToolActivityPanel onClose={() => setDrawer(null)} />}
+          {drawer === "terminal" && <TerminalPanel onClose={() => setDrawer(null)} />}
         </div>
         <aside className="workspace-gutter workspace-gutter-right">
           <IconButton

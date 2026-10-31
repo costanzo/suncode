@@ -95,6 +95,13 @@ export function WorkspacePage() {
             description="Linked delegated sessions, their right-side list, read-only detail, and recent-content behavior."
             path="Right bay + central detail"
           />
+          <ModuleLink
+            to="/projects/desktop/workspace/terminal"
+            icon="terminal"
+            title="Terminal"
+            description="A local shell in the bottom drawer, independent from Agent sessions."
+            path="Bottom drawer"
+          />
         </div>
       </Section>
       <Section

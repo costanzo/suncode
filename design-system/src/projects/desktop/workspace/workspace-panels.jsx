@@ -9,6 +9,7 @@ export * from "./panels/review/ReviewPanel.jsx";
 export * from "./panels/source-control/SourceControlPanel.jsx";
 export * from "./panels/provider-trace/ProviderTracePanel.jsx";
 export * from "./panels/tool-activity/ToolActivityPanel.jsx";
+export * from "./panels/terminal/TerminalPanel.jsx";
 export * from "./shared/index.js";
 export * from "./data/fixtures.js";
 export { TrafficLights } from "../../../shared/TrafficLights.jsx";

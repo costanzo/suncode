@@ -259,7 +259,7 @@ export const primaryModules = [
             label: "Workspace",
             icon: "workspace",
             keywords:
-              "project workspace sessions explorer conversation editor review child sessions built-in browser source control provider trace tool activity",
+              "project workspace sessions explorer conversation editor review child sessions built-in browser source control provider trace tool activity terminal local shell",
             children: [
               {
                 path: "/projects/desktop/workspace/sessions",
@@ -301,6 +301,11 @@ export const primaryModules = [
                 path: "/projects/desktop/workspace/tool-activity",
                 label: "Tool activity",
                 keywords: "tool calls progress live output turns operations details",
+              },
+              {
+                path: "/projects/desktop/workspace/terminal",
+                label: "Terminal",
+                keywords: "local shell pty command prompt workspace drawer",
               },
               {
                 path: "/projects/desktop/workspace/child-sessions",

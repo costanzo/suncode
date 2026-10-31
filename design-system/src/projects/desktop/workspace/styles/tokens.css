@@ -14,4 +14,6 @@
   --workspace-trace-min-height: 300px;
   --workspace-tool-height: 360px;
   --workspace-tool-min-height: 300px;
+  --workspace-terminal-height: 360px;
+  --workspace-terminal-min-height: 260px;
 }
