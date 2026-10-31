@@ -1,7 +1,7 @@
 export const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Network, Computer use, Browser use, MCP servers, Language servers, Agents, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Terminal, Network, Computer use, Browser use, MCP servers, Language servers, Agents, or Logging from the left navigation.",
       "Use the chevrons beside Agents and Model providers to collapse or expand their fixed catalogs.",
       "Select an agent beneath Agents to inspect its immutable identity, tool allowlist, and authority boundaries.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
@@ -11,6 +11,8 @@ export const settingsGuide = {
       "Use Remote Server to connect this desktop with a server pairing code and generate a one-time phone pairing QR code.",
       "Use Computer use to inspect selected-model support, enable the built-in desktop backend, and review real-desktop permission and control state.",
       "Use Browser use to enable the capability and hand an active project browser between the agent and the user; runtime verification and CEF/CDP details live under Advanced diagnostics.",
+      "Use Terminal to configure Agent shell and Terminal shell independently; custom paths are checked before saving.",
+      "On Windows, download PowerShell 7 and optionally apply it to both shells after verification succeeds.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
       "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
       "Use Language servers to configure project-scoped semantic analysis for diagnostics, definitions, references, hover details, and symbols.",
@@ -49,6 +51,9 @@ export const settingsGuide = {
       "Computer use screenshots are transient provider context and external desktop changes are outside filesystem undo.",
       "CEF CDP endpoint and embedded Chromium identity are read-only runtime facts; Settings never selects an external browser runtime.",
       "Server-requested file edits and command execution are refused; the surface specifies semantic read capabilities only.",
+      "Shell settings are global. Agent changes apply to the next turn; existing and suspended turns retain their shell. Terminal changes apply to new or restarted tabs.",
+      "Windows system default means Windows PowerShell 5.1. PowerShell 7 is installed on demand in a managed user directory; installation never changes the system PATH.",
+      "The Terminal specimen simulates detection, downloads, verification, extraction, cancellation, and failure recovery without launching processes or downloading files.",
       "Settings reopens to the last valid destination, including the selected provider and its expanded navigation state.",
     ],
   },

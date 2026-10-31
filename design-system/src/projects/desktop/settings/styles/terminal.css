@@ -1,0 +1,263 @@
+/* Terminal Settings extends the existing native Settings layout and tokens. */
+.terminal-settings-window .settings-body {
+  min-height: 0;
+}
+.shell-review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.shell-review-controls > div {
+  display: grid;
+  flex: 1 1 100%;
+  gap: var(--space-1);
+}
+.shell-review-controls strong {
+  font-size: 12px;
+}
+.shell-review-controls span,
+.shell-review-controls label {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.shell-review-controls label {
+  display: grid;
+  flex: 1 1 140px;
+  gap: var(--space-1);
+}
+.shell-review-controls select {
+  width: 100%;
+  min-height: var(--control-md);
+}
+.terminal-settings-content .dropdown-trigger:focus-visible,
+.terminal-settings-content .btn:focus-visible,
+.shell-review-controls select:focus-visible,
+.shell-install-choice input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.shell-path-input > .field:focus-visible {
+  border-color: var(--accent);
+}
+.terminal-settings-content .settings-panel-heading {
+  margin-bottom: var(--space-6);
+}
+.shell-editor {
+  min-width: 0;
+  margin: 0;
+  padding-block: 0 var(--space-4);
+}
+.shell-editor + .shell-editor {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.shell-editor fieldset {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.shell-editor-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  align-items: center;
+  gap: var(--space-6);
+}
+.shell-editor-heading > div:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+.shell-editor h3,
+.shell-install h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.shell-editor p,
+.shell-install p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.shell-path-input {
+  position: relative;
+}
+.shell-path-input > .field {
+  width: 100%;
+  min-height: var(--control-md);
+  padding-right: var(--space-10);
+  font-size: 11px;
+}
+.shell-path-input > .btn {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  width: var(--control-sm);
+  padding: 0;
+  transform: translateY(-50%);
+}
+.shell-path-input > .field[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.shell-resolved-path {
+  display: block;
+  min-width: 0;
+  color: var(--text-secondary);
+  font: 11px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.shell-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--control-sm);
+}
+.shell-probe {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.shell-probe .ds-icon {
+  flex-shrink: 0;
+  margin-top: var(--space-1);
+}
+.shell-probe.is-available {
+  color: var(--success);
+}
+.shell-probe.is-error {
+  color: var(--danger);
+}
+.shell-editor-actions,
+.shell-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.shell-editor-actions {
+  flex-shrink: 0;
+}
+.terminal-settings-content .btn:disabled,
+.shell-editor fieldset:disabled .btn,
+.shell-editor fieldset:disabled .dropdown-trigger {
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+.shell-install {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+.shell-install-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.shell-install-heading span,
+.shell-install-actions > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.shell-install-actions {
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.shell-install-actions > span {
+  flex-basis: 100%;
+}
+.shell-install > .btn {
+  justify-self: start;
+}
+.shell-install-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.shell-install-choice input {
+  flex-shrink: 0;
+  margin: 0;
+  margin-top: var(--space-1);
+  accent-color: var(--accent);
+}
+.shell-install-location code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.shell-install-progress {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.shell-install-progress progress {
+  width: 100%;
+  height: var(--space-1);
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-active);
+  accent-color: var(--accent);
+}
+.shell-install-progress progress::-webkit-progress-bar {
+  background: var(--surface-active);
+}
+.shell-install-progress progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.shell-install-progress progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.shell-install .shell-install-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--danger);
+}
+.shell-install-error .ds-icon {
+  flex-shrink: 0;
+}
+.shell-install .shell-install-notice {
+  color: var(--success);
+}
+@container (max-width: 540px) {
+  .shell-editor-heading {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: var(--space-4);
+  }
+}
+@container (max-width: 420px) {
+  .shell-editor-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .shell-editor-footer {
+    align-items: flex-start;
+  }
+  .shell-editor-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -161,6 +161,7 @@ const routes = {
   "/projects/desktop/dialog-window": DialogWindowPage,
   "/projects/desktop/about": AboutPage,
   "/projects/desktop/settings": SettingsPage,
+  "/projects/desktop/settings/terminal": () => <SettingsPage initialPage="terminal" />,
   "/projects/desktop/settings/provider-credentials": () => (
     <SettingsPage initialPage="provider:deepseek" credentialReview />
   ),

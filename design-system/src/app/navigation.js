@@ -238,6 +238,11 @@ export const primaryModules = [
                 keywords: "api key storage keychain plaintext credential permission denied locked",
               },
               {
+                path: "/projects/desktop/settings/terminal",
+                label: "Terminal",
+                keywords: "agent shell terminal powershell windows path install download validation",
+              },
+              {
                 path: "/projects/desktop/settings/remote-server",
                 label: "Remote Server",
                 keywords: "remote server pairing code mobile qr sse connection",

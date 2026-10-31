@@ -24,8 +24,11 @@ import { LoggingPanel } from "./sections/LoggingPanel.jsx";
 import { initialMcpServers, McpServersPanel } from "./sections/McpServersPanel.jsx";
 import { NetworkPanel } from "./sections/NetworkPanel.jsx";
 import { RemoteServerPanel } from "./sections/RemoteServerPanel.jsx";
+import { TerminalPanel } from "./sections/TerminalPanel.jsx";
+import { TerminalReviewControls } from "./components/TerminalReviewControls.jsx";
 import "../styles/remote-server.css";
 import "./styles/provider-credentials.css";
+import "./styles/terminal.css";
 
 export function SettingsPage({
   initialPage = "defaults",
@@ -36,7 +39,10 @@ export function SettingsPage({
   const [page, setPage] = useState(initialPage);
   const [agentsExpanded, setAgentsExpanded] = useState(false);
   const [providersExpanded, setProvidersExpanded] = useState(initialPage.startsWith("provider"));
-  const [platform, setPlatform] = useState("macos");
+  const [platform, setPlatform] = useState(initialPage === "terminal" ? "windows" : "macos");
+  const [shellArchitecture, setShellArchitecture] = useState("x64");
+  const [shellScenario, setShellScenario] = useState("default");
+  const [shellWindowSize, setShellWindowSize] = useState("default");
   const [issue, setIssue] = useState("none");
   const [reviewVersion, setReviewVersion] = useState(0);
   const [credentials, setCredentials] = useState(() =>
@@ -64,6 +70,7 @@ export function SettingsPage({
   };
   const save = (message = "Saved to the local agent.") => setStatus(message);
   const renderPanel = () => {
+    if (page === "terminal") return null;
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
@@ -131,9 +138,24 @@ export function SettingsPage({
     <>
       <PageHeader
         title="Settings"
-        description="The Avalonia desktop settings window for local defaults, keyboard shortcuts, security, Computer Use, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
+        description="The Avalonia desktop settings window for local defaults, appearance, terminal shells, network, tools, and providers."
         path="projects/desktop/settings/"
       />
+      {page === "terminal" && (
+        <TerminalReviewControls
+          platform={platform}
+          setPlatform={(next) => {
+            setPlatform(next);
+            setShellScenario("default");
+          }}
+          architecture={shellArchitecture}
+          setArchitecture={setShellArchitecture}
+          scenario={shellScenario}
+          setScenario={setShellScenario}
+          windowSize={shellWindowSize}
+          setWindowSize={setShellWindowSize}
+        />
+      )}
       {credentialReview && (
         <div className="credential-review-controls" aria-label="Credential specimen controls">
           <div>
@@ -183,7 +205,7 @@ export function SettingsPage({
         <WorkspaceGuideState
           className="settings-guide-state"
           title="Settings controls"
-          description="Navigate local defaults, keyboard shortcuts, security, Computer Use, Browser Use, MCP servers, language servers, built-in agents, diagnostics, and provider credentials."
+          description="Navigate local defaults, terminal shells, network, tools, diagnostics, and providers."
           guide={settingsGuide}
           side="right"
           open={guideOpen}
@@ -191,11 +213,11 @@ export function SettingsPage({
           onClose={() => setGuideOpen(false)}
         >
           <NativeWindowFrame
-            platform="macos"
+            platform={platform}
             title="Settings"
-            width="900px"
-            height="672px"
-            className="settings-window"
+            width={page === "terminal" && shellWindowSize === "minimum" ? "720px" : "900px"}
+            height={page === "terminal" && shellWindowSize === "minimum" ? "552px" : "672px"}
+            className={`settings-window${page === "terminal" ? " terminal-settings-window" : ""}`}
           >
             <div className="settings-toolbar">
               <strong>Settings</strong>
@@ -218,6 +240,14 @@ export function SettingsPage({
                 setProvidersExpanded={setProvidersExpanded}
               />
               <main className="settings-panel">
+                <div hidden={page !== "terminal"}>
+                  <TerminalPanel
+                    key={`${platform}-${shellArchitecture}-${shellScenario}`}
+                    platform={platform}
+                    architecture={shellArchitecture}
+                    scenario={shellScenario}
+                  />
+                </div>
                 {renderPanel()}
                 {status && (
                   <div className="settings-global-status" role="status">

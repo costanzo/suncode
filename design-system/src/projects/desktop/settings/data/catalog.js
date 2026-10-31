@@ -93,6 +93,7 @@ export const navItems = [
   { id: "defaults", label: "Defaults", icon: "foundation" },
   { id: "appearance", label: "Appearance", icon: "sun" },
   { id: "shortcuts", label: "Keyboard shortcuts", icon: "keyboard" },
+  { id: "terminal", label: "Terminal", icon: "terminal" },
   { id: "network", label: "Network", icon: "platform" },
   { id: "remote-server", label: "Remote Server", icon: "server" },
   { id: "computer", label: "Computer use", icon: "computer" },
