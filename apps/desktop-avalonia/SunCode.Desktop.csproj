@@ -17,7 +17,11 @@
     <AvaloniaVersion>12.1.3</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
+    <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
     <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">$(MSBuildProjectDirectory)/../../../../github/costanzo/CefGlue</CefGlueForkRoot>
+    <SunCodeBundleCef Condition="'$(SunCodeBundleCef)' == ''">false</SunCodeBundleCef>
+    <DefineConstants Condition="'$(SunCodeBundleCef)' == 'true'">$(DefineConstants);SUNCODE_CEF</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -46,11 +50,11 @@
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj" />
-    <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
-    <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
-    <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
-    <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'win-x64'" PrivateAssets="all" />
-    <PackageReference Include="chromiumembeddedframework.runtime.win-arm64" Version="152.0.6" Condition="'$(RuntimeIdentifier)' == 'win-arm64'" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'win-x64'" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-arm64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'win-arm64'" PrivateAssets="all" />
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
@@ -67,7 +71,7 @@
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
   </ItemGroup>
   <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
+          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
     <PropertyGroup>
       <CefWindowsPackageRoot>$(NuGetPackageRoot)/chromiumembeddedframework.runtime.win-x64/152.0.6</CefWindowsPackageRoot>
     </PropertyGroup>
@@ -93,7 +97,7 @@
        paths makes macOS register every CEF Objective-C class twice. -->
   <Target Name="CopyCefPreviewMacOSDevelopment"
           AfterTargets="Build"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == ''">
+          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == ''">
     <PropertyGroup>
       <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'Arm64'">arm64</CefPreviewMacArchitecture>
       <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'X64'">x64</CefPreviewMacArchitecture>
@@ -133,12 +137,18 @@
     <Content Include="packaging/linux/icons/hicolor/**/*" CopyToOutputDirectory="PreserveNewest" Link="share/icons/hicolor/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <Target Name="PrepareBundledFonts" BeforeTargets="GenerateAvaloniaResources"
+  <Target Name="PrepareBundledFonts" BeforeTargets="_GenerateAvaloniaResourcesDependencyCache;GenerateAvaloniaResources"
           Condition="'$(DesignTimeBuild)' != 'true' And '$(SkipFontPreparation)' != 'true'">
     <Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
           Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../scripts/prepare-fonts.ps1&quot;" />
     <Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
           Command="/bin/bash &quot;$(MSBuildProjectDirectory)/../../scripts/prepare-fonts.sh&quot;" />
+    <!-- The initial Assets/** glob runs before downloads. Refresh font items
+         before Avalonia hashes its inputs so a first build embeds new faces. -->
+    <ItemGroup>
+      <AvaloniaResource Remove="Assets/fonts/*.ttf" />
+      <AvaloniaResource Include="Assets/fonts/*.ttf" Exclude="Assets/fonts/NotoSansSC-wght.ttf" />
+    </ItemGroup>
   </Target>
 
 
@@ -158,7 +168,7 @@
   </Target>
 
   <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
+          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
     <PropertyGroup>
       <CefPreviewPackageRoot>$(NuGetPackageRoot)/cef.runtime.osx-arm64/152.0.6/CEF</CefPreviewPackageRoot>
       <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-arm64</CefPreviewFrameworkSource>
