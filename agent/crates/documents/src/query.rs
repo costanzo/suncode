@@ -241,7 +241,7 @@ struct Matches {
 
 impl Matches {
     fn full(&self) -> bool {
-        !self.more
+        self.more
     }
 
     fn push(&mut self, matched: impl FnOnce() -> Value) {

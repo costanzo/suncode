@@ -34,7 +34,7 @@ use std::sync::Arc;
 /// Files larger than this are rejected before parsing
 pub const MAX_DOCUMENT_BYTES: u64 = 64 * 1024 * 1024;
 /// Part of every fingerprint; bump it when parser output changes
-const PARSER_VERSION: u64 = 2;
+const PARSER_VERSION: u64 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocumentError {

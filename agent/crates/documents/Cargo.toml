@@ -5,12 +5,10 @@ edition.workspace = true
 
 [dependencies]
 calamine.workspace = true
+lopdf.workspace = true
 office_oxide.workspace = true
 pdf-extract.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 unicode-normalization.workspace = true
 zip = { workspace = true, features = ["deflate"] }
-
-[dev-dependencies]
-lopdf.workspace = true

@@ -3402,6 +3402,7 @@ name = "suncode-documents"
 version = "0.1.0"
 dependencies = [
  "calamine",
+ "lopdf",
  "office_oxide",
  "pdf-extract",
  "serde_json",
