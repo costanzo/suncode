@@ -25,6 +25,9 @@ export const shellPlatforms = {
 
 export const shellReviewStates = [
   { value: "default", label: "System defaults" },
+  { value: "discovering", label: "Checking existing installations" },
+  { value: "existing", label: "Existing PowerShell 7 found" },
+  { value: "existing-selected", label: "Existing PowerShell 7 selected" },
   { value: "installed", label: "PowerShell 7 installed" },
   { value: "missing", label: "Executable missing" },
   { value: "timeout", label: "Validation timeout" },
@@ -33,6 +36,11 @@ export const shellReviewStates = [
   { value: "checksum-failed", label: "Verification failed" },
   { value: "install-failed", label: "Install directory denied" },
 ];
+
+export const existingPowerShell = {
+  path: "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+  version: "PowerShell 7.5.4",
+};
 
 export function managedPowerShell(architecture) {
   return {

@@ -812,6 +812,9 @@
   <x:String x:Key="LocShellSaved">Saved</x:String>
   <x:String x:Key="LocShellCheck">Check</x:String>
   <x:String x:Key="LocRecommendPowerShell7">For the best experience, use PowerShell 7.</x:String>
+  <x:String x:Key="LocShellExistingFound">Existing installation found</x:String>
+  <x:String x:Key="LocShellDiscovering">Checking existing installations…</x:String>
+  <x:String x:Key="LocShellUseExisting">Use existing installation for both shells</x:String>
   <x:String x:Key="LocShellUseBothAfterInstall">Use for Agent and Terminal after installation</x:String>
   <x:String x:Key="LocShellDownloading">Downloading PowerShell 7…</x:String>
   <x:String x:Key="LocShellVerifying">Verifying download…</x:String>

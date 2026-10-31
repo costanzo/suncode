@@ -93,7 +93,7 @@ public sealed class ShellSetupServiceTests
             {
                 started.SetResult();
                 try { await Task.Delay(Timeout.Infinite, token); } finally { cleaned = true; }
-            }, ensureInstallSupported: () => { });
+            }, ensureInstallSupported: () => { }, discover: _ => Task.FromResult<ShellCheckResult?>(null));
         service.StartInstallation(true);
         await started.Task.WaitAsync(TimeSpan.FromSeconds(3));
         await Assert.ThrowsAsync<SdkException>(() => service.SaveAsync(new("agent", new("custom", ShellPath))));
@@ -115,7 +115,7 @@ public sealed class ShellSetupServiceTests
             request => { saved = request; return Task.CompletedTask; }, () => Task.FromResult(Network),
             check: (request, _) => Task.FromResult(new ShellCheckResult(request.Configuration!, ShellPath, "available", "PowerShell 7.6.0", new(ShellPath, "powershell", "PowerShell 7.6.0", ["-NoLogo"]), null)),
             install: (_, _, _) => succeeds ? Task.CompletedTask : Task.FromException(new SdkException("shell_download_integrity_failed", "Checksum mismatch")),
-            ensureInstallSupported: () => { });
+            ensureInstallSupported: () => { }, discover: _ => Task.FromResult<ShellCheckResult?>(null));
         service.StartInstallation(true);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         while (service.Status.Running) await Task.Delay(10, deadline.Token);
@@ -127,6 +127,55 @@ public sealed class ShellSetupServiceTests
         }
         else { Assert.Equal("failed", service.Status.Stage); Assert.Null(saved); }
         await service.ShutdownAsync();
+    }
+
+    [Fact]
+    public async Task DiscoveryDoesNotChangeSavedPreferencesAndBlocksDuplicateDownload()
+    {
+        var writes = 0; var networkReads = 0; var installs = 0;
+        var existing = PowerShellDiscoveryTests.Available(Path.Combine(Path.GetTempPath(), "existing", "pwsh.exe"));
+        var service = new ShellSetupService(() => Task.FromResult<(ShellConfiguration, ShellConfiguration)>((new(), new())),
+            _ => { ++writes; return Task.CompletedTask; }, () => { ++networkReads; return Task.FromResult(Network); },
+            check: (request, _) => Task.FromResult(new ShellCheckResult(request.Configuration!, ShellPath, "available", "System shell", new(ShellPath, "powershell", "PowerShell 5.1", []), null)),
+            install: (_, _, _) => { ++installs; return Task.CompletedTask; }, ensureInstallSupported: () => { },
+            discover: _ => Task.FromResult<ShellCheckResult?>(existing));
+        var settings = await service.SettingsAsync();
+        Assert.Equal(existing, settings.Existing);
+        Assert.Equal("system", settings.Agent.Configuration.Mode);
+        Assert.Equal(0, writes);
+        service.StartInstallation(true);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        while (service.Status.Running) await Task.Delay(10, deadline.Token);
+        Assert.Equal("shell_existing_available", service.Status.ErrorCode);
+        Assert.Equal(0, networkReads);
+        Assert.Equal(0, installs);
+        Assert.Equal(0, writes);
+        await service.ShutdownAsync();
+    }
+
+    [Theory]
+    [InlineData("PowerShell 7.4.6", true)]
+    [InlineData("PowerShell 5.1", false)]
+    [InlineData(null, false)]
+    public async Task UsingExistingInstallationRechecksVersionBeforeAtomicSave(string? version, bool succeeds)
+    {
+        ShellPreferencesRequest? saved = null;
+        var path = Path.Combine(Path.GetTempPath(), "existing", "pwsh.exe");
+        var service = new ShellSetupService(() => Task.FromResult<(ShellConfiguration, ShellConfiguration)>((new(), new())),
+            request => { saved = request; return Task.CompletedTask; }, () => throw new InvalidOperationException("No network needed"),
+            check: (request, _) => Task.FromResult(version is null
+                ? new ShellCheckResult(request.Configuration!, path, "unavailable", "Not found", null, "shell_executable_not_found")
+                : PowerShellDiscoveryTests.Available(path, version)));
+        var result = await service.SaveAsync(new("both", new("custom", path)), requirePowerShell7: true);
+        Assert.Equal(succeeds, result.State == "available");
+        if (succeeds)
+        {
+            Assert.NotNull(saved?.Agent?.Resolved);
+            Assert.Equal("custom", saved!.Agent!.Mode);
+            Assert.Equal(path, saved.Agent.Path);
+            Assert.Equal(saved.Agent, saved.Terminal);
+        }
+        else Assert.Null(saved);
     }
 
     [Theory]

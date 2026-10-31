@@ -812,6 +812,9 @@
   <x:String x:Key="LocShellSaved">已保存</x:String>
   <x:String x:Key="LocShellCheck">检测</x:String>
   <x:String x:Key="LocRecommendPowerShell7">为了获得最佳体验，请使用 PowerShell 7。</x:String>
+  <x:String x:Key="LocShellExistingFound">已找到现有安装</x:String>
+  <x:String x:Key="LocShellDiscovering">正在检测现有安装…</x:String>
+  <x:String x:Key="LocShellUseExisting">为两处 Shell 使用现有安装</x:String>
   <x:String x:Key="LocShellUseBothAfterInstall">安装后用于 Agent 和终端</x:String>
   <x:String x:Key="LocShellDownloading">正在下载 PowerShell 7…</x:String>
   <x:String x:Key="LocShellVerifying">正在校验下载文件…</x:String>

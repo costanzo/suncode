@@ -163,9 +163,13 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
     private readonly AsyncRelayCommand _install;
     private readonly AsyncRelayCommand _cancel;
     private readonly AsyncRelayCommand _useBoth;
+    private readonly AsyncRelayCommand _useExisting;
+    private ShellCheckResult? _existing;
     private bool _loaded;
+    private bool _discovering = true;
     private bool _disposed;
     private bool _busy;
+    private bool _selectingExisting;
     private bool _installed;
     private bool _useForBoth = true;
     private string _directory = string.Empty;
@@ -184,9 +188,10 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
         _host = host;
         Agent = new("agent", request => Setup.CheckAsync(request), request => Setup.SaveAsync(request));
         Terminal = new("terminal", request => Setup.CheckAsync(request), request => Setup.SaveAsync(request));
-        _install = new AsyncRelayCommand(InstallAsync, () => !_busy && !Installed && IsWindows);
+        _install = new AsyncRelayCommand(InstallAsync, () => CanInstall && IsWindows);
         _cancel = new AsyncRelayCommand(CancelAsync, () => _busy);
-        _useBoth = new AsyncRelayCommand(UseBothAsync, () => !_busy && Installed && !BothManaged);
+        _useBoth = new AsyncRelayCommand(UseBothAsync, () => !_busy && !_selectingExisting && Installed && !BothManaged);
+        _useExisting = new AsyncRelayCommand(UseExistingAsync, () => !_busy && !_selectingExisting && HasExisting && !BothExisting);
         Agent.SavedConfigurationChanged += RefreshCommands; Terminal.SavedConfigurationChanged += RefreshCommands;
     }
     private ShellSetupService Setup => ShellSetupService.Current;
@@ -195,8 +200,15 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
     public bool IsWindows => _platform == "windows";
     public bool IsInstalling { get => _busy; private set { if (SetProperty(ref _busy, value)) { OnPropertyChanged(nameof(CanChooseInstallTargets)); OnPropertyChanged(nameof(CanInstall)); OnPropertyChanged(nameof(ShowInstallChoices)); RefreshCommands(); } } }
     public bool CanChooseInstallTargets => !IsInstalling;
-    public bool CanInstall => !IsInstalling && !Installed;
-    public bool ShowInstallChoices => !Installed;
+    public bool IsDiscovering { get => _discovering; private set { if (SetProperty(ref _discovering, value)) { OnPropertyChanged(nameof(CanInstall)); OnPropertyChanged(nameof(ShowInstallChoices)); RefreshCommands(); } } }
+    public bool CanInstall => _loaded && !IsDiscovering && !IsInstalling && !_selectingExisting && !Installed && !HasExisting;
+    public bool ShowInstallChoices => _loaded && !IsDiscovering && !Installed && !HasExisting;
+    public bool HasExisting => PowerShellDiscovery.IsPowerShell7(_existing);
+    public string ExistingVersion => _existing?.Shell?.Version ?? string.Empty;
+    public string ExistingPath => _existing?.Shell?.Path ?? string.Empty;
+    private bool BothExisting => HasExisting && new[] { Agent.SavedConfiguration, Terminal.SavedConfiguration }
+        .All(configuration => configuration.Mode == "custom" && string.Equals(configuration.Path, ExistingPath, StringComparison.OrdinalIgnoreCase));
+    public string UseExistingLabel => BothExisting ? L("LocShellBothAlreadySelected", "Selected for both shells") : L("LocShellUseExisting", "Use existing installation for both shells");
     public bool Installed { get => _installed; private set { if (SetProperty(ref _installed, value)) { OnPropertyChanged(nameof(CanInstall)); OnPropertyChanged(nameof(ShowInstallChoices)); RefreshCommands(); } } }
     public bool UseForBoth { get => _useForBoth; set => SetProperty(ref _useForBoth, value); }
     public string InstallDirectory { get => _directory; private set => SetProperty(ref _directory, value); }
@@ -213,6 +225,7 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
     public ICommand InstallCommand => _install;
     public ICommand CancelCommand => _cancel;
     public ICommand UseBothCommand => _useBoth;
+    public ICommand UseExistingCommand => _useExisting;
     public async Task ActivateAsync() { if (!_loaded) await LoadAsync(); await PollAsync(); }
     public async Task PollAsync()
     {
@@ -231,6 +244,7 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
     private async Task LoadAsync(bool force = false)
     {
         if (!await _host.EnsureSdkReadyAsync()) return;
+        IsDiscovering = true;
         try
         {
             var result = await Setup.SettingsAsync();
@@ -238,10 +252,15 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
             ApplySettings(result, force);
         }
         catch (Exception exception) { if (!_disposed) { Message = exception.Message; MessageTone = StatusTone.Danger; } }
+        finally { if (!_disposed) IsDiscovering = false; }
     }
     internal void ApplySettings(ShellSettingsResult result, bool force = false)
     {
         _loaded = true; _platform = result.Platform; OnPropertyChanged(nameof(IsWindows));
+        IsDiscovering = false;
+        _existing = result.Existing;
+        OnPropertyChanged(nameof(HasExisting)); OnPropertyChanged(nameof(ExistingVersion)); OnPropertyChanged(nameof(ExistingPath));
+        OnPropertyChanged(nameof(CanInstall)); OnPropertyChanged(nameof(ShowInstallChoices));
         Installed = result.Managed?.State == "available";
         InstallDirectory = result.InstallDirectory ?? string.Empty;
         InstalledPath = result.Managed?.Path ?? string.Empty;
@@ -255,7 +274,7 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
     {
         IsInstalling = state.Running; _stage = state.Stage; Progress = state.Progress; OnPropertyChanged(nameof(StageText)); OnPropertyChanged(nameof(InstallLabel));
         Message = state.Message; MessageTone = state.ErrorCode is null ? StatusTone.Success : state.Stage == "cancelled" ? StatusTone.Neutral : StatusTone.Danger;
-        Agent.SetLocked(state.Running && state.UseForBoth); Terminal.SetLocked(state.Running && state.UseForBoth);
+        Agent.SetLocked(_selectingExisting || state.Running && state.UseForBoth); Terminal.SetLocked(_selectingExisting || state.Running && state.UseForBoth);
     }
     private async Task InstallAsync()
     {
@@ -277,7 +296,32 @@ public sealed class ShellSettingsViewModel : ObservableObject, IPolledPage, IDis
         }
         catch (Exception exception) { Message = exception.Message; MessageTone = StatusTone.Danger; }
     }
-    private void RefreshCommands() { OnPropertyChanged(nameof(UseBothLabel)); _install.RaiseCanExecuteChanged(); _cancel.RaiseCanExecuteChanged(); _useBoth.RaiseCanExecuteChanged(); }
-    internal void RefreshLocalizedText() { Agent.RefreshLocalizedText(); Terminal.RefreshLocalizedText(); OnPropertyChanged(nameof(StageText)); OnPropertyChanged(nameof(InstallLabel)); OnPropertyChanged(nameof(UseBothLabel)); OnPropertyChanged(nameof(InstalledSummary)); }
+    private async Task UseExistingAsync()
+    {
+        if (!HasExisting || !await _host.EnsureSdkReadyAsync()) return;
+        _selectingExisting = true;
+        Agent.SetLocked(true); Terminal.SetLocked(true); RefreshCommands(); OnPropertyChanged(nameof(CanInstall));
+        try
+        {
+            // Save probes the exact discovered path again before the atomic commit.
+            var result = await Setup.SaveAsync(new("both", new("custom", ExistingPath)), requirePowerShell7: true);
+            if (!PowerShellDiscovery.IsPowerShell7(result)) throw new SdkException(result.ErrorCode ?? "shell_unavailable", result.Message);
+            await LoadAsync(true);
+            Message = L("LocShellBothSelected", "PowerShell 7 selected for both shells."); MessageTone = StatusTone.Success;
+        }
+        catch (Exception exception)
+        {
+            await LoadAsync();
+            Message = exception.Message; MessageTone = StatusTone.Danger;
+        }
+        finally
+        {
+            _selectingExisting = false;
+            Agent.SetLocked(_busy && UseForBoth); Terminal.SetLocked(_busy && UseForBoth);
+            RefreshCommands(); OnPropertyChanged(nameof(CanInstall));
+        }
+    }
+    private void RefreshCommands() { OnPropertyChanged(nameof(UseBothLabel)); OnPropertyChanged(nameof(UseExistingLabel)); _install.RaiseCanExecuteChanged(); _cancel.RaiseCanExecuteChanged(); _useBoth.RaiseCanExecuteChanged(); _useExisting.RaiseCanExecuteChanged(); }
+    internal void RefreshLocalizedText() { Agent.RefreshLocalizedText(); Terminal.RefreshLocalizedText(); OnPropertyChanged(nameof(StageText)); OnPropertyChanged(nameof(InstallLabel)); OnPropertyChanged(nameof(UseBothLabel)); OnPropertyChanged(nameof(UseExistingLabel)); OnPropertyChanged(nameof(InstalledSummary)); }
     public void Dispose() { _disposed = true; Agent.Dispose(); Terminal.Dispose(); }
 }

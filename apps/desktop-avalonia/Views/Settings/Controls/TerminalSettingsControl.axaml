@@ -15,6 +15,13 @@
           <TextBlock Grid.Column="1" Text="{Binding Architecture}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
         </Grid>
         <TextBlock Text="{DynamicResource LocRecommendPowerShell7}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        <TextBlock Text="{DynamicResource LocShellDiscovering}" IsVisible="{Binding IsDiscovering}" Classes="sc-text-status" AutomationProperties.LiveSetting="Polite" />
+        <StackPanel IsVisible="{Binding HasExisting}" Spacing="12">
+          <TextBlock Text="{DynamicResource LocShellExistingFound}" Classes="sc-text-status" infra:StatusToneProperties.Tone="Success" />
+          <TextBlock Text="{Binding ExistingVersion}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+          <TextBlock Text="{Binding ExistingPath}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+          <Button Classes="compact primary sc-button" Content="{Binding UseExistingLabel}" Command="{Binding UseExistingCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
         <TextBlock Text="{Binding InstallDirectory}" IsVisible="{Binding ShowInstallChoices}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
         <CheckBox Content="{DynamicResource LocShellUseBothAfterInstall}" IsChecked="{Binding UseForBoth}" IsEnabled="{Binding CanChooseInstallTargets}" IsVisible="{Binding ShowInstallChoices}" FontSize="11" />
         <StackPanel IsVisible="{Binding IsInstalling}" Spacing="8">

@@ -2775,6 +2775,18 @@ fn project_language_server_id(project_id: &str, kind: &str) -> String {
     format!("{project_id}:{kind}")
 }
 
+fn detection_command(executable: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
+    let mut command = std::process::Command::new(executable);
+    // Settings polls installation status from a GUI host on Windows.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    command.stdin(std::process::Stdio::null());
+    command
+}
+
 fn detect_jdtls() -> Option<String> {
     let name = if cfg!(windows) { "jdtls.bat" } else { "jdtls" };
     find_on_path(name)
@@ -2881,7 +2893,7 @@ fn rustup_which_rust_analyzer(project_root: Option<&Path>) -> Option<PathBuf> {
     } else {
         "rustup"
     })?;
-    let mut command = std::process::Command::new(rustup);
+    let mut command = detection_command(rustup);
     command.args(["which", "rust-analyzer"]);
     if let Some(project_root) = project_root {
         command.current_dir(project_root);
@@ -2929,7 +2941,7 @@ fn detect_roslyn(project_root: Option<&Path>) -> Option<(String, String)> {
 }
 
 fn detect_roslyn_version(executable: &str, project_root: Option<&Path>) -> Option<String> {
-    let mut command = std::process::Command::new(executable);
+    let mut command = detection_command(executable);
     command.args(["--stdio", "--version"]);
     if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
         command.current_dir(project_root);
@@ -2964,7 +2976,7 @@ fn detect_roslyn_version(executable: &str, project_root: Option<&Path>) -> Optio
 
 fn detect_dotnet_sdk_version(project_root: Option<&Path>) -> Option<String> {
     let dotnet = detect_dotnet()?;
-    let mut command = std::process::Command::new(dotnet);
+    let mut command = detection_command(dotnet);
     command.arg("--version");
     if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
         command.current_dir(project_root);
@@ -2981,7 +2993,7 @@ fn detect_dotnet_sdk_version(project_root: Option<&Path>) -> Option<String> {
 
 fn detect_dotnet_runtime_version(project_root: Option<&Path>) -> Option<String> {
     let dotnet = detect_dotnet()?;
-    let mut command = std::process::Command::new(dotnet);
+    let mut command = detection_command(dotnet);
     command.arg("--list-runtimes");
     if let Some(project_root) = project_root.filter(|path| path.is_dir()) {
         command.current_dir(project_root);
@@ -3047,7 +3059,7 @@ fn detect_tool_version(
     prefix: &str,
     project_root: Option<&Path>,
 ) -> Option<String> {
-    let mut command = std::process::Command::new(executable);
+    let mut command = detection_command(executable);
     command.arg("--version");
     if let Some(project_root) = project_root {
         command.current_dir(project_root);
@@ -3139,7 +3151,7 @@ fn detect_python(project_root: Option<&Path>) -> Option<String> {
 }
 
 fn detect_python_version(python_path: &str) -> Option<String> {
-    let output = std::process::Command::new(python_path)
+    let output = detection_command(python_path)
         .arg("--version")
         .output()
         .ok()?;
@@ -3205,7 +3217,7 @@ fn detect_nvm_binary(name: &str) -> Option<PathBuf> {
 }
 
 fn detect_node_version(node_path: &str) -> Option<String> {
-    let output = std::process::Command::new(node_path)
+    let output = detection_command(node_path)
         .arg("--version")
         .output()
         .ok()?;
@@ -3271,7 +3283,7 @@ fn detect_macos_java_home() -> Option<String> {
     if !executable.is_file() {
         return None;
     }
-    let output = std::process::Command::new(executable).output().ok()?;
+    let output = detection_command(executable).output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -3319,4 +3331,36 @@ fn require_idempotency_key(value: &str) -> SdkResult<()> {
         ));
     }
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    #[test]
+    fn installation_probe_runs_without_a_console() {
+        let output = super::detection_command(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "facade::language_servers::tests::report_console_window",
+                "--ignored",
+                "--nocapture",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("console_window=0"),
+            "{output:?}"
+        );
+    }
+
+    #[test]
+    #[ignore = "subprocess fixture for installation_probe_runs_without_a_console"]
+    fn report_console_window() {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetConsoleWindow() -> *mut std::ffi::c_void;
+        }
+        // A background process must not have a console window.
+        println!("console_window={}", unsafe { GetConsoleWindow() } as usize);
+    }
 }

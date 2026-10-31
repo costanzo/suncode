@@ -69,9 +69,11 @@ pub struct Client {
     inner: Arc<Inner>,
 }
 
-pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, BusinessError> {
-    validate_connection_config(&config)?;
+fn server_command(config: &ConnectionConfig) -> Command {
     let mut process = Command::new(&config.command);
+    // Stdio is carried by pipes; desktop hosts must not allocate a console.
+    #[cfg(windows)]
+    process.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     process
         .args(&config.arguments)
         .current_dir(&config.working_directory)
@@ -84,7 +86,12 @@ pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, Bu
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    let mut child = process.spawn().map_err(|error| {
+    process
+}
+
+pub async fn connect(config: ConnectionConfig, root: &Path) -> Result<Client, BusinessError> {
+    validate_connection_config(&config)?;
+    let mut child = server_command(&config).spawn().map_err(|error| {
         lsp_error(
             "lsp_process_start_failed",
             redact(&error.to_string(), config.environment.values()),
@@ -944,6 +951,49 @@ mod tests {
             Err(error) => error,
         };
         assert_eq!(error.code, "lsp_process_start_failed");
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn language_server_runs_without_a_console() {
+        let root = tempfile::tempdir().unwrap();
+        let output = server_command(&ConnectionConfig {
+            command: std::env::current_exe()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned(),
+            arguments: vec![
+                "--exact".into(),
+                "client::tests::report_console_window".into(),
+                "--ignored".into(),
+                "--nocapture".into(),
+            ],
+            working_directory: root.path().to_path_buf(),
+            environment: BTreeMap::new(),
+            initialization_options: json!({}),
+            configuration: json!({}),
+            startup_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(1),
+        })
+        .output()
+        .await
+        .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("console_window=0"),
+            "{output:?}"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "subprocess fixture for language_server_runs_without_a_console"]
+    fn report_console_window() {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetConsoleWindow() -> *mut std::ffi::c_void;
+        }
+        eprintln!("console_window={}", unsafe { GetConsoleWindow() } as usize);
     }
 
     #[cfg(unix)]

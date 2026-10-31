@@ -72,6 +72,35 @@ public sealed class ShellSettingsViewModelTests
         Assert.False(settings.UseBothCommand.CanExecute(null));
     }
 
+    [Fact]
+    public void ExistingInstallationReplacesDownloadOfferAndDoesNotOverwriteChoices()
+    {
+        using var settings = new ShellSettingsViewModel(new FakeViewModelHost());
+        Assert.True(settings.IsDiscovering);
+        Assert.False(settings.CanInstall);
+        var existing = PowerShellDiscoveryTests.Available(Path.Combine(Path.GetTempPath(), "existing", "pwsh.exe"));
+        var custom = Result(new("custom", Path.Combine(Path.GetTempPath(), "other", "pwsh.exe")));
+        settings.ApplySettings(new(custom, Result(new()), null, "managed-runtime", "windows", "x64", existing));
+        Assert.False(settings.IsDiscovering);
+        Assert.True(settings.HasExisting);
+        Assert.False(settings.CanInstall);
+        Assert.False(settings.ShowInstallChoices);
+        Assert.False(settings.InstallCommand.CanExecute(null));
+        Assert.True(settings.UseExistingCommand.CanExecute(null));
+        Assert.Equal(custom.Configuration, settings.Agent.SavedConfiguration);
+        Assert.Equal("system", settings.Terminal.SavedConfiguration.Mode);
+        Assert.Equal(existing.Shell!.Path, settings.ExistingPath);
+
+        settings.ApplySettings(new(existing, existing, null, "managed-runtime", "windows", "x64", existing), true);
+        Assert.False(settings.UseExistingCommand.CanExecute(null));
+
+        settings.ApplySettings(new(Result(new()), Result(new()), null, "managed-runtime", "windows", "x64"), true);
+        Assert.False(settings.HasExisting);
+        Assert.True(settings.CanInstall);
+        Assert.True(settings.ShowInstallChoices);
+        Assert.False(settings.UseExistingCommand.CanExecute(null));
+    }
+
     private static async Task WaitUntil(Func<bool> predicate)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));

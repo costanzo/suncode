@@ -54,16 +54,19 @@ internal sealed class ShellSetupService
     private readonly Func<ShellCheckRequest, CancellationToken, Task<ShellCheckResult>> _check;
     private readonly Func<DownloadNetworkConfiguration, Action<string, int>, CancellationToken, Task> _install;
     private readonly Action _ensureInstallSupported;
+    private readonly Func<CancellationToken, Task<ShellCheckResult?>> _discover;
     internal ShellSetupService(Func<Task<(ShellConfiguration Agent, ShellConfiguration Terminal)>> read,
         Func<ShellPreferencesRequest, Task> save, Func<Task<DownloadNetworkConfiguration>> network,
         Func<ShellCheckRequest, CancellationToken, Task<ShellCheckResult>>? check = null,
         Func<DownloadNetworkConfiguration, Action<string, int>, CancellationToken, Task>? install = null,
-        Action? ensureInstallSupported = null)
+        Action? ensureInstallSupported = null,
+        Func<CancellationToken, Task<ShellCheckResult?>>? discover = null)
     {
         _read = read; _save = save; _network = network;
         _check = check ?? ShellResolver.CheckAsync;
         _install = install ?? PowerShellInstaller.InstallAsync;
         _ensureInstallSupported = ensureInstallSupported ?? (() => { _ = ShellResolver.ManagedDirectory; });
+        _discover = discover ?? PowerShellDiscovery.FindAsync;
     }
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
     private readonly SemaphoreSlim _commit = new(1, 1);
@@ -100,11 +103,21 @@ internal sealed class ShellSetupService
             directory = ShellResolver.ManagedDirectory;
             if (File.Exists(Path.Combine(directory, "pwsh.exe"))) managed = await _check(new("terminal", new("managed")), default).ConfigureAwait(false);
         }
-        return new(await agent.ConfigureAwait(false), await terminal.ConfigureAwait(false), managed, directory,
+        var checkedAgent = await agent.ConfigureAwait(false);
+        var checkedTerminal = await terminal.ConfigureAwait(false);
+        var existing = await FindExistingAsync(checkedAgent, checkedTerminal, default).ConfigureAwait(false);
+        return new(checkedAgent, checkedTerminal, managed, directory,
             OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux",
-            OperatingSystem.IsWindows() ? ShellResolver.Architecture : System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant());
+            OperatingSystem.IsWindows() ? ShellResolver.Architecture : System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant(), existing);
     }
-    internal async Task<ShellCheckResult> SaveAsync(ShellCheckRequest request)
+    private Task<ShellCheckResult?> FindExistingAsync(ShellCheckResult agent, ShellCheckResult terminal, CancellationToken token)
+    {
+        foreach (var result in new[] { agent, terminal })
+            if (OperatingSystem.IsWindows() && result.Configuration.Mode == "custom" && PowerShellDiscovery.IsPowerShell7(result))
+                return Task.FromResult<ShellCheckResult?>(result);
+        return _discover(token);
+    }
+    internal async Task<ShellCheckResult> SaveAsync(ShellCheckRequest request, bool requirePowerShell7 = false)
     {
         await _commit.WaitAsync().ConfigureAwait(false);
         try
@@ -114,14 +127,16 @@ internal sealed class ShellSetupService
                 if (_closed) throw new ObjectDisposedException(nameof(ShellSetupService));
                 if (_status.Running && _status.UseForBoth) throw new SdkException("shell_install_busy", "Shell settings are locked until installation completes");
             }
-            return await SaveCheckedAsync(request).ConfigureAwait(false);
+            return await SaveCheckedAsync(request, requirePowerShell7: requirePowerShell7).ConfigureAwait(false);
         }
         finally { _commit.Release(); }
     }
-    private async Task<ShellCheckResult> SaveCheckedAsync(ShellCheckRequest request, CancellationToken token = default)
+    private async Task<ShellCheckResult> SaveCheckedAsync(ShellCheckRequest request, CancellationToken token = default, bool requirePowerShell7 = false)
     {
         var checkedShell = await _check(request, token).ConfigureAwait(false);
         if (checkedShell.Shell is null) return checkedShell;
+        if (requirePowerShell7 && !PowerShellDiscovery.IsPowerShell7(checkedShell))
+            return checkedShell with { State = "unavailable", Shell = null, ErrorCode = "shell_version_unsupported", Message = "The executable is no longer PowerShell 7 or later. Check the path and try again." };
         var configuration = checkedShell.Configuration with { Resolved = checkedShell.Shell };
         token.ThrowIfCancellationRequested();
         await _save(request.Target switch
@@ -147,7 +162,7 @@ internal sealed class ShellSetupService
             if (_closed) throw new ObjectDisposedException(nameof(ShellSetupService));
             if (_status.Running) throw new SdkException("shell_install_busy", "PowerShell installation is already running");
             _cancellation?.Dispose(); _cancellation = new();
-            _status = new("downloading", true, 0, "", null, useForBoth);
+            _status = new("checking", true, 0, "", null, useForBoth);
             _installation = Task.Run(() => InstallAsync(useForBoth, _cancellation.Token));
             return _status;
         }
@@ -162,6 +177,13 @@ internal sealed class ShellSetupService
     {
         try
         {
+            // Settings may have been opened before another installer finished.
+            // Recheck before making any network request or creating a second copy.
+            var preferences = await _read().ConfigureAwait(false);
+            var agent = await _check(new("agent", preferences.Agent), token).ConfigureAwait(false);
+            var terminal = await _check(new("terminal", preferences.Terminal), token).ConfigureAwait(false);
+            if (await FindExistingAsync(agent, terminal, token).ConfigureAwait(false) is not null)
+                throw new SdkException("shell_existing_available", "PowerShell 7 is already available. Reopen Terminal settings to use the existing installation.");
             var network = await _network().ConfigureAwait(false);
             await _install(network, (stage, progress) =>
             {

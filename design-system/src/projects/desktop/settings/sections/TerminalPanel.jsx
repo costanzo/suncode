@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../../components/universal/button/index.js";
 import { SingleDropdown } from "../../../../components/universal/dropdown/index.js";
 import { Icon } from "../../../../shared/Icon.jsx";
-import { installFailures, managedPowerShell, shellPlatforms } from "../data/shells.js";
+import {
+  existingPowerShell,
+  installFailures,
+  managedPowerShell,
+  shellPlatforms,
+} from "../data/shells.js";
 
 function sameShell(a, b) {
   return a.mode === b.mode && (a.mode !== "custom" || a.path.trim() === b.path.trim());
@@ -18,7 +23,7 @@ function probeFixture(path, platform) {
   if (!absolute) return { state: "error", message: "Enter an absolute executable path." };
   const name = path.trim().split(/[\\/]/).pop();
   const versions = {
-    "pwsh.exe": "PowerShell 7.6.0",
+    "pwsh.exe": path === existingPowerShell.path ? existingPowerShell.version : "PowerShell 7.6.0",
     "powershell.exe": "Windows PowerShell 5.1",
     sh: "POSIX sh",
     bash: "GNU bash 5.2",
@@ -212,10 +217,16 @@ const installStages = [
 
 export function TerminalPanel({ platform, architecture, scenario }) {
   const managed = managedPowerShell(architecture);
+  const existing = platform === "windows" && scenario.startsWith("existing");
+  const discovering = platform === "windows" && scenario === "discovering";
+  const initialShell =
+    scenario === "existing-selected"
+      ? { mode: "custom", path: existingPowerShell.path }
+      : { mode: "system", path: "" };
   const [installed, setInstalled] = useState(scenario === "installed");
   const [applied, setApplied] = useState({
-    agent: { mode: "system", path: "" },
-    terminal: { mode: "system", path: "" },
+    agent: initialShell,
+    terminal: initialShell,
   });
   const [installState, setInstallState] = useState(
     installFailures[scenario] ? scenario : scenario === "installed" ? "installed" : "idle",
@@ -265,6 +276,16 @@ export function TerminalPanel({ platform, architecture, scenario }) {
     );
   };
   const bothManaged = applied.agent.mode === "managed" && applied.terminal.mode === "managed";
+  const bothExisting = [applied.agent, applied.terminal].every(
+    (shell) => shell.mode === "custom" && shell.path === existingPowerShell.path,
+  );
+  const useExisting = () => {
+    const shell = { mode: "custom", path: existingPowerShell.path };
+    setApplied({ agent: shell, terminal: shell });
+    setNotice(
+      "PowerShell 7 selected for both shells. Applies to the next turn and new or restarted terminal tabs.",
+    );
+  };
 
   return (
     <div className="settings-panel-content terminal-settings-content">
@@ -295,6 +316,32 @@ export function TerminalPanel({ platform, architecture, scenario }) {
             <span>{architecture === "arm64" ? "Windows ARM64" : "Windows x64"}</span>
           </div>
           <p>For the best experience, use PowerShell 7.</p>
+          {discovering && (
+            <span className="shell-probe" role="status">
+              Checking existing installations…
+            </span>
+          )}
+          {existing && (
+            <>
+              <span className="shell-probe is-available">
+                <Icon name="check" size={13} />
+                Existing installation found
+              </span>
+              <p>{existingPowerShell.version}</p>
+              <code className="shell-resolved-path">{existingPowerShell.path}</code>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={bothExisting}
+                onClick={useExisting}
+              >
+                {bothExisting
+                  ? "Selected for both shells"
+                  : "Use existing installation for both shells"}
+              </Button>
+            </>
+          )}
           {installed ? (
             <>
               <span className="shell-probe is-available">
@@ -307,55 +354,60 @@ export function TerminalPanel({ platform, architecture, scenario }) {
               </Button>
             </>
           ) : (
-            <>
-              {!busy && (
-                <p className="shell-install-location">
-                  Installs to <code>%LOCALAPPDATA%\SunCode\runtimes\powershell</code>
-                </p>
-              )}
-              <label className="shell-install-choice">
-                <input
-                  type="checkbox"
-                  checked={useForBoth}
-                  disabled={busy}
-                  onChange={(event) => setUseForBoth(event.target.checked)}
-                />
-                Use for Agent and Terminal after installation
-              </label>
-              {busy && (
-                <div className="shell-install-progress" role="status" aria-live="polite">
-                  <span>{stage.label}</span>
-                  <progress max="100" value={stage.progress} aria-label={stage.label} />
-                </div>
-              )}
-              {installFailures[installState] && (
-                <p className="shell-install-error" role="alert">
-                  <Icon name="warning" size={14} />
-                  {installFailures[installState]}
-                </p>
-              )}
-              <div className="shell-install-actions">
-                {busy ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      setInstallState("cancelled");
-                      setNotice("Installation cancelled. Shell settings were kept.");
-                    }}
-                  >
-                    Cancel installation
-                  </Button>
-                ) : (
-                  <Button type="button" variant="primary" size="sm" onClick={startInstall}>
-                    {installFailures[installState]
-                      ? "Retry download and install"
-                      : "Download and install"}
-                  </Button>
+            !existing &&
+            !discovering && (
+              <>
+                {!busy && (
+                  <p className="shell-install-location">
+                    Installs to <code>%LOCALAPPDATA%\SunCode\runtimes\powershell</code>
+                  </p>
                 )}
-                {!busy && <span>Official Microsoft release · No administrator access needed</span>}
-              </div>
-            </>
+                <label className="shell-install-choice">
+                  <input
+                    type="checkbox"
+                    checked={useForBoth}
+                    disabled={busy}
+                    onChange={(event) => setUseForBoth(event.target.checked)}
+                  />
+                  Use for Agent and Terminal after installation
+                </label>
+                {busy && (
+                  <div className="shell-install-progress" role="status" aria-live="polite">
+                    <span>{stage.label}</span>
+                    <progress max="100" value={stage.progress} aria-label={stage.label} />
+                  </div>
+                )}
+                {installFailures[installState] && (
+                  <p className="shell-install-error" role="alert">
+                    <Icon name="warning" size={14} />
+                    {installFailures[installState]}
+                  </p>
+                )}
+                <div className="shell-install-actions">
+                  {busy ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setInstallState("cancelled");
+                        setNotice("Installation cancelled. Shell settings were kept.");
+                      }}
+                    >
+                      Cancel installation
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="primary" size="sm" onClick={startInstall}>
+                      {installFailures[installState]
+                        ? "Retry download and install"
+                        : "Download and install"}
+                    </Button>
+                  )}
+                  {!busy && (
+                    <span>Official Microsoft release · No administrator access needed</span>
+                  )}
+                </div>
+              </>
+            )
           )}
           {notice && (
             <p className="shell-install-notice" role="status">
