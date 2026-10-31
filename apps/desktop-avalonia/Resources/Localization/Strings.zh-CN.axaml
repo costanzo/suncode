@@ -431,6 +431,11 @@
   <x:String x:Key="LocShowSourceControl">显示或隐藏源代码管理</x:String>
   <x:String x:Key="LocShowToolActivity">显示或隐藏工具活动</x:String>
   <x:String x:Key="LocShowProviderTrace">显示或隐藏提供商调用记录</x:String>
+  <x:String x:Key="LocShowTerminal">显示或隐藏终端</x:String>
+  <x:String x:Key="LocNewTerminal">新建终端</x:String>
+  <x:String x:Key="LocRestartShell">重启 Shell</x:String>
+  <x:String x:Key="LocHideTerminalDrawer">隐藏终端抽屉</x:String>
+  <x:String x:Key="LocNoTerminalSessions">暂无终端会话</x:String>
   <x:String x:Key="LocShowChildSessions">显示或隐藏子会话</x:String>
   <x:String x:Key="LocCreate">创建</x:String>
   <x:String x:Key="LocSessionName">会话名称</x:String>

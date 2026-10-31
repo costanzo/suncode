@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:terminal="using:SunCode.Desktop.Views.ProjectWorkspace.Terminal"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Terminal.TerminalPanel"
+             x:DataType="vm:DesktopViewModel"
+             MinHeight="180">
+  <UserControl.Styles>
+    <Style Selector="Border.terminal-panel">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ListBox.terminal-tabs">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.terminal-tabs ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="ListBox.terminal-tabs ListBoxItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.terminal-tab-button">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.terminal-tab-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.terminal-tab-button.active">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.terminal-tab-button.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.terminal-tab-close">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.terminal-tab-close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.terminal-action">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+    <Style Selector="Button.terminal-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="terminal-panel" ClipToBounds="True">
+    <Grid RowDefinitions="36,1,*">
+      <Grid Grid.Row="0" Margin="12,0,8,0" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+        <ListBox Grid.Column="0"
+                 Classes="terminal-tabs"
+                 ItemsSource="{Binding Terminal.Sessions}"
+                 SelectedItem="{Binding Terminal.SelectedSession, Mode=OneWay}"
+                 SelectionChanged="SessionSelected">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="vm:TerminalSessionViewModel">
+              <Grid ColumnDefinitions="Auto,22" Height="28" Classes="terminal-tab">
+                <Button Grid.Column="0" Classes="terminal-tab-button" Classes.active="{Binding IsSelected}" Click="SessionSelectedButton">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ShellLabel}" Classes="mono" FontSize="10" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Classes="terminal-tab-close" Click="CloseSession">
+                  <svg:Svg Width="12" Height="12" Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Grid.Column="1" Classes="terminal-action" Click="NewSession" ToolTip.Tip="{DynamicResource LocNewTerminal}" AutomationProperties.Name="{DynamicResource LocNewTerminal}">
+          <svg:Svg Width="14" Height="14" Path="/Assets/icons/plus.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+        <TextBlock Grid.Column="2" Text="{Binding Terminal.WorkingDirectory}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" MaxWidth="360" Margin="8,0,0,0" />
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+          <Button Classes="terminal-action" Click="RestartSession" IsEnabled="{Binding Terminal.HasSessions}" ToolTip.Tip="{DynamicResource LocRestartShell}" AutomationProperties.Name="{DynamicResource LocRestartShell}">
+            <svg:Svg Width="14" Height="14" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+          <Button Classes="terminal-action" Click="HideTerminal" ToolTip.Tip="{DynamicResource LocHideTerminalDrawer}" AutomationProperties.Name="{DynamicResource LocHideTerminalDrawer}">
+            <svg:Svg Width="14" Height="14" Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+      <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
+      <Grid Grid.Row="2" Background="{DynamicResource CanvasBrush}">
+        <ItemsControl ItemsSource="{Binding Terminal.Sessions}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:TerminalSessionViewModel">
+              <Border IsVisible="{Binding IsSelected}" Background="{DynamicResource CanvasBrush}">
+                <terminal:TerminalSessionView />
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !Terminal.HasSessions}">
+          <TextBlock Text="{DynamicResource LocNoTerminalSessions}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <Button Classes="sc-button compact" Content="{DynamicResource LocNewTerminal}" Click="NewSession" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

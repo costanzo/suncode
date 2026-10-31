@@ -14,7 +14,7 @@
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
     <FileVersion>0.1.0.0</FileVersion>
     <InformationalVersion>0.1.0</InformationalVersion>
-    <AvaloniaVersion>12.1.1</AvaloniaVersion>
+    <AvaloniaVersion>12.1.3</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
@@ -60,6 +60,7 @@
     <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
     <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="RoyalApps.RoyalTerminal.Avalonia" Version="0.7.0" />
     <PackageReference Include="LiveMarkdown.Avalonia" Version="2.4.3" />
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <PackageReference Include="QRCoder" Version="1.6.0" />

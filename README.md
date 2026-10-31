@@ -13,6 +13,7 @@ Phase 1 is a local desktop application. A .NET 10 Avalonia client embeds one Rus
 - Make preconditioned file changes and review touched paths through turn-level checkpoints and conflict-aware undo.
 - Review read-only Git status and structured diffs without requiring a Git executable.
 - Run approved commands using explicit structured or platform-native shell execution.
+- Open multiple local shell sessions in the Workspace Terminal drawer. They are desktop-owned and independent from Agent turns.
 - Fetch bounded textual web content through an approval-gated `webfetch` tool.
 - Answer structured questions, track the current turn's todos, inspect provider traces, and manage read-only project dependencies.
 

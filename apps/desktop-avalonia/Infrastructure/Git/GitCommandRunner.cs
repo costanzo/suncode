@@ -21,7 +21,7 @@ internal sealed class GitCommandRunner(string executable)
 
     public async Task<GitCommandResult> RunAsync(string directory, IEnumerable<string> arguments,
         CancellationToken cancellation = default, int outputLimit = 8 * 1024 * 1024,
-        TimeSpan? timeout = null)
+        TimeSpan? timeout = null, bool allowDifference = false)
     {
         cancellation.ThrowIfCancellationRequested();
         if (!File.Exists(Executable)) throw new GitException("git_missing", "The Git executable is unavailable.");
@@ -61,7 +61,8 @@ internal sealed class GitCommandRunner(string executable)
             var error = await errorTask;
             var errorText = Encoding.UTF8.GetString(error.Bytes);
             var result = new GitCommandResult(process.ExitCode, output.Bytes, errorText, output.Truncated);
-            if (result.ExitCode != 0 || !string.IsNullOrWhiteSpace(errorText) || output.Truncated || error.Truncated)
+            var expectedDifference = allowDifference && result.ExitCode == 1;
+            if ((!expectedDifference && result.ExitCode != 0) || !string.IsNullOrWhiteSpace(errorText) || output.Truncated || error.Truncated)
             {
                 var level = result.ExitCode == 0 ? "warning" : "failure";
                 DiagnosticLog.Warn("git.command",

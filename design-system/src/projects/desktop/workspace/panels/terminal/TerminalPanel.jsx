@@ -39,6 +39,14 @@ export function TerminalPanel({ onClose, standalone = false, state = "running" }
             <i aria-hidden="true" />
             <span>zsh</span>
           </button>
+          <button
+            type="button"
+            className="workspace-terminal-tab-close"
+            aria-label="Close zsh terminal session"
+            title="Close terminal session"
+          >
+            <Icon name="close" size={11} />
+          </button>
           <button type="button" className="workspace-terminal-new" aria-label="New terminal" title="New terminal">
             <Icon name="plus" size={13} />
           </button>

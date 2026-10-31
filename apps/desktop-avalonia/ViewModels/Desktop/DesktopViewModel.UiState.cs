@@ -26,6 +26,7 @@ public sealed partial class DesktopViewModel
         Browser = new BrowserRuntimeViewModel(this);
         Computer = new ComputerRuntimeViewModel(this);
         Layout = new WorkspaceLayoutViewModel(this);
+        Terminal = new TerminalViewModel(this);
         Git.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName != nameof(Git.IsAvailable)) return;
@@ -128,6 +129,10 @@ public sealed partial class DesktopViewModel
             Layout.GitVisible = Git.IsAvailable && saved.BottomDrawer == "git";
             Layout.ProviderTraceVisible = saved.BottomDrawer == "providerTrace";
             Layout.ToolActivityVisible = saved.BottomDrawer == "toolActivity";
+            // RoyalTerminal owns a composition visual. Do not restore and mount it
+            // during project-window startup; the user opens it explicitly after the
+            // workspace has completed its first render.
+            Layout.TerminalVisible = false;
             if (saved.NavigationWidth is { } navigationWidth) Layout.NavigationPaneWidth = Math.Max(0, navigationWidth);
             if (saved.ReviewWidth is { } reviewWidth) Layout.ReviewPaneWidth = Math.Max(0, reviewWidth);
             if (saved.BottomDrawerHeight is { } drawerHeight) Layout.BottomDrawerHeight = Math.Max(0, drawerHeight);
@@ -199,7 +204,7 @@ public sealed partial class DesktopViewModel
         {
             saved.LeftRegion = !Layout.NavigationVisible ? "closed" : Layout.ExplorerVisible ? "explorer" : "sessions";
             saved.RightRegion = Layout.ReviewVisible ? "review" : Layout.ChildSessionsVisible ? "children" : "closed";
-            saved.BottomDrawer = Layout.GitVisible ? "git" : Layout.ProviderTraceVisible ? "providerTrace" : Layout.ToolActivityVisible ? "toolActivity" : "closed";
+            saved.BottomDrawer = Layout.GitVisible ? "git" : Layout.ProviderTraceVisible ? "providerTrace" : Layout.ToolActivityVisible ? "toolActivity" : Layout.TerminalVisible ? "terminal" : "closed";
         });
     }
 

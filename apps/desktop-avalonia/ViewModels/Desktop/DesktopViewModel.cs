@@ -78,6 +78,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public ContextUsageViewModel ContextUsage { get; }
     public bool IsProviderTrafficVisible => IsProjectOpen;
     public ToolActivityViewModel ToolActivity { get; } = new();
+    public TerminalViewModel Terminal { get; }
     public ObservableCollection<ProjectItem> Projects { get; } = [];
     public ObservableCollection<SessionItem> Sessions { get; } = [];
     public ObservableCollection<SessionItem> ArchivedSessions { get; } = [];

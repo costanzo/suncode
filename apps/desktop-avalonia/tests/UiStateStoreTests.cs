@@ -73,6 +73,28 @@ public sealed class UiStateStoreTests
     }
 
     [Fact]
+    public void PersistsTerminalDrawerState()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "suncode-ui-state-tests", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(directory, "ui-state.json");
+        try
+        {
+            using (var store = new UiStateStore(path))
+            {
+                store.UpdateProject("project-1", project => project.BottomDrawer = "terminal");
+                store.Flush();
+            }
+
+            using var reloaded = new UiStateStore(path);
+            Assert.Equal("terminal", reloaded.Project("project-1").BottomDrawer);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
     public void CorruptStateFallsBackAndPreservesBackup()
     {
         var directory = Path.Combine(Path.GetTempPath(), "suncode-ui-state-tests", Guid.NewGuid().ToString("N"));

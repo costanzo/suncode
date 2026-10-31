@@ -7,12 +7,19 @@
              xmlns:navigation="using:SunCode.Desktop.Views.ProjectWorkspace.Navigation"
              xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
              xmlns:preview="using:SunCode.Desktop.Views.ProjectWorkspace.Preview"
+             xmlns:terminal="using:SunCode.Desktop.Views.ProjectWorkspace.Terminal"
              xmlns:workspace="using:SunCode.Desktop.Views.ProjectWorkspace"
              xmlns:chrome="using:Avalonia.Controls.Chrome"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
+    <Style Selector="Border.terminal-drawer">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
     <Style Selector="TextBox.expanded-composer-input:focus">
       <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -182,6 +189,12 @@
                   <svg:Svg Width="15" Height="15" Path="/Assets/icons/activity.svg" IsVisible="{Binding Layout.ProviderTraceVisible}" />
                 </Grid>
               </Button>
+              <Button Classes="icon gutter" Classes.active="{Binding Layout.TerminalVisible}" Click="ToggleTerminal" IsVisible="{Binding IsProjectOpen}" ToolTip.Tip="{DynamicResource LocShowTerminal}" AutomationProperties.Name="{DynamicResource LocShowTerminal}">
+                <Grid>
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/terminal.svg" IsVisible="{Binding !Layout.TerminalVisible}" />
+                  <svg:Svg Width="15" Height="15" Path="/Assets/icons/terminal.svg" IsVisible="{Binding Layout.TerminalVisible}" />
+                </Grid>
+              </Button>
             </StackPanel>
           </Grid>
 
@@ -230,6 +243,7 @@
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveGitVisible}" />
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveProviderTraceVisible}" />
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveToolActivityVisible}" />
+            <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveTerminalVisible}" />
 
             <Grid Grid.Row="2">
               <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveGitVisible}">
@@ -240,6 +254,9 @@
               </Border>
               <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveToolActivityVisible}">
                 <review:ToolActivityViewer x:Name="ToolActivityViewer" VerticalAlignment="Stretch" />
+              </Border>
+              <Border Classes="terminal-drawer" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveTerminalVisible}">
+                <terminal:TerminalPanel x:Name="TerminalPanel" VerticalAlignment="Stretch" />
               </Border>
             </Grid>
           </Grid>

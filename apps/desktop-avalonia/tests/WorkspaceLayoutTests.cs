@@ -177,6 +177,7 @@ public sealed class WorkspaceLayoutTests
     [InlineData(WorkspaceBottomDrawer.Git)]
     [InlineData(WorkspaceBottomDrawer.ProviderTrace)]
     [InlineData(WorkspaceBottomDrawer.ToolActivity)]
+    [InlineData(WorkspaceBottomDrawer.Terminal)]
     public void OpeningABottomDrawerClosesTheOthers(WorkspaceBottomDrawer drawer)
     {
         var layout = CreateLayout();

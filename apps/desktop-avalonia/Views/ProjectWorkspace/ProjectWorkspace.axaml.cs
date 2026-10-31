@@ -22,6 +22,7 @@ public sealed partial class ProjectWorkspace : UserControl
     private double _layoutResizeStartSize;
     private string _expandedComposerDraft = string.Empty;
     private MessageItem? _longUserMessage;
+    private bool _terminalSessionRestoreQueued;
 
     public ProjectWorkspace()
     {
@@ -287,6 +288,27 @@ public sealed partial class ProjectWorkspace : UserControl
 
     private void ToggleToolActivity(object? sender, RoutedEventArgs e) =>
         ToggleToolActivityPanel();
+
+    private void ToggleTerminal(object? sender, RoutedEventArgs e)
+    {
+        if (Layout.ToggleBottomDrawer(WorkspaceBottomDrawer.Terminal)) QueueTerminalSessionRestore();
+    }
+
+    private void QueueTerminalSessionRestore()
+    {
+        if (VisualRoot is null || DataContext is not DesktopViewModel viewModel || !viewModel.Layout.TerminalVisible
+            || viewModel.Terminal.HasSessions || !viewModel.Terminal.CanOpen || _terminalSessionRestoreQueued)
+            return;
+
+        _terminalSessionRestoreQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _terminalSessionRestoreQueued = false;
+            if (VisualRoot is not null && DataContext is DesktopViewModel currentViewModel
+                && currentViewModel.Layout.TerminalVisible && !currentViewModel.Terminal.HasSessions && currentViewModel.Terminal.CanOpen)
+                currentViewModel.Terminal.OpenSession();
+        }, DispatcherPriority.Background);
+    }
 
     // Resize handles share the Border.resize-handle style; their Tag names
     // the layout region they resize. Handlers are attached once at the

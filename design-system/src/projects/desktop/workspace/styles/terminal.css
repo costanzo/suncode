@@ -77,6 +77,20 @@
   padding: 0;
 }
 
+.workspace-terminal-tabs .workspace-terminal-tab-close {
+  width: 20px;
+  justify-content: center;
+  margin-left: -8px;
+  padding: 0;
+  opacity: 0;
+}
+
+.workspace-terminal-tabs button:hover + .workspace-terminal-tab-close,
+.workspace-terminal-tab-close:hover,
+.workspace-terminal-tab-close:focus-visible {
+  opacity: 1;
+}
+
 .workspace-terminal-cwd {
   flex: 0 1 auto;
   min-width: 0;

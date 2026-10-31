@@ -261,6 +261,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _conversationDurationTimer.Stop();
+        Terminal.Dispose();
         Remote.Dispose();
         Git.Dispose();
         AppSettings.LanguageChanged -= OnAppLanguageChanged;

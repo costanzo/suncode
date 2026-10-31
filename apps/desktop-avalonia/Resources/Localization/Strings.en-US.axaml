@@ -430,6 +430,11 @@
   <x:String x:Key="LocShowSourceControl">Show or hide source control</x:String>
   <x:String x:Key="LocShowToolActivity">Show or hide Tool activity</x:String>
   <x:String x:Key="LocShowProviderTrace">Show or hide provider trace</x:String>
+  <x:String x:Key="LocShowTerminal">Show or hide terminal</x:String>
+  <x:String x:Key="LocNewTerminal">New terminal</x:String>
+  <x:String x:Key="LocRestartShell">Restart shell</x:String>
+  <x:String x:Key="LocHideTerminalDrawer">Hide terminal drawer</x:String>
+  <x:String x:Key="LocNoTerminalSessions">No terminal sessions</x:String>
   <x:String x:Key="LocShowChildSessions">Show or hide child sessions</x:String>
   <x:String x:Key="LocCreate">Create</x:String>
   <x:String x:Key="LocSessionName">Session name</x:String>

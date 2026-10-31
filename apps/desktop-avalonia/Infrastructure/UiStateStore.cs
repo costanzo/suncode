@@ -198,7 +198,7 @@ internal sealed class UiStateStore : IDisposable
                 project.RecentContent = project.RecentContent.Take(20).ToList();
                 project.LeftRegion = project.LeftRegion is "closed" or "sessions" or "explorer" ? project.LeftRegion : "sessions";
                 project.RightRegion = project.RightRegion is "closed" or "review" ? project.RightRegion : "review";
-                project.BottomDrawer = project.BottomDrawer is "closed" or "git" or "providerTrace" or "toolActivity" ? project.BottomDrawer : "closed";
+                project.BottomDrawer = project.BottomDrawer is "closed" or "git" or "providerTrace" or "toolActivity" or "terminal" ? project.BottomDrawer : "closed";
                 project.WindowState = project.WindowState is "normal" or "maximized" or "fullscreen" ? project.WindowState : "normal";
             }
             return parsed;

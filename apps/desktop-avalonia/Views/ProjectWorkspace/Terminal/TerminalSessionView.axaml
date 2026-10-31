@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:terminal="using:RoyalTerminal.Avalonia.Controls"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Terminal.TerminalSessionView"
+             x:DataType="vm:TerminalSessionViewModel">
+  <terminal:TerminalControl x:Name="Terminal"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            AutoScroll="True"
+                            FontFamilyName="JetBrains Mono"
+                            TerminalFontSize="12"
+                            ScrollbackLimit="10000"
+                            Padding="0" />
+</UserControl>

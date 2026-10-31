@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261031-desktop-owned-terminal
+
+- Date: 2026-10-31
+- Status: Accepted and implemented
+- Context: The Avalonia Workspace needs an interactive local terminal, while the Rust Agent process tool intentionally remains a bounded, approval-aware, non-interactive operation. Binding a user shell to Agent sessions would mix client presentation with Agent authority and undo semantics.
+- Decision: Add a desktop-owned Terminal bottom drawer using RoyalTerminal 0.7.0 with managed VT and local PTY/ConPTY transports. Each tab owns one shell process rooted at the opened project. Tabs, input/output, resize, restart, selection, and cleanup remain in the Avalonia client. The drawer is mutually exclusive with existing bottom drawers; hiding it keeps sessions alive, tab/project close stops them. Terminal sessions do not use the SDK, C ABI, SQLite, Agent policy, approvals, checkpoints, or undo.
+- Consequences: Avalonia depends on RoyalTerminal and Avalonia 12.1.3. Shells run with normal user authority and must be described as outside SunCode's Agent undo boundary. Terminal tab and shell smoke validation remains platform-specific across macOS, Windows, and Linux.
+- Details: `apps/desktop-avalonia/Views/ProjectWorkspace/Terminal/`, `apps/desktop-avalonia/ViewModels/Workspace/TerminalViewModel.cs`, `DESIGN.md`
+
 ## ADR-20261023-computer-accessibility-tree
 
 - Date: 2026-10-23

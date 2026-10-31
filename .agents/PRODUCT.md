@@ -27,14 +27,14 @@ The user is a software developer working in code repositories. The jobs SunCode 
 
 ## Scope
 
-The committed Phase 1 production surface is the Avalonia desktop application and it remains the reference consumer of the Rust SDK facade. The native Rust CLI now implements administrative commands, one-shot `run`, and session list/resume/archive. Interactive chat and approval/question continuations remain deferred under `contracts/cli.md`.
+The committed Phase 1 production surface is the Avalonia desktop application and it remains the reference consumer of the Rust SDK facade. The desktop also provides a local, desktop-owned Terminal drawer for interactive shells; these sessions are separate from Agent sessions and do not participate in Agent approvals or undo. The native Rust CLI now implements administrative commands, one-shot `run`, and session list/resume/archive. Interactive chat and approval/question continuations remain deferred under `contracts/cli.md`.
 
 A paired mobile client can drive desktop sessions through the remote-control relay. TUI, web, and IDE-plugin surfaces remain future directions. The approved CLI must reuse the same embedded Rust agent and must not reshape or duplicate desktop-owned presentation behavior.
 
 ## Non-goals
 
 - Cloud-hosted execution, multi-tenancy, and remote project provisioning. The agent protocol should not permanently foreclose hosting, but no current design work targets it.
-- Being a general-purpose editor, debugger, terminal emulator, or Git client.
+- Being a general-purpose editor, debugger, full-featured terminal emulator, or Git client.
 - A plugin marketplace or a hosted extension registry.
 - Team collaboration, session sharing, and multi-user access control.
 

@@ -4,7 +4,6 @@
              xmlns:vm="using:SunCode.Desktop.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              xmlns:controls="using:SunCode.Desktop.Controls"
-             xmlns:documents="using:Avalonia.Controls.Documents"
              xmlns:chat="using:SunCode.Desktop.Views.ProjectWorkspace.Chat"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Chat.ChatArea"
              x:DataType="vm:DesktopViewModel">
@@ -260,27 +259,24 @@
                                        TextWrapping="Wrap"
                                        LineHeight="19"
                                        IsVisible="{Binding !IsLongUserMessage}" />
-                  <TextBlock FontSize="12"
-                             TextWrapping="Wrap"
-                             LineHeight="19"
-                             MaxHeight="114"
-                             IsVisible="{Binding IsLongUserMessage}">
-                    <Run Text="{Binding UserPreviewText}" />
-                    <documents:InlineUIContainer>
-                      <Button Classes="quiet view-more"
-                              Padding="0"
-                              Margin="8,0,0,0"
-                              VerticalAlignment="Center"
-                              Click="ViewLongUserMessage"
-                              ToolTip.Tip="{DynamicResource LocViewFullMessage}"
-                              AutomationProperties.Name="{DynamicResource LocViewFullMessage}">
-                        <TextBlock Text="{DynamicResource LocViewMore}"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentBrush}" />
-                      </Button>
-                    </documents:InlineUIContainer>
-                  </TextBlock>
+                  <StackPanel IsVisible="{Binding IsLongUserMessage}" Spacing="3">
+                    <TextBlock Text="{Binding UserPreviewText}"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               LineHeight="19"
+                               MaxHeight="114" />
+                    <Button Classes="quiet view-more"
+                            HorizontalAlignment="Left"
+                            Padding="0"
+                            Click="ViewLongUserMessage"
+                            ToolTip.Tip="{DynamicResource LocViewFullMessage}"
+                            AutomationProperties.Name="{DynamicResource LocViewFullMessage}">
+                      <TextBlock Text="{DynamicResource LocViewMore}"
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Foreground="{DynamicResource AccentBrush}" />
+                    </Button>
+                  </StackPanel>
                 </StackPanel>
               </Border>
 

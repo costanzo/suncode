@@ -183,7 +183,8 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
             return new("", false, 0, 0, [], true);
         var diff = await runner.RunAsync(context.Root, context.FilterOverrides.Concat(new[] {
             "diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--unified=3", "--",
-             OperatingSystem.IsWindows() ? "NUL" : "/dev/null", context.Prefix + path }), cancellation, MaxPatchBytes);
+             OperatingSystem.IsWindows() ? "NUL" : "/dev/null", context.Prefix + path }), cancellation, MaxPatchBytes,
+            allowDifference: true);
         RequireSuccess(diff, allowDifference: true);
         return GitOutputParser.Patch(diff.Text, diff.Truncated);
     }
