@@ -216,12 +216,24 @@ fn dependency_results_preserve_the_stable_alias() {
 }
 
 #[test]
-fn legacy_bash_translation_uses_the_platform_shell() {
+fn bash_without_host_launch_facts_never_selects_a_fallback() {
+    let error = super::translate::translate_arguments_with_shell(
+        "bash",
+        &json!({"command":"echo hello"}),
+        None,
+        None,
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "shell_context_unavailable");
+}
+
+#[test]
+fn bash_translation_uses_the_explicit_host_shell() {
     let translated = translate_arguments("bash", &json!({"command":"echo hello"}), None).unwrap();
     #[cfg(target_os = "windows")]
     {
         let program = translated["program"].as_str().unwrap();
-        assert!(program.ends_with("pwsh.exe") || program == "powershell.exe");
+        assert!(program.ends_with("powershell.exe"));
         assert_eq!(
             translated["args"],
             json!([
@@ -229,14 +241,14 @@ fn legacy_bash_translation_uses_the_platform_shell() {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                "echo hello"
+                "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; echo hello"
             ])
         );
     }
     #[cfg(not(target_os = "windows"))]
     {
         assert_eq!(translated["program"], "/bin/sh");
-        assert_eq!(translated["args"], json!(["-lc", "echo hello"]));
+        assert_eq!(translated["args"], json!(["-c", "echo hello"]));
     }
     assert!(translated.get("command").is_none());
 }
@@ -353,6 +365,12 @@ mod execute {
             arguments: serde_json::Value,
         ) -> Result<serde_json::Value, BusinessError> {
             let scopes = Scopes(self.dependency.to_path_buf());
+            let shell = suncode_common::shell::ResolvedShell {
+                path: "/bin/sh".into(),
+                family: "sh".into(),
+                version: "POSIX sh".into(),
+                interactive_args: vec![],
+            };
             block_on(self.tools.execute(
                 ToolInvocation {
                     name,
@@ -360,6 +378,7 @@ mod execute {
                     approval_pin: None,
                 },
                 ToolContext {
+                    shell: Some(&shell),
                     project_id: "project",
                     project_root: self.project,
                     call_key: "turn-1:call-1",

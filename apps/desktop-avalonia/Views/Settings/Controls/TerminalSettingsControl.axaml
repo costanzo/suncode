@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="using:SunCode.Desktop.Views.Settings.Controls" xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.TerminalSettingsControl" x:DataType="vm:ShellSettingsViewModel" Background="{DynamicResource SurfaceBrush}">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content" Spacing="16">
+      <TextBlock Text="{DynamicResource LocTerminalSettings}" Classes="sc-text-title" Margin="0,0,0,8" />
+      <settings:ShellEditorControl DataContext="{Binding Agent}" />
+      <Border Height="1" Background="{DynamicResource BorderBrush}" />
+      <settings:ShellEditorControl DataContext="{Binding Terminal}" />
+      <StackPanel IsVisible="{Binding IsWindows}" Spacing="12">
+        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,0,0,8" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="PowerShell 7" FontSize="12" FontWeight="SemiBold" />
+          <TextBlock Grid.Column="1" Text="{Binding Architecture}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </Grid>
+        <TextBlock Text="{DynamicResource LocRecommendPowerShell7}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding InstallDirectory}" IsVisible="{Binding ShowInstallChoices}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        <CheckBox Content="{DynamicResource LocShellUseBothAfterInstall}" IsChecked="{Binding UseForBoth}" IsEnabled="{Binding CanChooseInstallTargets}" IsVisible="{Binding ShowInstallChoices}" FontSize="11" />
+        <StackPanel IsVisible="{Binding IsInstalling}" Spacing="8">
+          <TextBlock Text="{Binding StageText}" Classes="sc-text-status" AutomationProperties.LiveSetting="Polite" />
+          <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" AutomationProperties.Name="{Binding StageText}" />
+          <Button Classes="compact sc-button" Content="{DynamicResource LocShellCancelInstallation}" Command="{Binding CancelCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+        <Button Classes="compact primary sc-button" Content="{Binding InstallLabel}" Command="{Binding InstallCommand}" IsVisible="{Binding CanInstall}" HorizontalAlignment="Left" />
+        <TextBlock Text="{DynamicResource LocShellInstallSource}" IsVisible="{Binding CanInstall}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+        <StackPanel IsVisible="{Binding Installed}" Spacing="12">
+          <TextBlock Text="{Binding InstalledSummary}" Classes="sc-text-status" infra:StatusToneProperties.Tone="Success" />
+          <TextBlock Text="{Binding InstalledPath}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+          <Button Classes="compact sc-button" Content="{Binding UseBothLabel}" Command="{Binding UseBothCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </StackPanel>
+      <TextBlock Text="{Binding Message}" Classes="sc-text-status" infra:StatusToneProperties.Tone="{Binding MessageTone}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

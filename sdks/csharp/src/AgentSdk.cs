@@ -15,7 +15,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 25;
+    private const uint AbiVersion = 27;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -228,6 +228,9 @@ public sealed partial class AgentSdk : IDisposable
         [scope, projectId, sessionId, key, JsonSerializer.Serialize(new SettingEnvelope(value), TypedJsonOptions)],
         values => NativeMethods.suncode_agent_sdk_set_setting(
             _handle, values[0], values[1], values[2], values[3], values[4]));
+
+    private Task<JsonElement> RawSaveShellPreferencesAsync(string json) => WithUtf8Async([json], values => NativeMethods.suncode_agent_sdk_save_shell_preferences(_handle, values[0]));
+    private Task<JsonElement> RawDownloadNetworkConfigurationAsync() => CallAsync(NativeMethods.suncode_agent_sdk_download_network_configuration);
 
     private Task<JsonElement> RawSetProxyConfigurationAsync(string requestJson) => WithUtf8Async(
         [requestJson],

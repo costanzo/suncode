@@ -4,6 +4,7 @@
              xmlns:terminal="using:RoyalTerminal.Avalonia.Controls"
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Terminal.TerminalSessionView"
              x:DataType="vm:TerminalSessionViewModel">
+  <Grid>
   <terminal:TerminalControl x:Name="Terminal"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
@@ -12,4 +13,11 @@
                             TerminalFontSize="12"
                             ScrollbackLimit="10000"
                             Padding="0" />
+    <Border IsVisible="{Binding HasError}" Background="{DynamicResource CanvasBrush}" Padding="16">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="640">
+        <TextBlock Text="{Binding StateText}" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" TextAlignment="Center" />
+        <Button Classes="sc-button compact" Content="{DynamicResource LocRestartShell}" Click="RestartFailedSession" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Border>
+  </Grid>
 </UserControl>

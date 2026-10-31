@@ -10,7 +10,7 @@ use suncode_data::{
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 25;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 27;
 pub use suncode_data::CredentialStorageMode;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
@@ -766,4 +766,21 @@ pub struct ApprovalOutcome {
 pub struct QuestionOutcome {
     pub request_id: String,
     pub status: String,
+}
+
+pub use suncode_common::shell::{ResolvedShell, ShellConfiguration, ShellMode};
+/// Atomic persistence of host-selected shell preferences. No probing or installation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ShellPreferencesRequest {
+    pub agent: Option<ShellConfiguration>,
+    pub terminal: Option<ShellConfiguration>,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadNetworkConfiguration {
+    pub verify_certificates: bool,
+    pub use_system_certificates: bool,
+    pub certificate_path: Option<String>,
+    pub proxy: serde_json::Value,
 }

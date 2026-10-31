@@ -24,6 +24,7 @@ public sealed class SettingsWindowViewModel : ObservableObject, IDisposable
         _poller = poller;
         Navigation = new SettingsNavigationViewModel(poller, PolledPage, SaveNavigation);
         Defaults = new DefaultsSettingsViewModel(desktop);
+        Terminal = new ShellSettingsViewModel(desktop);
         Appearance = new AppearanceSettingsViewModel(desktop, desktop.AppSettings);
         Logging = new LoggingSettingsViewModel(desktop, desktop.AppSettings);
         NetworkEditor = new NetworkSettingsEditorViewModel(desktop, desktop.Network);
@@ -43,6 +44,7 @@ public sealed class SettingsWindowViewModel : ObservableObject, IDisposable
     public LanguageServersViewModel LanguageServers => Desktop.LanguageServers;
     public NetworkSettingsViewModel Network => Desktop.Network;
     public DefaultsSettingsViewModel Defaults { get; }
+    public ShellSettingsViewModel Terminal { get; }
     public AppearanceSettingsViewModel Appearance { get; }
     public LoggingSettingsViewModel Logging { get; }
     public NetworkSettingsEditorViewModel NetworkEditor { get; }
@@ -77,6 +79,7 @@ public sealed class SettingsWindowViewModel : ObservableObject, IDisposable
 
     private IPolledPage? PolledPage(SettingsPage page) => page switch
     {
+        SettingsPage.Terminal => Terminal,
         SettingsPage.Mcp => Mcp,
         SettingsPage.LanguageServers => LanguageServers,
         SettingsPage.Computer => Computer,
@@ -103,6 +106,7 @@ public sealed class SettingsWindowViewModel : ObservableObject, IDisposable
 
     private void LanguageChanged(string locale)
     {
+        Terminal.RefreshLocalizedText();
         Computer.RefreshPresentation();
         Browser.RefreshPresentation();
         NetworkEditor.RefreshLocalizedText();
@@ -116,6 +120,7 @@ public sealed class SettingsWindowViewModel : ObservableObject, IDisposable
         _poller.Dispose();
         AttachDialogs(null);
         RemoteEditor.Dispose();
+        Terminal.Dispose();
         Desktop.PropertyChanged -= DesktopPropertyChanged;
         Desktop.Models.CollectionChanged -= ModelsChanged;
         Desktop.AppSettings.LanguageChanged -= LanguageChanged;

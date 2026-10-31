@@ -991,6 +991,7 @@ mod tests {
                     approval_pin: pin,
                 },
                 ToolContext {
+                    shell: None,
                     project_id: "project",
                     project_root: Path::new("/"),
                     call_key: "turn:call",

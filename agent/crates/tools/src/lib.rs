@@ -36,6 +36,6 @@ pub use context::ProcessOutputCallback;
 pub use operations::{CertificatePath, Operations, ProxyConfiguration};
 pub use process::BackgroundProcess;
 
+mod documents;
 #[cfg(test)]
 mod tests;
-mod documents;

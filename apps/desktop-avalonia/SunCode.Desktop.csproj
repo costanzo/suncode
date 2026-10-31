@@ -17,8 +17,6 @@
     <AvaloniaVersion>12.1.3</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
-    <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
-    <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
     <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">$(MSBuildProjectDirectory)/../../../../github/costanzo/CefGlue</CefGlueForkRoot>
   </PropertyGroup>
 
@@ -68,22 +66,6 @@
                       Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
   </ItemGroup>
-  <Target Name="EnsurePowerShellRuntimePresent" BeforeTargets="Publish"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
-    <Error Condition="!Exists('$(PowerShellRuntimeSource)/pwsh.exe')"
-           Text="The packaged PowerShell 7 runtime is missing. Run: dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj -t:PreparePowerShellRuntime before publishing." />
-  </Target>
-
-  <Target Name="PreparePowerShellRuntime"
-          Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <Exec Command="npm --prefix &quot;$(MSBuildProjectDirectory)/../../runtimes/shell-runtime&quot; run package -- &quot;$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64&quot;" />
-  </Target>
-  <Target Name="CopyWindowsPowerShellRuntime" AfterTargets="Publish"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64' And Exists('$(PowerShellRuntimeSource)')">
-    <RemoveDir Directories="$(PublishDir)runtimes/powershell" />
-    <Exec Command="cmd /c &quot;robocopy &quot;&quot;$(PowerShellRuntimeSource)&quot;&quot; &quot;&quot;$(PublishDir)runtimes/powershell&quot;&quot; /E /NFL /NDL /NJH /NJS /NP &amp; IF ERRORLEVEL 8 exit /B 8 &amp; exit /B 0&quot;" />
-  </Target>
-
   <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
           Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
     <PropertyGroup>

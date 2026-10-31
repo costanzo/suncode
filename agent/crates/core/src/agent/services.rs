@@ -36,6 +36,7 @@ pub(super) trait ChildTurns: Send + Sync {
         model: &'a str,
         reasoning_effort: Option<&'a str>,
         parent_token: CancellationToken,
+        shell: Option<suncode_common::shell::ResolvedShell>,
     ) -> futures_util::future::BoxFuture<'a, Result<TurnResponse, BusinessError>>;
 }
 
@@ -47,6 +48,7 @@ impl ChildTurns for AgentRuntime {
         model: &'a str,
         reasoning_effort: Option<&'a str>,
         parent_token: CancellationToken,
+        shell: Option<suncode_common::shell::ResolvedShell>,
     ) -> futures_util::future::BoxFuture<'a, Result<TurnResponse, BusinessError>> {
         Box::pin(AgentRuntime::submit_child(
             self,
@@ -55,6 +57,7 @@ impl ChildTurns for AgentRuntime {
             model,
             reasoning_effort,
             parent_token,
+            shell,
         ))
     }
 }
@@ -273,6 +276,9 @@ impl TurnServices {
         token: CancellationToken,
         approval_pin: Option<Value>,
     ) -> Result<suncode_common::tool::ToolResult, BusinessError> {
+        if tools::tool_name(call) == "bash" && context.shell.is_none() {
+            return Err(BusinessError::new("shell_context_unavailable", "This turn has no host-configured shell. Configure the Agent shell and start a new turn"));
+        }
         let call_key = format!("{}:{}", context.turn_id, call.call_id);
         let project_root = std::path::Path::new(&context.project_root);
         let paths = StorePathScopes {
@@ -301,6 +307,7 @@ impl TurnServices {
                     approval_pin,
                 },
                 ToolContext {
+                    shell: context.shell.as_ref(),
                     project_id: &context.project_id,
                     project_root,
                     call_key: &call_key,

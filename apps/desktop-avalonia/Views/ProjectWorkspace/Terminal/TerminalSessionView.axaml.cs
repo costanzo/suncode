@@ -14,6 +14,8 @@ public sealed partial class TerminalSessionView : UserControl
     private TerminalSessionViewModel? _session;
     private bool _started;
     private bool _stopping;
+    private int _generation;
+    private readonly SemaphoreSlim _launchGate = new(1, 1);
 
     public TerminalSessionView()
     {
@@ -26,6 +28,7 @@ public sealed partial class TerminalSessionView : UserControl
 
     private void BindSession()
     {
+        if (_session is not null) { _session.RestartRequested -= Restart; _session.StopRequested -= StopSession; StopSession(); }
         _session = DataContext as TerminalSessionViewModel;
         if (_session is not null)
         {
@@ -56,22 +59,29 @@ public sealed partial class TerminalSessionView : UserControl
         if (_started || _session is null || string.IsNullOrWhiteSpace(_session.WorkingDirectory)) return;
         _started = true;
         _session.State = "starting";
+        var session = _session;
+        var generation = ++_generation;
+        await _launchGate.WaitAsync();
         try
         {
+            var shell = await (session.ResolveShellAsync?.Invoke() ?? throw new InvalidOperationException("Terminal shell resolver is unavailable"));
+            if (generation != _generation || !ReferenceEquals(session, _session)) return;
+            session.ShellLabel = shell.Family == "powershell" ? "PowerShell" : shell.Family;
             ApplyTheme();
             var options = new PtyTransportOptions(
-                Command: null,
+                Command: new TerminalCommandSpec(FileName: shell.Path, Arguments: shell.InteractiveArgs.ToArray()),
                 WorkingDirectory: _session.WorkingDirectory,
                 Environment: null,
                 Dimensions: new TerminalSessionDimensions(120, 36, 960, 576));
             await Terminal.StartSessionAsync(options);
-            _session.State = "running";
+            if (generation != _generation || !ReferenceEquals(session, _session)) { Terminal.StopPty(); return; }
+            session.State = "running";
         }
-        catch
+        catch (Exception exception)
         {
-            _session.State = "error";
-            _started = false;
+            if (generation == _generation && ReferenceEquals(session, _session)) { session.State = "error"; session.ErrorMessage = exception.Message; _started = false; }
         }
+        finally { _launchGate.Release(); }
     }
 
     private void ProcessExited(object? sender, int exitCode)
@@ -84,6 +94,7 @@ public sealed partial class TerminalSessionView : UserControl
 
     private void StopSession()
     {
+        ++_generation;
         if (!_started && !Terminal.HasActiveSession) return;
         _stopping = true;
         try { Terminal.StopPty(); }
@@ -94,6 +105,8 @@ public sealed partial class TerminalSessionView : UserControl
             _stopping = false;
         }
     }
+
+    private void RestartFailedSession(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Restart();
 
     private void Restart() => Dispatcher.UIThread.Post(() =>
     {

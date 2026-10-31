@@ -267,6 +267,7 @@ impl TurnLoop<'_> {
         self.services
             .turn_state(self.context, TurnState::Preparing, None)?;
         let base_system_messages = system_prompt::build_messages(system_prompt::PromptContext {
+            shell: self.context.shell.as_ref(),
             model_id: &self.context.model,
             provider_id: &provider.provider_id,
             project_root: &self.context.project_root,

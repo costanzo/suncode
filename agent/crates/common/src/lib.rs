@@ -5,6 +5,7 @@ pub mod id;
 pub mod logging;
 pub mod random;
 pub mod tool;
+pub use suncode_types::shell;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

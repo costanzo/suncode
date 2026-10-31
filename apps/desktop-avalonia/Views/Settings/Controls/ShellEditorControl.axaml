@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SunCode.Desktop.Controls" xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.ShellEditorControl" x:DataType="vm:ShellEditorViewModel">
+  <UserControl.Styles>
+    <Style Selector="ComboBox"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style>
+  </UserControl.Styles>
+  <StackPanel Spacing="12" IsEnabled="{Binding CanEdit}">
+    <Grid x:Name="ShellRow" ColumnDefinitions="*,220" ColumnSpacing="24">
+      <StackPanel Spacing="4" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Hint}" Classes="settings-row-hint" TextWrapping="Wrap" />
+      </StackPanel>
+      <controls:SCFlatComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Title}" />
+    </Grid>
+    <controls:SCFileSelector Text="{Binding CustomPath}" SelectionMode="File" IsVisible="{Binding IsCustom}"
+                             DialogTitle="{DynamicResource LocChooseShellExecutable}" AutomationProperties.Name="{Binding PathLabel}" />
+    <TextBlock Text="{Binding ResolvedPath}" IsVisible="{Binding IsResolvedPathVisible}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" MinHeight="30">
+      <TextBlock Text="{Binding StatusText}" infra:StatusToneProperties.Tone="{Binding StatusTone}" Classes="sc-text-status" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Button Classes="compact quiet sc-button" Content="{DynamicResource LocShellCheck}" Command="{Binding CheckCommand}" />
+        <Button Classes="compact sc-button" Content="{DynamicResource LocShellSave}" Command="{Binding SaveCommand}" />
+      </StackPanel>
+    </Grid>
+  </StackPanel>
+</UserControl>

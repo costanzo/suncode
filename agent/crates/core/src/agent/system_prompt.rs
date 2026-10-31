@@ -5,15 +5,13 @@
 //! carries the exact provider, model, and session start time, so a new session
 //! or a model switch inside one family does not invalidate the earlier prefix.
 
-use super::{
-    host_environment_message_with_context, project_instruction_message, session_context_message,
-    AgentHostCapabilities,
-};
+use super::{project_instruction_message, session_context_message, AgentHostCapabilities};
 use suncode_agents::{prompt, AgentDefinition};
 use suncode_common::BusinessError;
 use suncode_llm::Message;
 
 pub(super) struct PromptContext<'a> {
+    pub shell: Option<&'a suncode_common::shell::ResolvedShell>,
     pub model_id: &'a str,
     pub provider_id: &'a str,
     pub project_root: &'a str,
@@ -63,11 +61,12 @@ pub(super) fn build_messages(context: PromptContext<'_>) -> Result<Vec<Message>,
             context.non_interactive,
         ),
     ));
-    messages.push(host_environment_message_with_context(
+    messages.push(super::support::host_environment_message_with_shell(
         context.non_interactive,
         context.host_capabilities,
         context.allowed_tools,
         context.project_root,
+        context.shell,
     ));
     // Family text is identical for every model in that family. It stays ahead
     // of the session line so only the exact model id and start time change per

@@ -175,16 +175,33 @@ pub(in crate::agent) fn host_environment_message() -> suncode_llm::Message {
 /// `allowed_tools` is the turn's tool scope. Empty means the full catalog and
 /// keeps the bash and file-search sentences. A narrower scope drops a sentence
 /// when that tool is not offered.
+#[cfg(test)]
 pub(in crate::agent) fn host_environment_message_with_context(
     non_interactive: bool,
     capabilities: AgentHostCapabilities,
     allowed_tools: &[String],
     project_root: &str,
 ) -> suncode_llm::Message {
-    let shell = if cfg!(target_os = "windows") {
-        "Windows PowerShell"
+    host_environment_message_with_shell(
+        non_interactive,
+        capabilities,
+        allowed_tools,
+        project_root,
+        None,
+    )
+}
+
+pub(in crate::agent) fn host_environment_message_with_shell(
+    non_interactive: bool,
+    capabilities: AgentHostCapabilities,
+    allowed_tools: &[String],
+    project_root: &str,
+    captured: Option<&suncode_common::shell::ResolvedShell>,
+) -> suncode_llm::Message {
+    let shell = if let Some(shell) = captured {
+        shell.version.as_str()
     } else {
-        "POSIX sh"
+        "unavailable (host has not configured a shell)"
     };
     let path_style = if cfg!(target_os = "windows") {
         "Windows"

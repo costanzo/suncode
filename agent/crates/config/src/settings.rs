@@ -45,6 +45,7 @@ enum Kind {
     String,
     StringArray,
     LogLevel,
+    Shell,
     Integer { min: u64, max: u64 },
 }
 
@@ -72,6 +73,8 @@ const LOG_LEVELS: [&str; 6] = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "OFF"]
 /// own state) are stored as given.
 #[rustfmt::skip]
 const SCHEMA: &[Spec] = &[
+    spec("agent_shell", &[Global], Kind::Shell),
+    spec("terminal_shell", &[Global], Kind::Shell),
     spec("default_model", &[Global, Project], Kind::String),
     spec("log_level", &[Global], Kind::LogLevel),
     spec("log_directory", &[Global], Kind::String),
@@ -119,6 +122,10 @@ pub fn validate_setting(scope: SettingScope, key: &str, value: &Value) -> Result
         });
     }
     let valid = match spec.kind {
+        Kind::Shell => {
+            serde_json::from_value::<suncode_common::shell::ShellConfiguration>(value.clone())
+                .is_ok_and(|configuration| configuration.validate())
+        }
         Kind::Bool => value.is_boolean(),
         Kind::String => value.is_string(),
         Kind::StringArray => value
@@ -138,6 +145,7 @@ pub fn validate_setting(scope: SettingScope, key: &str, value: &Value) -> Result
         return Ok(());
     }
     Err(match spec.kind {
+        Kind::Shell => format!("{key} must be a valid shell configuration"),
         Kind::Bool => format!("{key} must be a boolean"),
         Kind::String => format!("{key} must be a string"),
         Kind::StringArray => format!("{key} must be an array of strings"),
@@ -321,6 +329,8 @@ fn set<T>(target: &mut T, value: Option<T>) {
 pub struct GlobalSettings {
     /// A non-empty trimmed model id.
     pub default_model: Option<String>,
+    pub agent_shell: suncode_common::shell::ShellConfiguration,
+    pub terminal_shell: suncode_common::shell::ShellConfiguration,
     pub log: LogSettings,
     /// Empty means the default `<data directory>/data/images`.
     pub image_directory: String,
@@ -344,6 +354,16 @@ impl GlobalSettings {
 
     fn insert(&mut self, key: &str, value: &Value) {
         match key {
+            "agent_shell" => {
+                if let Ok(configuration) = serde_json::from_value(value.clone()) {
+                    self.agent_shell = configuration;
+                }
+            }
+            "terminal_shell" => {
+                if let Ok(configuration) = serde_json::from_value(value.clone()) {
+                    self.terminal_shell = configuration;
+                }
+            }
             "default_model" => set(&mut self.default_model, trimmed(value)),
             "log_level" => set(&mut self.log.level, string(value)),
             "log_directory" => set(&mut self.log.directory, string(value)),

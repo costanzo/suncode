@@ -1,0 +1,29 @@
+# Shell configuration and host setup
+
+## Ownership
+
+Pure configuration and launch DTOs live in `suncode-types` and are re-exported through common and SDK bindings. Desktop `ShellResolver`, `PowerShellInstaller`, and `ShellSetupService` own discovery, selection, executable probes, downloads, extraction, and installation lifecycle. Probe results and installation status are Desktop DTOs, not SDK contracts. Rust SDK owns structural validation and SQLite persistence only. The agent consumes host-selected launch facts for policy-mediated shell tool execution and does not choose, probe, check availability, or install interpreters. Avalonia/RoyalTerminal owns interactive terminal processes. No terminal process or output is stored in Agent SQLite.
+
+## Persistence
+
+Global `agent_shell` and `terminal_shell` objects use `{ "mode": "system" | "custom" | "managed", "path": "...", "resolved": { "path": "absolute executable", "family": "sh", "version": "...", "interactiveArgs": [] } }`. `resolved` is optional host-supplied data. Missing preferences default to system mode. System/managed paths must be empty; custom paths must be nonempty, bounded, and free of control characters. Resolved paths must be absolute and use a supported shell family. Unknown fields and non-global scopes are rejected. Generic settings writes and `save_shell_preferences` only validate structure; they never perform executable I/O. The latter atomically persists either or both preferences in the existing configuration table.
+
+Desktop resolves and probes a draft before saving, attaches launch facts, and leaves saved values unchanged if detection fails. During Desktop initialization, before enabling local submissions, Desktop rechecks the saved Agent preference and replaces stale launch facts (or clears them on failure). Remote connections restored by SDK open can use the previously persisted host descriptor; already admitted turns retain their snapshot. An unavailable shell does not block file-only turns; invoking bash without launch facts fails explicitly. The CLI, as a separate host, can supply an unprobed launch descriptor for a system/custom preference lacking one; managed mode needs Desktop validation.
+
+A probe runs outside the project with filtered environment, closed stdin, bounded stdout/stderr (16 KiB each), a five-second deadline, and Desktop process-tree cancellation. Non-interactive PowerShell uses NoLogo, NoProfile, NonInteractive, Command, and UTF-8 output initialization. POSIX tools use `-c`; zsh also uses `-f`. Interactive PowerShell uses NoLogo, and Unix interactive shells use `-il`. File identity is resolved canonically; configuration failures are surfaced without fallback.
+
+## Turn lifetime
+
+A continuation carries the persisted host-supplied shell used for model context and execution. Delegated turns inherit the parent descriptor. Approval and recovery deserialize that same data. A legacy snapshot without a shell may continue file tools, but bash returns `shell_context_unavailable` and requires a fresh turn. Turn admission never probes or resolves an executable. Missing launch facts fail at shell tool execution; OS launch failures use the ordinary process error path.
+
+## Windows installation
+
+The Desktop installer pins official PowerShell 7.6.0 Windows release ZIPs and their architecture-specific SHA-256 values. Native ARM64 Windows is selected even when the host process runs through x64 emulation. The destination is a version/architecture directory under the current user's local application data. No elevation, system PATH edits, or external installer shell is used.
+
+Downloads are bounded to 200 MiB; extraction is bounded to 20,000 entries and 1 GiB total expanded bytes. Absolute/traversing paths, backslashes/drive syntax in ZIP names, symlinks, Windows device names, ambiguous suffixes, and duplicate destinations are refused. A verified archive is extracted and probed in staging before directory replacement; rollback retains an existing runtime when replacement fails. A manifest records version, architecture, and digest. Selecting managed mode revalidates that manifest and the probed version.
+
+Stages are idle, downloading, verifying, extracting, checking, installed, failed, and cancelled. Status is transient Desktop-owned state shared across Settings and project windows for the shared SDK lifetime; the service retains its own managed SDK reference so closing a project window cannot dispose an active installation’s persistence access. Startup does not resume partial downloads. A user-initiated retry downloads afresh and removes abandoned owned staging directories under a cross-process install lock. Cancellation serializes with the final configuration commit. The last Desktop window cancels and joins setup before disposing the service’s retained SDK reference; Rust shutdown has no installer lifecycle. Applying the runtime to both shells uses one SDK configuration transaction. The trusted-host `download_network_configuration` accessor supplies a snapshot of TLS/proxy settings, including the stored proxy password, to the Desktop HTTP client. General settings remain redacted, and hosts must never log or expose this transport DTO. Installation and interactive shell effects are outside project checkpoints/undo.
+
+## Current verification limits
+
+Focused Rust/.NET tests and native headless layout review exist. Windows vendor-package launch, ConPTY behavior, architecture compatibility, and real download failures/cancellation need Windows conformance verification. The React specimen remains simulated design tooling.

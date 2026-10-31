@@ -230,6 +230,7 @@ mod tests {
                 approval_pin: None,
             },
             ToolContext {
+                shell: None,
                 project_id: "project",
                 project_root: Path::new("/project"),
                 call_key: "turn:call",

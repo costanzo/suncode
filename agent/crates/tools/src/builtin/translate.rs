@@ -8,10 +8,31 @@ use serde_json::{json, Value};
 use std::path::Path;
 use suncode_common::BusinessError;
 
+#[cfg(test)]
 pub(crate) fn translate_arguments(
     name: &str,
     value: &Value,
     scope_root: Option<&Path>,
+) -> Result<Value, BusinessError> {
+    let shell = suncode_common::shell::ResolvedShell {
+        path: if cfg!(windows) {
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        } else {
+            "/bin/sh"
+        }
+        .into(),
+        family: if cfg!(windows) { "powershell" } else { "sh" }.into(),
+        version: "test host".into(),
+        interactive_args: vec![],
+    };
+    translate_arguments_with_shell(name, value, scope_root, Some(&shell))
+}
+
+pub(crate) fn translate_arguments_with_shell(
+    name: &str,
+    value: &Value,
+    scope_root: Option<&Path>,
+    shell: Option<&suncode_common::shell::ResolvedShell>,
 ) -> Result<Value, BusinessError> {
     let mut result = value.clone();
     if name == "bash" {
@@ -138,7 +159,7 @@ pub(crate) fn translate_arguments(
                     "bash command must be a non-empty string",
                 )
             })?;
-        let (program, args) = shell_command(&command)?;
+        let (program, args) = shell_command(&command, shell)?;
         result["program"] = json!(program);
         result["args"] = json!(args);
         if let Some(workdir) = result.get("workdir").or_else(|| result.get("cwd")).cloned() {

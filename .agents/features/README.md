@@ -31,6 +31,7 @@ Agent and SDK:
 Clients:
 
 - [`avalonia-desktop-phase-1/`](avalonia-desktop-phase-1/README.md): implemented .NET 10 Avalonia workflows and client boundary.
+- [`shell-settings/`](shell-settings/README.md): independent Agent/Terminal shells, executable detection, and on-demand Windows PowerShell setup; Windows platform conformance pending.
 - [`provider-transfer-status/`](provider-transfer-status/README.md): transient provider HTTP body byte rates in the Workspace footer.
 - [`session-attention-notifications/`](session-attention-notifications/README.md): background system notifications and activation.
 - [`cli-foundation/`](cli-foundation/README.md), [`cli-run/`](cli-run/README.md), [`cli-session-resume/`](cli-session-resume/README.md), [`cli-session-administration/`](cli-session-administration/README.md): native Rust CLI.
@@ -65,3 +66,4 @@ Completed dated requirements have been summarized into these current feature rec
 | Follow-up queue and turn steering (2026-10-21) | [`agent-phase-1`](agent-phase-1/README.md), [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md) |
 | Computer accessibility tree (2026-10-23) | [`computer-use`](computer-use/README.md); Windows/Linux conformance remains open |
 | Native desktop menus, Dock menu, and Windows Jump List (2026-10-23) | [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md); installed shell click-through remains open |
+| Independent shells and on-demand PowerShell setup (2026-10-31) | [`shell-settings`](shell-settings/README.md); Windows conformance remains open |

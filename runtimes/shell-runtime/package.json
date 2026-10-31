@@ -1,7 +1,0 @@
-{
-  "name": "@suncode/powershell-runtime-packaging",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": { "package": "node scripts/package-runtime.mjs" }
-}

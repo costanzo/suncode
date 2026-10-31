@@ -8,6 +8,7 @@ public enum SettingsPage
     Defaults,
     Appearance,
     Shortcuts,
+    Terminal,
     Network,
     Remote,
     Computer,

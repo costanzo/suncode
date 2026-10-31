@@ -167,6 +167,7 @@ fn project_instruction_precedence_prefers_override_then_claude() {
 #[test]
 fn system_prompt_builder_contains_authority_workflow_and_capabilities() {
     let messages = super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        shell: None,
         model_id: "model-1",
         provider_id: "provider-1",
         project_root: "project",
@@ -242,6 +243,7 @@ fn system_prompt_prefix_is_stable_across_model_and_session_time() {
 fn stable_prompt_prefix_survives_tool_scope_and_host_changes() {
     let first = prompt_messages("model-a", "provider-a", "2026-01-01T00:00:00Z");
     let second = super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        shell: None,
         model_id: "model-a",
         provider_id: "provider-a",
         project_root: "/another/project",
@@ -280,6 +282,7 @@ fn capability_section_keeps_question_policy_and_computer_workflow() {
 
 fn capability_section(agent: &AgentDefinition) -> String {
     super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        shell: None,
         model_id: "model-1",
         provider_id: "provider-1",
         project_root: "project",
@@ -346,6 +349,7 @@ fn model_family_appendix_is_only_for_gpt_and_claude() {
 
 fn family_messages(model_id: &str, provider_id: &str) -> Vec<Message> {
     super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        shell: None,
         model_id,
         provider_id,
         project_root: "project",
@@ -365,6 +369,7 @@ fn family_messages(model_id: &str, provider_id: &str) -> Vec<Message> {
 
 fn prompt_messages(model_id: &str, provider_id: &str, session_started_at: &str) -> Vec<Message> {
     super::system_prompt::build_messages(super::system_prompt::PromptContext {
+        shell: None,
         model_id,
         provider_id,
         project_root: "project",
@@ -634,6 +639,10 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
                     {"index":0,"id":"read-call-1","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}},
                     {"index":1,"id":"read-call-2","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}
                 ]},"finish_reason":"tool_calls"}]})]
+    } else if user_text.contains("shell snapshot") {
+        vec![
+            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"shell-snapshot-call","function":{"name":"bash","arguments":"{\"command\":\"echo captured\"}"}}]},"finish_reason":"tool_calls"}]}),
+        ]
     } else if user_text.contains("write again") {
         vec![
             json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-again-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated again\",\"expected_base64\":\"dXBkYXRlZA==\"}"}}]},"finish_reason":"tool_calls"}]}),
@@ -744,6 +753,16 @@ async fn fixture_with_router(
     std::fs::create_dir(&root).unwrap();
     std::fs::write(root.join("README.md"), "hello").unwrap();
     let store = Store::open_memory().unwrap();
+    let path = if cfg!(windows) {
+        std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap())
+            .join("System32/WindowsPowerShell/v1.0/powershell.exe")
+    } else {
+        std::path::PathBuf::from("/bin/sh")
+    };
+    store.set_setting("global", "global", "agent_shell", &json!({"mode":"system","path":"", "resolved": {
+        "path":path, "family":if cfg!(windows) { "powershell" } else { "sh" }, "version":"Test host shell", "interactiveArgs":[]
+    }})).unwrap();
+
     let project = store.project(root.to_str().unwrap(), "Fixture").unwrap();
     let dependency_root = directory.join("dependency-source");
     std::fs::create_dir_all(&dependency_root).unwrap();
@@ -2179,4 +2198,98 @@ async fn approval_batch_halts_after_a_failure_and_toolset_calls_route_by_prefix(
         toolset_name: Some("fake".into()),
     };
     assert_eq!(tools::tool_name(&toolset), "fake_step");
+}
+
+#[tokio::test]
+async fn shell_identity_survives_approval_and_configuration_changes() {
+    use suncode_common::shell::{ShellConfiguration, ShellMode};
+    let (agent, store, root, server, session_id) = fixture().await;
+    let error = agent
+        .submit(&session_id, "shell-snapshot", "shell snapshot", None, None)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "approval_required");
+    let approval_id = error.details["approval_id"].as_str().unwrap();
+    store
+        .set_setting(
+            "global",
+            "global",
+            "agent_shell",
+            &serde_json::to_value(ShellConfiguration {
+                mode: ShellMode::Custom,
+                path: root.join("missing").to_string_lossy().into_owned(),
+                resolved: None,
+            })
+            .unwrap(),
+        )
+        .unwrap();
+    // resolve_approval deserializes the durable continuation, including the captured interpreter.
+    assert!(agent
+        .resolve_approval(approval_id, "allow_once")
+        .await
+        .unwrap());
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+    loop {
+        let context = store.context_messages(&session_id).unwrap();
+        if context
+            .iter()
+            .any(|m| m.role == "tool" && m.text_content().contains("captured"))
+        {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "approved shell did not run with the captured interpreter"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    server.abort();
+}
+
+#[tokio::test]
+async fn admission_does_not_probe_or_select_shells() {
+    let (agent, store, root, server, session_id) = fixture().await;
+    store
+        .set_setting(
+            "global",
+            "global",
+            "agent_shell",
+            &json!({"mode":"custom","path":root.join("missing/sh")}),
+        )
+        .unwrap();
+    // Missing launch facts do not prevent turns that do not invoke the shell tool.
+    let response = agent
+        .submit(&session_id, "no-shell-probe", "read the file", None, None)
+        .await
+        .unwrap();
+    assert!(matches!(response, TurnResponse::Completed { .. }));
+    server.abort();
+}
+
+#[tokio::test]
+async fn read_only_turn_does_not_require_a_shell() {
+    let (agent, store, root, server, session_id) = fixture().await;
+    store
+        .set_setting(
+            "global",
+            "global",
+            "agent_shell",
+            &json!({"mode":"custom","path":root.join("missing/sh")}),
+        )
+        .unwrap();
+    store
+        .set_setting("global", "global", "tool_allowlist", &json!("read"))
+        .unwrap();
+    let response = agent
+        .submit(
+            &session_id,
+            "read-without-shell",
+            "read the file",
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(response, TurnResponse::Completed { .. }));
+    server.abort();
 }

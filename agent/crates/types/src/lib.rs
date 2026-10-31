@@ -12,3 +12,5 @@ mod usage;
 pub use message::{ContentPart, Message, ToolCall};
 pub use tool::ToolDefinition;
 pub use usage::Usage;
+
+pub mod shell;

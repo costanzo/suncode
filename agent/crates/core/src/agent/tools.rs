@@ -438,6 +438,7 @@ impl TurnLoop<'_> {
                 &self.context.model,
                 self.context.reasoning_effort.as_deref(),
                 self.token.clone(),
+                self.context.shell.clone(),
             )
             .await;
         let result = match outcome {

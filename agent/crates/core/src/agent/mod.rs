@@ -124,6 +124,8 @@ pub struct QueuedMessageSnapshot {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Continuation {
+    #[serde(default)]
+    shell: Option<suncode_common::shell::ResolvedShell>,
     session_id: String,
     #[serde(default)]
     session_started_at: String,

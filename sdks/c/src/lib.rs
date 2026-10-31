@@ -1811,6 +1811,30 @@ fn into_c_string(value: String) -> *mut c_char {
         .into_raw()
 }
 
+/// # Safety
+/// `handle` must be live and `request_json` valid NUL-terminated UTF-8.
+/// Free the returned string with `suncode_agent_sdk_string_free`.
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_save_shell_preferences(
+    handle: *mut SunCodeAgentHandle,
+    request_json: *const c_char,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| {
+        let request = serde_json::from_value(json_from_c(request_json, "request_json")?)
+            .map_err(|_| BusinessError::invalid("Shell preferences are invalid"))?;
+        sdk.save_shell_preferences(request)
+    })
+}
+/// # Safety
+/// `handle` must be live. The result contains proxy credentials; never log it.
+/// Free the returned string with `suncode_agent_sdk_string_free`.
+#[no_mangle]
+pub unsafe extern "C" fn suncode_agent_sdk_download_network_configuration(
+    handle: *mut SunCodeAgentHandle,
+) -> *mut c_char {
+    ffi_call(handle, |sdk| sdk.download_network_configuration())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1890,6 +1914,24 @@ mod tests {
             .create_session(&project.project_id, Some("Session"), None)
             .unwrap();
         let mut handle = SunCodeAgentHandle { sdk };
+        let missing_shell = directory.path().join("missing/sh");
+        let shell_request = CString::new(serde_json::json!({"agent":{"mode":"custom","path":missing_shell,"resolved":{"path":missing_shell,"family":"sh","version":"host supplied","interactiveArgs":[]}},"terminal":{"mode":"system","path":""}}).to_string()).unwrap();
+        let saved = unsafe {
+            suncode_agent_sdk_save_shell_preferences(&mut handle, shell_request.as_ptr())
+        };
+        let body: Value =
+            serde_json::from_str(unsafe { CStr::from_ptr(saved) }.to_str().unwrap()).unwrap();
+        assert_eq!(body["ok"], true);
+        assert_eq!(body["body"]["saved"], true);
+        unsafe { suncode_agent_sdk_string_free(saved) };
+        let network = unsafe { suncode_agent_sdk_download_network_configuration(&mut handle) };
+        let body: Value =
+            serde_json::from_str(unsafe { CStr::from_ptr(network) }.to_str().unwrap()).unwrap();
+        assert_eq!(body["ok"], true);
+        assert!(body["body"]["verifyCertificates"].is_boolean());
+        assert!(body["body"]["proxy"]["password"].is_string());
+        unsafe { suncode_agent_sdk_string_free(network) };
+
         let session_id = CString::new(session.session_id).unwrap();
         let (sender, _receiver) = std::sync::mpsc::channel::<String>();
         let mut snapshot = ptr::null_mut();

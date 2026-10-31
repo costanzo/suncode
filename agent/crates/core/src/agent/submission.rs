@@ -200,6 +200,7 @@ impl AgentRuntime {
             None,
             false,
             true,
+            None,
         )
         .await
     }
@@ -217,6 +218,7 @@ impl AgentRuntime {
         inherited_token: Option<CancellationToken>,
         retry: bool,
         schedule_followups: bool,
+        inherited_shell: Option<Option<suncode_common::shell::ResolvedShell>>,
     ) -> Result<TurnResponse, BusinessError> {
         self.ensure_running()?;
         let session_lock = self.session_lock(session_id).await;
@@ -338,6 +340,10 @@ impl AgentRuntime {
                 project_tool_call_limit
                     .min(runtime.tool_call_limit.unwrap_or(project_tool_call_limit))
             });
+        let shell = match inherited_shell {
+            Some(shell) => shell,
+            None => self.services.store.global_settings()?.agent_shell.resolved,
+        };
         let admission = db_blocking(|| {
             self.services.store.begin_turn_with_images(
                 session_id,
@@ -373,6 +379,7 @@ impl AgentRuntime {
             .map_err(|_| BusinessError::new("agent_unavailable", "turn state unavailable"))?
             .insert(session_id.to_string(), admission.turn_id.clone());
         let continuation = Continuation {
+            shell,
             session_id: session_id.into(),
             session_started_at,
             project_id,
@@ -524,6 +531,7 @@ impl AgentRuntime {
         model: &str,
         reasoning_effort: Option<&str>,
         parent_token: CancellationToken,
+        shell: Option<suncode_common::shell::ResolvedShell>,
     ) -> Result<TurnResponse, BusinessError> {
         self.submit_session(
             session_id,
@@ -536,6 +544,7 @@ impl AgentRuntime {
             Some(parent_token),
             false,
             false,
+            Some(shell),
         )
         .await
     }
@@ -565,6 +574,7 @@ impl AgentRuntime {
             None,
             true,
             true,
+            None,
         )
         .await
     }
@@ -839,6 +849,7 @@ impl AgentRuntime {
                 None,
                 false,
                 false,
+                None,
             ))
             .await
             {

@@ -121,6 +121,14 @@
               </Grid>
             </Button>
             <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Terminal}}"
+                    Command="{Binding Navigation.NavigateCommand}" CommandParameter="{x:Static vm:SettingsPage.Terminal}">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/terminal.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocTerminalSettings}" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Classes="navigation"
                     Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Network}}"
                     Command="{Binding Navigation.NavigateCommand}"
                     CommandParameter="{x:Static vm:SettingsPage.Network}">
@@ -285,6 +293,10 @@
 
         <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Appearance}}">
           <settings:AppearanceSettingsControl DataContext="{Binding Appearance}" />
+        </Panel>
+
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Terminal}}">
+          <settings:TerminalSettingsControl DataContext="{Binding Terminal}" />
         </Panel>
 
         <settings:ShortcutsSettingsControl IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Shortcuts}}" />

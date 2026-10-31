@@ -2,12 +2,21 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261031-independent-shell-configuration
+
+- Date: 2026-10-31
+- Status: Accepted and implemented; Windows conformance pending
+- Context: Bundled PowerShell enlarges Windows publishing and fixes the Agent to one interpreter, while the new desktop Terminal has an independent interactive process lifecycle. Users need separate choices and optional PowerShell 7 setup.
+- Decision: Persist global Agent and Terminal shell preferences through the Rust SDK. Default Windows to its system Windows PowerShell, remove the bundled runtime and Node packaging scripts, and offer explicit verified user-level PowerShell 7 installation. Desktop owns shell selection, bounded probes, installer lifecycle, architecture selection, and download/extraction. Rust only validates configuration structure, persists preferences and host-supplied launch facts in SQLite, and atomically updates both settings when requested. Avalonia/RoyalTerminal continues to own interactive PTY processes. This supersedes the initial Rust-owned setup implementation. Agent continuations capture interpreter identity and model-visible version for approval/recovery consistency.
+- Consequences: ABI 27 replaces the initial ABI 26 check/install methods with persistence-only shell preferences and a trusted-host download-network settings accessor. No interactive Terminal session APIs or database tables are added. New turns and new/restarted tabs adopt changes; existing turns/tabs retain their interpreter. Invalid configured shells fail explicitly. The installer does not modify system PATH, and installation/interactive effects are outside project undo. Native Windows x64/ARM64 installation and ConPTY conformance remain release checks.
+- Details: `features/shell-settings/`, `specs/shell-settings.md`, `contracts/agent-sdk/README.md`, `DESIGN.md`
+
 ## ADR-20261031-desktop-owned-terminal
 
 - Date: 2026-10-31
 - Status: Accepted and implemented
 - Context: The Avalonia Workspace needs an interactive local terminal, while the Rust Agent process tool intentionally remains a bounded, approval-aware, non-interactive operation. Binding a user shell to Agent sessions would mix client presentation with Agent authority and undo semantics.
-- Decision: Add a desktop-owned Terminal bottom drawer using RoyalTerminal 0.7.0 with managed VT and local PTY/ConPTY transports. Each tab owns one shell process rooted at the opened project. Tabs, input/output, resize, restart, selection, and cleanup remain in the Avalonia client. The drawer is mutually exclusive with existing bottom drawers; hiding it keeps sessions alive, tab/project close stops them. Terminal sessions do not use the SDK, C ABI, SQLite, Agent policy, approvals, checkpoints, or undo.
+- Decision: Add a desktop-owned Terminal bottom drawer using RoyalTerminal 0.7.0 with managed VT and local PTY/ConPTY transports. Each tab owns one shell process rooted at the opened project. Tabs, input/output, resize, restart, selection, and cleanup remain in the Avalonia client. The drawer is mutually exclusive with existing bottom drawers; hiding it keeps sessions alive, tab/project close stops them. Terminal PTY input/output and process lifetime do not use the SDK, C ABI, SQLite, Agent policy, approvals, checkpoints, or undo. Shell preferences and host-supplied launch facts are persisted by the SDK, while setup is Desktop-owned, as refined by ADR-20261031-independent-shell-configuration.
 - Consequences: Avalonia depends on RoyalTerminal and Avalonia 12.1.3. Shells run with normal user authority and must be described as outside SunCode's Agent undo boundary. Terminal tab and shell smoke validation remains platform-specific across macOS, Windows, and Linux.
 - Details: `apps/desktop-avalonia/Views/ProjectWorkspace/Terminal/`, `apps/desktop-avalonia/ViewModels/Workspace/TerminalViewModel.cs`, `DESIGN.md`
 

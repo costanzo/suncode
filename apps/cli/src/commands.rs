@@ -138,6 +138,7 @@ async fn execute_turn(
     output: crate::args::OutputMode,
     events: &mut suncode_sdk::SessionEventStream,
 ) -> Result<suncode_sdk::TurnResponse, CliError> {
+    crate::shell::configure(sdk)?;
     let input_id = Uuid::new_v4().to_string();
     let submit = sdk.submit_turn(session_id, input, &input_id, model, reasoning_effort);
     tokio::pin!(submit);

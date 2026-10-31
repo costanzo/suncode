@@ -218,6 +218,9 @@ public sealed partial class AgentSdk
     public Task<LanguageServerProjectResult> StartLanguageServerProjectAsync(string projectId) =>
         Typed<LanguageServerProjectResult>(RawStartLanguageServerProjectAsync(projectId));
 
+    public Task<JsonElement> SaveShellPreferencesAsync(ShellPreferencesRequest request) => RawSaveShellPreferencesAsync(JsonSerializer.Serialize(request, TypedJsonOptions));
+    public Task<DownloadNetworkConfiguration> GetDownloadNetworkConfigurationAsync() => Typed<DownloadNetworkConfiguration>(RawDownloadNetworkConfigurationAsync());
+
     public Task<SettingsResult> GetSettingsAsync(SettingScope scope) =>
         Typed<SettingsResult>(RawListSettingsAsync(scope.ProjectId, scope.SessionId));
 

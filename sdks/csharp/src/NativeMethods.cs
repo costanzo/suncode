@@ -11,6 +11,8 @@ internal static class NativeMethods
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate byte BrowserHostCallback(IntPtr projectId);
 
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_save_shell_preferences(IntPtr handle, IntPtr json);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_download_network_configuration(IntPtr handle);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern uint suncode_agent_sdk_abi_version();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_version();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr suncode_agent_sdk_open_default(IntPtr userId, out IntPtr errorOut);

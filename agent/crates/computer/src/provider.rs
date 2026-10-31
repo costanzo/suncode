@@ -334,6 +334,7 @@ mod tests {
                 approval_pin: None,
             },
             ToolContext {
+                shell: None,
                 project_id: "p",
                 project_root: project.path(),
                 call_key: "turn:call",
@@ -447,6 +448,7 @@ mod tests {
                 approval_pin: None,
             },
             ToolContext {
+                shell: None,
                 project_id: "p",
                 project_root: project.path(),
                 call_key: "turn:call",

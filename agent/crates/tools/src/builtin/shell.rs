@@ -1,4 +1,4 @@
-//! Bash argument validation, the hard-deny filter, and platform shell selection.
+//! Bash argument validation, the hard-deny filter, and host-supplied shell execution.
 
 use serde_json::{json, Value};
 use suncode_common::BusinessError;
@@ -259,55 +259,32 @@ fn contains_any(command: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| command.contains(needle))
 }
 
-#[cfg(target_os = "windows")]
-pub(crate) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
-    let program = powershell_executable().ok_or_else(|| {
+pub(crate) fn shell_command(
+    script: &str,
+    captured: Option<&suncode_common::shell::ResolvedShell>,
+) -> Result<(String, Vec<String>), BusinessError> {
+    let shell = captured.ok_or_else(|| {
         BusinessError::new(
-            "process_executable_not_found",
-            "PowerShell 7 is not bundled and no PowerShell executable is available",
+            "shell_context_unavailable",
+            "The host has not configured an agent shell",
         )
     })?;
-    Ok((
-        program,
-        vec![
-            "-NoLogo".into(),
-            "-NoProfile".into(),
-            "-NonInteractive".into(),
-            "-Command".into(),
-            script.into(),
-        ],
-    ))
+    Ok((shell.path.clone(), command_args(shell, script)))
 }
 
-#[cfg(not(target_os = "windows"))]
-pub(crate) fn shell_command(script: &str) -> Result<(String, Vec<String>), BusinessError> {
-    Ok(("/bin/sh".into(), vec!["-lc".into(), script.into()]))
-}
-
-#[cfg(target_os = "windows")]
-fn powershell_executable() -> Option<String> {
-    let bundled = std::env::current_exe()
-        .ok()
-        .and_then(|path| {
-            path.parent()
-                .map(|parent| parent.join("runtimes").join("powershell").join("pwsh.exe"))
-        })
-        .filter(|path| path.is_file());
-    if let Some(path) = bundled {
-        return Some(path.to_string_lossy().into_owned());
+fn command_args(shell: &suncode_common::shell::ResolvedShell, script: &str) -> Vec<String> {
+    if shell.family == "sh"
+        && std::path::Path::new(&shell.path)
+            .file_name()
+            .is_some_and(|name| name == "busybox")
+    {
+        return vec!["sh".into(), "-c".into(), script.into()];
     }
-
-    let path_entries = std::env::var_os("PATH")
-        .into_iter()
-        .flat_map(|value| std::env::split_paths(&value).collect::<Vec<_>>());
-    for directory in path_entries {
-        let candidate = directory.join("pwsh.exe");
-        if candidate.is_file() {
-            return Some(candidate.to_string_lossy().into_owned());
-        }
+    if shell.family == "powershell" {
+        vec!["-NoLogo".into(), "-NoProfile".into(), "-NonInteractive".into(), "-Command".into(), format!("[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = [Console]::OutputEncoding; {script}")]
+    } else if shell.family == "zsh" {
+        vec!["-f".into(), "-c".into(), script.into()]
+    } else {
+        vec!["-c".into(), script.into()]
     }
-
-    // Keep older Windows installations usable when PowerShell 7 has not been
-    // staged yet. Published SunCode builds always prefer the adjacent bundle.
-    Some("powershell.exe".into())
 }

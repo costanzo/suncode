@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
+using SunCode.Sdk;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -18,18 +20,23 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
 
     public string Id { get; }
     public string WorkingDirectory { get; }
-    public string ShellLabel { get; internal set; } = "shell";
+    private string _shellLabel = "shell";
+    public string ShellLabel { get => _shellLabel; internal set => SetProperty(ref _shellLabel, value); }
+    internal Func<Task<ResolvedShell>>? ResolveShellAsync { get; init; }
     public bool IsSelected { get => _isSelected; internal set => SetProperty(ref _isSelected, value); }
-    public string State { get => _state; internal set { if (SetProperty(ref _state, value)) OnPropertyChanged(nameof(StateText)); } }
+    public string State { get => _state; internal set { if (SetProperty(ref _state, value)) OnPropertyChanged(nameof(StateText)); OnPropertyChanged(nameof(HasError)); } }
     public int? ExitCode { get => _exitCode; internal set { if (SetProperty(ref _exitCode, value)) OnPropertyChanged(nameof(StateText)); } }
+    private string _errorMessage = string.Empty;
+    public string ErrorMessage { get => _errorMessage; internal set { if (SetProperty(ref _errorMessage, value)) OnPropertyChanged(nameof(StateText)); } }
     public bool IsRunning => State is "starting" or "running";
+    public bool HasError => State == "error";
     public bool HasExited => State is "exited" or "error";
     public string StateText => State switch
     {
         "starting" => "Starting",
         "running" => "Running",
         "exited" => ExitCode is { } code ? $"Exited {code}" : "Exited",
-        "error" => "Failed to start",
+        "error" => string.IsNullOrWhiteSpace(ErrorMessage) ? "Failed to start" : ErrorMessage,
         _ => State
     };
 
@@ -75,7 +82,8 @@ public sealed class TerminalViewModel : ObservableObject, IDisposable
             $"terminal-{++_nextSessionNumber}",
             WorkingDirectory)
         {
-            ShellLabel = DefaultShellLabel()
+            ShellLabel = DefaultShellLabel(),
+            ResolveShellAsync = ResolveShellAsync
         };
         session.CloseRequested += () => CloseSession(session);
         Sessions.Add(session);
@@ -101,6 +109,13 @@ public sealed class TerminalViewModel : ObservableObject, IDisposable
         foreach (var session in Sessions.ToArray()) session.Dispose();
         Sessions.Clear();
         SelectedSession = null;
+    }
+
+    private async Task<ResolvedShell> ResolveShellAsync()
+    {
+        if (!await _host.EnsureSdkReadyAsync() || _host.Sdk is null) throw new InvalidOperationException("Agent SDK is unavailable");
+        var result = await ShellSetupService.Current.CheckAsync(new("terminal"));
+        return result.Shell ?? throw new SdkException(result.ErrorCode ?? "shell_unavailable", result.Message);
     }
 
     private static string DefaultShellLabel()

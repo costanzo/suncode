@@ -2284,3 +2284,89 @@ fn watch_session_returns_snapshot_and_atomic_typed_stream() {
     let event = watch.events.blocking_recv().unwrap();
     assert!(matches!(event.payload, EventPayload::TurnState(_)));
 }
+
+#[test]
+fn shell_preferences_are_persistence_only_and_atomic() {
+    let root = tempfile::tempdir().unwrap();
+    let sdk = test_sdk(root.path());
+    // Nonexistent paths are accepted structurally. Saving must not launch a probe.
+    let preference: ShellConfiguration = serde_json::from_value(json!({"mode":"custom", "path":root.path().join("missing/sh"), "resolved":{
+        "path":root.path().join("missing/sh"), "family":"sh", "version":"host supplied", "interactiveArgs":[]
+    }})).unwrap();
+    sdk.save_shell_preferences(ShellPreferencesRequest {
+        agent: Some(preference.clone()),
+        terminal: None,
+    })
+    .unwrap();
+    assert!(sdk
+        .set_setting(
+            "project",
+            Some("missing"),
+            None,
+            "agent_shell",
+            &json!({"mode":"system","path":""})
+        )
+        .is_err());
+    for invalid in [
+        json!({"mode":"system","path":"","resolved":{"path":"relative/sh","family":"sh","version":"test","interactiveArgs":[]}}),
+        json!({"mode":"system","path":"","resolved":{"path":root.path().join("sh"),"family":"arbitrary","version":"test","interactiveArgs":[]}}),
+        json!({"mode":"system","path":"","unexpected":true}),
+    ] {
+        assert!(sdk
+            .set_setting("global", None, None, "agent_shell", &invalid)
+            .is_err());
+    }
+    let current = sdk.state.store.global_settings().unwrap();
+    assert_eq!(current.agent_shell, preference);
+    assert_eq!(current.terminal_shell, ShellConfiguration::default());
+    let invalid: ShellConfiguration =
+        serde_json::from_value(json!({"mode":"system", "path":"unexpected"})).unwrap();
+    assert!(sdk
+        .save_shell_preferences(ShellPreferencesRequest {
+            agent: Some(ShellConfiguration::default()),
+            terminal: Some(invalid)
+        })
+        .is_err());
+    assert_eq!(
+        sdk.state.store.global_settings().unwrap().agent_shell,
+        preference
+    );
+    sdk.save_shell_preferences(ShellPreferencesRequest {
+        agent: Some(preference.clone()),
+        terminal: Some(preference.clone()),
+    })
+    .unwrap();
+    assert_eq!(
+        sdk.state.store.global_settings().unwrap().terminal_shell,
+        preference
+    );
+    let json = serde_json::to_value(sdk.list_settings(None, None).unwrap()).unwrap();
+    assert!(json["settings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|value| value["key"] != "proxy_password"));
+}
+
+#[test]
+fn host_download_network_snapshot_keeps_general_settings_redacted() {
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = test_sdk(directory.path());
+    sdk.set_proxy_configuration(ProxyConfigurationRequest {
+        mode: "custom".into(),
+        url: "http://localhost:8080".into(),
+        username: "user".into(),
+        password: Some("test-secret".into()),
+        clear_password: false,
+        bypass: vec![".example.com".into()],
+    })
+    .unwrap();
+    let network = serde_json::to_value(sdk.download_network_configuration().unwrap()).unwrap();
+    assert_eq!(network["proxy"]["password"], "test-secret");
+    assert_eq!(network["proxy"]["mode"], "custom");
+    assert!(
+        !serde_json::to_string(&sdk.list_settings(None, None).unwrap())
+            .unwrap()
+            .contains("test-secret")
+    );
+}

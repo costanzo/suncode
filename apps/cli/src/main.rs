@@ -3,6 +3,7 @@ mod commands;
 mod config;
 mod error;
 mod output;
+mod shell;
 
 use std::{panic::AssertUnwindSafe, process::ExitCode};
 

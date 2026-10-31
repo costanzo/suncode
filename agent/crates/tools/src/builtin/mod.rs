@@ -150,7 +150,12 @@ fn prepare(
             }
         },
     };
-    let mut params = translate::translate_arguments(invocation.name, &arguments, Some(&root))?;
+    let mut params = translate::translate_arguments_with_shell(
+        invocation.name,
+        &arguments,
+        Some(&root),
+        context.shell,
+    )?;
     if invocation.name == "bash" {
         if let Some(ceiling) = context.timeout_ceiling {
             let ceiling = u64::try_from(ceiling.as_millis()).unwrap_or(u64::MAX);

@@ -1003,3 +1003,13 @@ public sealed record AgentContextSummary(
 public sealed record ReplyQuestionRequest(
     string RequestId,
     IReadOnlyList<IReadOnlyList<string>> Answers);
+
+
+public sealed record ShellConfiguration(string Mode = "system", string Path = "", ResolvedShell? Resolved = null);
+public sealed record ResolvedShell(string Path, string Family, string Version, IReadOnlyList<string> InteractiveArgs);
+public sealed record ShellPreferencesRequest(ShellConfiguration? Agent = null, ShellConfiguration? Terminal = null);
+public sealed record DownloadProxyConfiguration(string Mode, string Url, string Username, string Password, IReadOnlyList<string> Bypass)
+{
+    public override string ToString() => $"DownloadProxyConfiguration {{ Mode = {Mode}, Credentials = <redacted> }}";
+}
+public sealed record DownloadNetworkConfiguration(bool VerifyCertificates, bool UseSystemCertificates, string? CertificatePath, DownloadProxyConfiguration Proxy);

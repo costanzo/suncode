@@ -40,6 +40,7 @@ mod projects;
 mod remote;
 mod sessions;
 mod settings;
+mod shells;
 mod skills;
 mod subscriptions;
 #[cfg(test)]

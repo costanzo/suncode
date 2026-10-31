@@ -90,6 +90,8 @@ pub trait ToolOutput: Send + Sync {
 
 /// Everything a provider may use while running one call.
 pub struct ToolContext<'a> {
+    /// Interpreter captured by the turn; independent of later settings changes.
+    pub shell: Option<&'a crate::shell::ResolvedShell>,
     pub project_id: &'a str,
     /// Canonical root of the opened project.
     pub project_root: &'a std::path::Path,

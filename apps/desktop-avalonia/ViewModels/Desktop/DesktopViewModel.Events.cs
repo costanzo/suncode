@@ -49,7 +49,18 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         try
         {
             var sdk = await AgentSdk.OpenAsync($"os:{Environment.UserName}");
-            await sdk.GetHealthAsync();
+            try
+            {
+                await sdk.GetHealthAsync();
+                await ShellSetupService.AcquireAsync($"os:{Environment.UserName}");
+                if (_disposed)
+                {
+                    await ShellSetupService.ReleaseAsync();
+                    sdk.Dispose();
+                    return;
+                }
+            }
+            catch { sdk.Dispose(); throw; }
             _sdk = sdk;
             ConnectionState = "connected";
             StatusText = "Connected to local agent";
@@ -273,6 +284,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         DisposeMessages();
         DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
+        if (_sdk is not null) ShellSetupService.ReleaseAsync().GetAwaiter().GetResult();
         _sdk?.Dispose();
         _sdk = null;
         lock (_initializationGate)
