@@ -7,6 +7,15 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
+# Dependency ownership policy:
+# - This table is the single source of truth for every dependency version,
+#   source, and default-feature decision in the agent workspace.
+# - Member manifests under crates/ must reference dependencies with
+#   `workspace = true`; they must not declare dependency versions, sources,
+#   or package-level feature policy locally.
+# - A member may select the features it needs at its boundary, but the
+#   dependency identity and version remain owned here.
+
 # Internal crates
 suncode-agents = { path = "crates/agents" }
 suncode-browser = { path = "crates/browser" }
