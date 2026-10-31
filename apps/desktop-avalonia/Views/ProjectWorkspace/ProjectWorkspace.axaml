@@ -88,7 +88,7 @@
 
     <Grid>
     <Grid RowDefinitions="36,Auto,*,20">
-        <Grid Grid.Row="0"
+        <Grid x:Name="WorkspaceTitleBar" Grid.Row="0"
               Classes="window-titlebar"
               Background="{StaticResource HitTestTransparentBrush}"
               ColumnDefinitions="*,280,*"
@@ -119,7 +119,7 @@
             </Button>
           </StackPanel>
           <Menu x:Name="WindowsMenuBar" Grid.Column="0" Grid.ColumnSpan="3" Classes="windows-menu-bar" IsVisible="False"
-                VerticalAlignment="Center" HorizontalAlignment="Left" Margin="36,0,138,0"
+                VerticalAlignment="Center" HorizontalAlignment="Left" Margin="36,0,184,0"
                 chrome:WindowDecorationProperties.ElementRole="User" />
           <workspace:ContentSwitcher x:Name="ContentSwitcherControl"
                                       chrome:WindowDecorationProperties.ElementRole="User"
@@ -133,6 +133,9 @@
             </Button>
           </StackPanel>
           <StackPanel x:Name="WindowsTitleBarControls" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+            <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="User" Click="OpenSettings" ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
+              <svg:Svg Width="14" Height="14" Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
+            </Button>
             <Button Classes="windows-titlebar-control" chrome:WindowDecorationProperties.ElementRole="MinimizeButton" Click="MinimizeWindow" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-minimize.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>

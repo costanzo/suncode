@@ -131,6 +131,11 @@
       <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
       <Grid Grid.Row="2" Background="{DynamicResource CanvasBrush}">
         <ItemsControl ItemsSource="{Binding Terminal.Sessions}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <Grid />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate DataType="vm:TerminalSessionViewModel">
               <Border IsVisible="{Binding IsSelected}" Background="{DynamicResource CanvasBrush}">

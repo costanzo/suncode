@@ -37,6 +37,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ProjectSwitcherControl.IsVisible = true;
         if (isWindows)
         {
+            WorkspaceTitleBar.ColumnDefinitions[2].MinWidth = 184;
             ProjectSwitcherControl.Margin = new Thickness(84, 0, 0, 0);
         }
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;

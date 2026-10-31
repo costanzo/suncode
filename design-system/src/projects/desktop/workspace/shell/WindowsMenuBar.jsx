@@ -310,6 +310,17 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
           )}
         </div>
         <div className="windows-window-controls" aria-label="Window controls (design preview)">
+          <button
+            type="button"
+            aria-label="Open settings"
+            title="Settings (Ctrl+,)"
+            onClick={() => {
+              close();
+              onCommand({ label: "Settings…" });
+            }}
+          >
+            <Icon name="settings" size={14} />
+          </button>
           <button type="button" aria-label="Minimize preview window" title="Minimize (preview)">
             <Icon name="window-minimize" size={12} />
           </button>

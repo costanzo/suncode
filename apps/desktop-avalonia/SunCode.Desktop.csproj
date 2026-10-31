@@ -19,7 +19,7 @@
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
-    <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">$(MSBuildProjectDirectory)/../../../../github/costanzo/CefGlue</CefGlueForkRoot>
+    <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">D:\appData\github\costanzo\CefGlue</CefGlueForkRoot>
     <SunCodeBundleCef Condition="'$(SunCodeBundleCef)' == ''">false</SunCodeBundleCef>
     <DefineConstants Condition="'$(SunCodeBundleCef)' == 'true'">$(DefineConstants);SUNCODE_CEF</DefineConstants>
   </PropertyGroup>
