@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectWorkspace;
@@ -20,6 +21,7 @@ internal sealed class DesktopMenuController
     private readonly List<Action> _populate = [];
     private readonly List<MenuItem> _barGroups = [];
     private readonly Dictionary<NativeMenu, MenuItem> _barMenus = [];
+    private readonly List<(KeyGesture Gesture, Func<bool> Execute)> _shortcuts = [];
 
     internal NativeMenu Menu { get; } = new();
     internal IReadOnlyList<MenuItem> BarGroups => _barGroups;
@@ -54,6 +56,21 @@ internal sealed class DesktopMenuController
         BuildHelp();
         Menu.NeedsUpdate += (_, _) => Refresh();
         Refresh();
+        // Collapsed menu items are not a reliable hotkey host. Handle application
+        // shortcuts at the window before focused text/terminal controls consume them.
+        // AppKit continues to dispatch native menu gestures on macOS.
+        if (!OperatingSystem.IsMacOS() && Owner is { } window)
+            window.AddHandler(InputElement.KeyDownEvent, ShortcutKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    private void ShortcutKeyDown(object? sender, KeyEventArgs args)
+    {
+        foreach (var shortcut in _shortcuts)
+        {
+            if (!shortcut.Gesture.Matches(args)) continue;
+            if (shortcut.Execute()) args.Handled = true;
+            return;
+        }
     }
 
     internal void Refresh()
@@ -79,11 +96,10 @@ internal sealed class DesktopMenuController
     }
 
     private NativeMenuItem Action(NativeMenu menu, string name, string fallback, Action execute,
-        Func<bool>? enabled = null, KeyGesture? gesture = null, Func<bool>? check = null)
+        Func<bool>? enabled = null, KeyGesture? gesture = null, Func<bool>? check = null, bool windowShortcut = true)
     {
         var item = new NativeMenuItem { Gesture = gesture };
         var barItem = BarItem();
-        barItem.HotKey = gesture;
         barItem.InputGesture = gesture;
         if (check is not null) item.ToggleType = MenuItemToggleType.CheckBox;
         if (check is not null) barItem.ToggleType = MenuItemToggleType.CheckBox;
@@ -99,14 +115,16 @@ internal sealed class DesktopMenuController
                 barItem.IsChecked = check();
             }
         }
-        void Execute()
+        bool Execute()
         {
             // Recheck at invocation: context can change while a native menu is open.
-            if (!Enabled || enabled?.Invoke() == false) return;
+            if (!Enabled || enabled?.Invoke() == false) return false;
             execute();
             if (OperatingSystem.IsWindows()) Workspace?.CloseWindowsMenu();
             Refresh();
+            return true;
         }
+        if (gesture is not null && windowShortcut) _shortcuts.Add((gesture, Execute));
         item.Click += (_, _) => Execute();
         barItem.Click += (_, _) => Execute();
         _refresh.Add(Update);
@@ -244,7 +262,8 @@ internal sealed class DesktopMenuController
     private void EditAction(NativeMenu menu, DesktopEditAction action, string name, string fallback, Key key,
         KeyModifiers extra = KeyModifiers.None) =>
         Action(menu, name, fallback, () => DesktopEditCommands.Execute(Owner, action),
-            () => DesktopEditCommands.CanExecute(Owner, action), new KeyGesture(key, CommandModifier | extra));
+            () => DesktopEditCommands.CanExecute(Owner, action), new KeyGesture(key, CommandModifier | extra),
+            windowShortcut: false);
 
     private void BuildNavigate()
     {

@@ -210,6 +210,19 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
       className="windows-menu-preview"
       tabIndex={-1}
       aria-label="Windows project window preview"
+      onKeyDownCapture={(event) => {
+        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+        const shortcut = `Ctrl+${event.key.toUpperCase()}`;
+        const item = Object.entries(menus)
+          .filter(([group]) => group !== "Edit")
+          .flatMap(([, items]) => items)
+          .find((item) => item?.shortcut === shortcut && !item.disabled);
+        if (!item) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onCommand(item);
+        close();
+      }}
       onKeyDown={(event) => {
         if (event.key === "F10" && !event.shiftKey) {
           event.preventDefault();

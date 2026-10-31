@@ -78,6 +78,7 @@ public sealed partial class ProjectHubWindow : Window
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {
+        if (!OperatingSystem.IsMacOS()) return;
         var commandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Meta) || e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (!commandModifier || e.Key != Key.OemComma) return;
         e.Handled = true;

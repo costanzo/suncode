@@ -307,6 +307,8 @@ public partial class WorkspaceWindow : Window
             return;
         }
 
+        // Windows/Linux menu shortcuts are dispatched by DesktopMenuController.
+        if (!OperatingSystem.IsMacOS()) return;
         var commandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Meta) || e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (commandModifier && e.Key == Key.OemComma)
         {

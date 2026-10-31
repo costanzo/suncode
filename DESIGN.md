@@ -311,6 +311,7 @@ The Settings → Provider credentials route (`#/projects/desktop/settings/provid
 - **Current scope:** The page is a read-only catalog. It must not present editable fields, save actions, or affordances that imply shortcut customization is currently supported.
 - **Rows:** Each row places the operation name on the left and a right-aligned combination of compact `<kbd>` keycaps on the right. Use the existing mono data font, raised surface, hairline border, and compact 4px keycap radius.
 - **Platform note:** The review surface may use macOS notation for the specimen, but the page should state that Windows and Linux use `Ctrl` where applicable. The catalog should describe shortcuts that are actually implemented by the desktop client.
+- **Dispatch:** Windows and Linux application shortcuts work independently of compact-menu visibility and focused text or terminal controls. They invoke the same commands as menu clicks, match the complete key chord, and recheck the active project/session, busy state, and blocking overlays at invocation. Editing shortcuts remain owned by the focused control. macOS retains native menu gesture dispatch.
 
 ### Computer Use Settings
 

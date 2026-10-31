@@ -107,6 +107,11 @@ export function NativeMenuSpecimen({ presentation = "reference" }) {
               scroll horizontally while window controls stay fixed.
             </p>
             <p>
+              Application shortcuts such as Ctrl+O and Ctrl+N work with the menu collapsed and the
+              conversation input focused. They follow the current context and disabled states;
+              editing shortcuts stay with the focused control.
+            </p>
+            <p>
               Design reference only. Commands reuse the hierarchy below; confirmation dialogs and
               actual window actions belong to the desktop client.
             </p>
