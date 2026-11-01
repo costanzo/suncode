@@ -1,0 +1,543 @@
+openapi: 3.2.1
+info:
+  title: SunCode Desktop Component Update Catalog
+  version: 1.0.0
+  summary: Check independently packaged Desktop and Agent SDK updates
+  description: |
+    Defined v1 contract; no production update client or service is implemented.
+    Avalonia C# fetches this public, signed catalog and computes one compatible
+    update plan locally. Installed versions are not submitted. This endpoint can
+    be served as a static JSON file; it is not an Agent SDK or Remote Server API.
+    Desktop and Agent SDK have independent versions and full component packages.
+    See README.md for normative signing, selection, caching, and failure rules.
+    Implementations are hand-written; this document is not a code-generation input.
+servers:
+  - url: https://updates.suncode.example
+    description: Illustrative origin; configure the production HTTPS origin in Desktop
+security: []
+tags:
+  - name: Updates
+    description: Public release metadata; no device identity or authentication
+paths:
+  /updates/v1/{channel}/{target}/latest.json:
+    get:
+      operationId: getComponentUpdateCatalog
+      tags: [Updates]
+      summary: Fetch the latest component releases and tested version combinations
+      description: |
+        Returns the same signed catalog for every client on this channel and
+        target. A 200 or 304 does not itself mean an update is available, installed,
+        or safe to apply. C# verifies the catalog before comparing local versions.
+        A 304 is usable only with a previously verified, unexpired catalog for
+        this exact origin, path, channel, and target. Without one, retry once
+        without If-None-Match. HTTPS verification is mandatory even when provider
+        requests have certificate verification disabled. No query parameters,
+        request body, cookies, bearer tokens, or Agent credentials are required.
+      parameters:
+        - name: channel
+          in: path
+          required: true
+          description: v1 initially publishes the stable channel only
+          schema:
+            type: string
+            enum: [stable]
+        - name: target
+          in: path
+          required: true
+          description: |
+            Process/native-library runtime identifier, not just the machine's CPU.
+            A recognized target may have no published release and return 404.
+          schema:
+            $ref: '#/components/schemas/Target'
+        - name: If-None-Match
+          in: header
+          required: false
+          description: Opaque ETag from the last usable response for this exact URL
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        '200':
+          description: Signed catalog, including when the installed versions are current
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignedCatalog'
+              examples:
+                sdkOnly:
+                  $ref: '#/components/examples/SdkOnly'
+                desktopOnly:
+                  $ref: '#/components/examples/DesktopOnly'
+                paired:
+                  $ref: '#/components/examples/Paired'
+        '304':
+          description: |
+            No response body. Revalidate the cached catalog's trust, expiry, and
+            revision, then recompute against the current installation. This does
+            not extend signed expiry and never directly maps to Up to date.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+        '400':
+          description: Invalid channel or target syntax
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Invalid update request
+                status: 400
+                code: invalid_request
+                detail: Choose a supported channel and target.
+        '404':
+          description: Channel/target has no published catalog; not an Up to date result
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: No published update catalog
+                status: 404
+                code: catalog_not_found
+        '429':
+          description: Checks are temporarily rate limited
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Too many update checks
+                status: 429
+                code: rate_limited
+        '503':
+          description: Publication service is temporarily unavailable
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Update catalog unavailable
+                status: 503
+                code: service_unavailable
+        default:
+          description: |
+            Unexpected HTTP failure, including a CDN's non-JSON error page.
+            Treat as check failure; never parse it as trusted release metadata.
+components:
+  headers:
+    ETag:
+      description: |
+        Required on 200 and 304. Identifies the complete envelope representation,
+        including signatures. It is neither a product version nor a trust signal.
+      schema:
+        type: string
+        maxLength: 256
+      example: '"stable-win-x64-42"'
+    CacheControl:
+      description: |
+        Required on 200 and 304. Revalidate after at most 300 seconds; never serve
+        stale metadata for a new update decision. Signed expiresAt still applies.
+      schema:
+        type: string
+      example: public, max-age=300, must-revalidate
+    RetryAfter:
+      description: Optional retry delay in whole seconds, not an HTTP-date
+      schema:
+        type: string
+        pattern: '^[0-9]+$'
+      example: '300'
+  schemas:
+    Target:
+      type: string
+      enum: [win-x64, win-arm64, osx-x64, osx-arm64, linux-x64, linux-arm64]
+    Version:
+      type: string
+      description: |
+        Stable SemVer core MAJOR.MINOR.PATCH, without v prefix, leading zeroes,
+        prerelease, or build metadata. Compare three integer components, never
+        lexicographically. Each component is at most 2147483647.
+      maxLength: 32
+      pattern: '^(0|[1-9][0-9]{0,9})\.(0|[1-9][0-9]{0,9})\.(0|[1-9][0-9]{0,9})$'
+    Abi:
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+      description: C ABI compatibility number, independent of the SDK product version
+    Sha256:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+      description: Lowercase SHA-256 of the exact downloadable archive bytes
+    HttpsUrl:
+      type: string
+      format: uri
+      pattern: '^https://'
+      maxLength: 2048
+      description: Absolute HTTPS URL without user information or fragment
+    SignedCatalog:
+      type: object
+      required: [signed, signatures]
+      properties:
+        signed:
+          $ref: '#/components/schemas/Catalog'
+        signatures:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            $ref: '#/components/schemas/Signature'
+      description: |
+        Authenticate every field inside signed before using it. Unknown fields
+        inside signed participate in canonicalization and signature verification.
+        Duplicate JSON object keys and non-I-JSON values are invalid.
+    Signature:
+      type: object
+      required: [keyId, algorithm, value]
+      properties:
+        keyId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9._-]+$'
+          description: Selects a public key already trusted by the installed Desktop
+        algorithm:
+          type: string
+          const: Ed25519
+        value:
+          type: string
+          minLength: 86
+          maxLength: 86
+          pattern: '^[A-Za-z0-9_-]{85}[AQgw]$'
+          description: |
+            Unpadded base64url of the 64-byte Ed25519 signature over the UTF-8
+            bytes of "SunCode Update Catalog v1\n" followed by RFC 8785 JCS(signed).
+            The prefix ends in one LF byte, not a literal backslash and n.
+    Catalog:
+      type: object
+      required:
+        - schemaVersion
+        - revision
+        - channel
+        - target
+        - publishedAt
+        - expiresAt
+        - components
+        - compatiblePairs
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: |
+            Strictly increasing publication revision per origin/channel/target.
+            Any signed content change, including renewed expiry, needs a new revision.
+        channel:
+          type: string
+          const: stable
+        target:
+          $ref: '#/components/schemas/Target'
+        publishedAt:
+          type: string
+          format: date-time
+          description: RFC 3339 UTC timestamp ending in Z
+          pattern: 'Z$'
+        expiresAt:
+          type: string
+          format: date-time
+          description: |
+            UTC timestamp after publishedAt and at most seven days later. Must
+            remain in the future when making an update/install decision; 304 does
+            not renew it. Revalidate before installation if it has expired.
+          pattern: 'Z$'
+        components:
+          type: object
+          required: [desktop, sdk]
+          properties:
+            desktop:
+              $ref: '#/components/schemas/DesktopRelease'
+            sdk:
+              $ref: '#/components/schemas/SdkRelease'
+          description: |
+            Latest recommended release for each component on this target. Both
+            descriptors are always present, even when only one component changed.
+            The pair of these two versions must occur in compatiblePairs.
+        compatiblePairs:
+          type: array
+          minItems: 1
+          maxItems: 256
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/CompatiblePair'
+          description: |
+            Explicitly tested Desktop/SDK version pairs for this target. Entries
+            can include older installed versions to permit single-component
+            upgrades. Same ABI alone is insufficient evidence of DTO/event and
+            host-capability compatibility. Unlisted new combinations are refused.
+    DesktopRelease:
+      type: object
+      required: [version, requiredSdkAbi, publishedAt, package, releaseNotes]
+      properties:
+        version:
+          $ref: '#/components/schemas/Version'
+        requiredSdkAbi:
+          $ref: '#/components/schemas/Abi'
+        publishedAt:
+          type: string
+          format: date-time
+          pattern: 'Z$'
+        package:
+          $ref: '#/components/schemas/Package'
+        releaseNotes:
+          $ref: '#/components/schemas/ReleaseNotes'
+      description: |
+        Desktop includes its managed C# binding and client dependencies, excluding
+        the Rust Agent SDK runtime. requiredSdkAbi is the binding's exact ABI.
+    SdkRelease:
+      type: object
+      required: [version, abi, publishedAt, package, releaseNotes]
+      properties:
+        version:
+          $ref: '#/components/schemas/Version'
+        abi:
+          $ref: '#/components/schemas/Abi'
+        publishedAt:
+          type: string
+          format: date-time
+          pattern: 'Z$'
+        package:
+          $ref: '#/components/schemas/Package'
+        releaseNotes:
+          $ref: '#/components/schemas/ReleaseNotes'
+      description: |
+        Complete sdks/c native runtime containing the Rust facade, Agent core,
+        and required native dependencies. It is not a Rust source/crate package.
+    Package:
+      type: object
+      required: [url, format, sizeBytes, sha256]
+      properties:
+        url:
+          $ref: '#/components/schemas/HttpsUrl'
+        format:
+          type: string
+          enum: [zip, tar.gz]
+          description: Full component archive; v1 has no delta or installer-script payload
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Exact archive length, also used to compute the plan's download total
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        minimumOsVersion:
+          type: string
+          pattern: '^[0-9]+(\.[0-9]+){0,3}$'
+          description: |
+            Optional numeric minimum Windows/macOS version or Linux kernel version.
+            Compare dotted integer parts with absent parts treated as zero. A
+            client unable to determine a declared prerequisite refuses the package.
+        minimumGlibcVersion:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+$'
+          description: |
+            Optional Linux glibc prerequisite; invalid on non-Linux targets.
+            musl does not satisfy a glibc requirement. Compare dotted integers.
+    ReleaseNotes:
+      type: object
+      required: [en-US]
+      minProperties: 1
+      maxProperties: 16
+      propertyNames:
+        pattern: '^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$'
+      additionalProperties:
+        type: string
+        minLength: 1
+        maxLength: 16000
+      description: |
+        BCP-47 locale keys and plain-text notes, with en-US fallback. Select exact
+        UI locale, then language-only entry, then en-US. Never execute HTML,
+        scripts, or commands from release notes.
+    CompatiblePair:
+      type: object
+      required: [desktop, sdk]
+      additionalProperties: false
+      properties:
+        desktop:
+          $ref: '#/components/schemas/Version'
+        sdk:
+          $ref: '#/components/schemas/Version'
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+          maxLength: 256
+        status:
+          type: integer
+          enum: [400, 404, 429, 503]
+        code:
+          type: string
+          enum: [invalid_request, catalog_not_found, rate_limited, service_unavailable]
+        detail:
+          type: string
+          maxLength: 1024
+      description: |
+        RFC 9457 problem detail with a stable code extension. status must match
+        the HTTP status and code. Errors are not signed release authority and
+        cannot carry trusted package URLs, actions, or keys.
+  examples:
+    SdkOnly:
+      summary: From Desktop 0.1.0 + SDK 0.1.0, download only SDK
+      description: |
+        Synthetic versions, URLs, sizes, and hashes. Signature is a shape-only
+        placeholder, not a valid signature and not usable by a real updater.
+      value:
+        signed:
+          schemaVersion: 1
+          revision: 42
+          channel: stable
+          target: win-x64
+          publishedAt: '2026-11-01T02:00:00Z'
+          expiresAt: '2026-11-08T02:00:00Z'
+          components:
+            desktop:
+              version: 0.1.0
+              requiredSdkAbi: 27
+              publishedAt: '2026-10-30T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/desktop/0.1.0/win-x64.zip
+                format: zip
+                sizeBytes: 86000000
+                sha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+              releaseNotes:
+                en-US: Desktop is unchanged in this publication.
+                zh-CN: 本次发布未变更 Desktop。
+            sdk:
+              version: 0.1.1
+              abi: 27
+              publishedAt: '2026-11-01T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/sdk/0.1.1/win-x64.zip
+                format: zip
+                sizeBytes: 18000000
+                sha256: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+              releaseNotes:
+                en-US: Model compatibility and agent reliability improvements.
+                zh-CN: 改进模型兼容性和 Agent 稳定性。
+          compatiblePairs:
+            - desktop: 0.1.0
+              sdk: 0.1.0
+            - desktop: 0.1.0
+              sdk: 0.1.1
+        signatures:
+          - keyId: illustrative-key-1
+            algorithm: Ed25519
+            value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    DesktopOnly:
+      summary: From Desktop 0.1.0 + SDK 0.1.0, download only Desktop
+      description: Synthetic publication; signature is a non-verifying shape-only placeholder
+      value:
+        signed:
+          schemaVersion: 1
+          revision: 42
+          channel: stable
+          target: win-x64
+          publishedAt: '2026-11-01T02:00:00Z'
+          expiresAt: '2026-11-08T02:00:00Z'
+          components:
+            desktop:
+              version: 0.1.1
+              requiredSdkAbi: 27
+              publishedAt: '2026-11-01T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/desktop/0.1.1/win-x64.zip
+                format: zip
+                sizeBytes: 86000000
+                sha256: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+              releaseNotes:
+                en-US: Settings layout and keyboard navigation improvements.
+            sdk:
+              version: 0.1.0
+              abi: 27
+              publishedAt: '2026-10-30T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/sdk/0.1.0/win-x64.zip
+                format: zip
+                sizeBytes: 18000000
+                sha256: 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
+              releaseNotes:
+                en-US: Agent SDK is unchanged in this publication.
+          compatiblePairs:
+            - desktop: 0.1.0
+              sdk: 0.1.0
+            - desktop: 0.1.1
+              sdk: 0.1.0
+        signatures:
+          - keyId: illustrative-key-1
+            algorithm: Ed25519
+            value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    Paired:
+      summary: Both packages are required to move from ABI 27 to ABI 28
+      description: |
+        Synthetic publication demonstrating a breaking ABI. ABI 28 is not an
+        implementation claim. Signature is a non-verifying shape-only placeholder.
+      value:
+        signed:
+          schemaVersion: 1
+          revision: 42
+          channel: stable
+          target: win-x64
+          publishedAt: '2026-11-01T02:00:00Z'
+          expiresAt: '2026-11-08T02:00:00Z'
+          components:
+            desktop:
+              version: 0.2.0
+              requiredSdkAbi: 28
+              publishedAt: '2026-11-01T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/desktop/0.2.0/win-x64.zip
+                format: zip
+                sizeBytes: 86000000
+                sha256: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+              releaseNotes:
+                en-US: Desktop changes requiring the matching Agent SDK update.
+            sdk:
+              version: 0.2.0
+              abi: 28
+              publishedAt: '2026-11-01T02:00:00Z'
+              package:
+                url: https://downloads.suncode.example/sdk/0.2.0/win-x64.zip
+                format: zip
+                sizeBytes: 18000000
+                sha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+              releaseNotes:
+                en-US: Agent SDK changes requiring the matching Desktop update.
+          compatiblePairs:
+            - desktop: 0.2.0
+              sdk: 0.2.0
+        signatures:
+          - keyId: illustrative-key-1
+            algorithm: Ed25519
+            value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
