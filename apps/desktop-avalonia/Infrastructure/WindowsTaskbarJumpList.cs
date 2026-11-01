@@ -9,13 +9,14 @@ namespace SunCode.Desktop.Infrastructure;
 /// <summary>
 /// Publishes recent projects through the Windows SDK Jump List projection.
 /// The generated WinRT projection owns the ABI boundary; no hand-written COM
-/// vtables are used here.
+/// vtables are used here. The facade is safe to call on other platforms;
+/// only the guarded Windows implementation accesses WinRT.
 /// </summary>
-[SupportedOSPlatform("windows")]
 internal sealed class WindowsTaskbarJumpList
 {
     private const int RecentProjectLimit = 10;
-    internal static bool IsEnabled => OperatingSystem.IsWindows();
+    [SupportedOSPlatformGuard("windows10.0.10586")]
+    internal static bool IsEnabled => OperatingSystem.IsWindowsVersionAtLeast(10, 0, 10586);
 
     private readonly Func<IReadOnlyList<ProjectItem>> _projects;
 
