@@ -69,6 +69,7 @@ export function WorkspaceTitlebarSpecimen() {
             onWindowMaximize={() => setMaximized((value) => !value)}
             onWindowMinimize={() => setFeedback("Minimize requested in the preview.")}
             onWindowClose={() => setFeedback("Close requested in the preview.")}
+            onTitlebarCommand={(label) => setFeedback(`${label} selected in the preview.`)}
             initialDrawer={ubuntu ? null : "tools"}
           />
         </div>

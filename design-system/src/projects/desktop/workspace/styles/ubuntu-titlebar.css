@@ -18,44 +18,43 @@
   border-radius: 0;
   box-shadow: none;
 }
-.workspace-titlebar.is-ubuntu {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+.windows-menu-titlebar.is-ubuntu {
+  position: relative;
   height: var(--ubuntu-titlebar-height);
-  min-height: var(--ubuntu-titlebar-height);
-  padding: 0 var(--space-1);
+  background: var(--canvas);
+  border-radius: 0;
 }
-.workspace-titlebar.is-ubuntu > .project-switcher {
+.windows-menu-titlebar.is-ubuntu .project-switcher {
   position: relative;
   top: auto;
   left: auto;
-  grid-column: 1;
-  grid-row: 1;
-  justify-self: start;
   min-width: 0;
+  max-width: var(--ubuntu-menu-project-width);
+}
+.windows-menu-titlebar.is-ubuntu .project-switcher-trigger {
   max-width: 100%;
 }
-.workspace-titlebar.is-ubuntu .project-switcher-trigger {
+.ubuntu-menu-current-content {
+  position: absolute;
+  top: 50%;
+  left: calc(50cqw - var(--space-3) - var(--windows-menu-logo-size) - var(--space-2));
+  width: max-content;
+  max-width: var(--ubuntu-menu-content-width);
+  transform: translate(-50%, -50%);
+}
+.ubuntu-menu-current-content .content-switcher-trigger {
   max-width: 100%;
 }
-.workspace-titlebar.is-ubuntu .project-switcher-menu {
-  left: 0;
-}
-.workspace-titlebar.is-ubuntu > .content-switcher {
-  grid-row: 1;
-}
-.workspace-titlebar.is-ubuntu .content-switcher-trigger {
-  max-width: 100%;
-}
-.workspace-titlebar.is-ubuntu > .workspace-titlebar-actions {
-  grid-row: 1;
+.ubuntu-menu-window-actions {
+  display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
+  padding-right: var(--space-1);
 }
-.workspace-titlebar.is-ubuntu.is-inactive {
-  color: var(--text-muted);
-}
-.workspace-titlebar.is-ubuntu.is-inactive .project-switcher-trigger,
-.workspace-titlebar.is-ubuntu.is-inactive .content-switcher-trigger {
+.windows-menu-titlebar.is-ubuntu.is-inactive .windows-menu-trigger,
+.windows-menu-titlebar.is-ubuntu.is-inactive .project-switcher-trigger,
+.windows-menu-titlebar.is-ubuntu.is-inactive .content-switcher-trigger {
   color: var(--text-muted);
 }
 .ubuntu-titlebar-feedback {
@@ -86,5 +85,14 @@
   .workspace-window.is-ubuntu .workspace-main-row > .workspace-sessions,
   .workspace-window.is-ubuntu .workspace-main-row > .workspace-explorer {
     display: none;
+  }
+}
+
+@container (max-width: 860px) {
+  .windows-menu-titlebar.is-ubuntu .project-switcher {
+    max-width: var(--ubuntu-menu-project-compact-width);
+  }
+  .ubuntu-menu-current-content {
+    max-width: var(--ubuntu-menu-content-compact-width);
   }
 }
