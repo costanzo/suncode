@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Styling;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Desktop.Infrastructure.Updates;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectHub;
 using SunCode.Sdk;
@@ -51,6 +52,20 @@ public sealed partial class App : Application
             _hubViewModel = new ProjectHubViewModel(_viewModel);
             _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
             _windows = new ProjectWindowManager(_hubWindow, () => desktop.Windows, _uiStateStore, _appSettings);
+            UpdateRuntime.Service.IsBusyAsync = async () =>
+            {
+                var models = _windows.ViewModels.Concat(desktop.Windows.Select(window => window.DataContext).OfType<DesktopViewModel>()).Append(_viewModel).Distinct().ToArray();
+                if (models.Any(model => model.HasLocalUpdateWork)) return true;
+                var connected = models.FirstOrDefault(model => model.HasAgentSdkForUpdates);
+                return connected is not null && await connected.HasAgentUpdateWorkAsync();
+            };
+            UpdateRuntime.Service.ShutdownAsync = () =>
+            {
+                if (!desktop.TryShutdown()) throw new UpdateException("restart_cancelled", "The restart was cancelled.");
+                return Task.CompletedTask;
+            };
+            UpdateRuntime.Cleanup();
+            UpdateRuntime.Service.StartAutomaticChecks();
             _dockMenuController = new DesktopDockMenuController(
                 () => _viewModel.Projects.ToArray(),
                 () => _windows.OpenProjects,
@@ -101,6 +116,7 @@ public sealed partial class App : Application
                 _windows?.CloseAll();
                 _hubViewModel.Dispose();
                 _uiStateStore?.Dispose();
+                UpdateRuntime.Service.Dispose();
                 DiagnosticLog.Info("app.lifecycle", "exit end");
             };
         }

@@ -4,7 +4,8 @@ info:
   version: 1.0.0
   summary: Check independently packaged Desktop and Agent SDK updates
   description: |
-    Defined v1 contract; no production update client or service is implemented.
+    v1 contract with a focused-tested Avalonia C# client. Production delivery,
+    publication configuration, and initial-installer integration remain pending.
     Avalonia C# fetches this public, signed catalog and computes one compatible
     update plan locally. Installed versions are not submitted. This endpoint can
     be served as a static JSON file; it is not an Agent SDK or Remote Server API.

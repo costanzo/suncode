@@ -5,11 +5,11 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20261101-desktop-component-update-catalog
 
 - Date: 2026-11-01
-- Status: Accepted contract; production updater not implemented
+- Status: Accepted; C# client implemented and focused-tested, production delivery unconfigured
 - Context: Desktop and the native Agent SDK should release independently so a change to one does not require downloading the other. Updates must remain available when the SDK cannot load, and the current C# binding requires an exact C ABI.
 - Decision: Define a public, static-hostable HTTPS catalog in OpenAPI 3.2.1 under `contracts/updates/`. Avalonia C# owns checking, signature/freshness verification, local comparison, and one coordinated update plan for two independent full component packages. Installed versions and device identity are not sent. Signed metadata carries exact tested version pairs, ABI identity, immutable package hashes/sizes, and localized notes. Updates require an explicit download and restart; no Rust update endpoint or C# database access is added.
-- Consequences: Catalog verification and SDK repair cannot depend on SDK startup. Same ABI alone does not establish compatibility. Cached catalogs retain signed expiry and monotonic publication checks. Binary recovery cannot promise database downgrade or data restoration. Signing, staging, activation, and recovery require focused implementation and tests before being described as working; CLI auto-update remains deferred.
-- Details: `contracts/updates/README.md`, `contracts/updates/updates.openapi.yaml`, `DESIGN.md` Updates design-review proposal
+- Consequences: Catalog verification and SDK repair cannot depend on SDK startup. Same ABI alone does not establish compatibility. Cached catalogs retain signed expiry and monotonic publication checks. C# stages immutable version directories and commits one paired installation pointer only after pre-database identity checks; the original installation remains a launcher. Recovery before commit preserves the old pointer, while committed activation never promises database downgrade or data restoration. The client has focused tests, but production signing/publication, trusted initial-installer receipts, and installed OS conformance remain release work. CLI auto-update remains deferred.
+- Details: `contracts/updates/README.md`, `contracts/updates/updates.openapi.yaml`, `DESIGN.md` Updates specification, `.agents/features/desktop-component-updates/README.md`
 
 ## ADR-20261031-windows-conpty-standard-handles
 

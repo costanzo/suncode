@@ -1,0 +1,13 @@
+# Desktop component updates
+
+Status: C# client implemented and focused-tested; delivery is disabled until production publication configuration and installer integration exist.
+
+Avalonia owns one update coordinator under `apps/desktop-avalonia/Infrastructure/Updates/`. Settings → Updates and About → Software updates follow the design-system specimen, including independent component versions, one compatible download plan, localized notes, manual download/restart, automatic checks, progress/cancellation, verification failures, unavailable delivery, and SDK repair. Settings navigation and repair do not require Agent startup. Closing Settings preserves application-owned update work.
+
+The client hand-implements the public signed catalog in [`contracts/updates`](../../../contracts/updates/README.md). It verifies Ed25519 over RFC 8785 canonical JSON, bounded metadata, freshness, channel/target, persisted revision high-water marks, exact tested version pairs, ABI identity, and immutable release/archive identities. Checks send no installed versions or user/project identity. Provider insecure-TLS settings never apply to updates.
+
+Downloads are independent full component archives. Verification and extraction precede staging; active component identities remain unchanged until a durable paired-pointer commit. Payload directories are immutable, and the original installation forwards to the selected Desktop. An early C# helper/preflight handshake verifies actual Desktop/SDK identities before Agent database opening. Failure before commit keeps the previous installation; committed activation never assumes an older SDK can safely reopen current data. C# does not access SQLite, add a Rust update API, or perform database rollback.
+
+Focused tests cover the protocol, transport, plans, repair, cancellation, extraction, state durability/barriers, and view models. Real child-process tests confirm valid and invalid native runtime selection before any Agent SQLite startup. Headless layout tests cover both themes, English/Chinese, default/minimum panels, and maximum-length versions.
+
+The checked-in distribution configuration is disabled and makes no update requests. A release must supply public trust/origin configuration, platform identities, independently signed component packages, and a trusted initial installation receipt. Initial-installer/publisher integration and installed signed updates on macOS/Windows/Linux remain release verification; local tests and preview images do not establish that those paths are deployed. Packaging and configuration details are in the updater's source README.

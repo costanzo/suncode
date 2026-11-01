@@ -223,6 +223,14 @@
               </Grid>
             </Button>
             <Button Classes="navigation"
+                    Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Updates}}"
+                    Command="{Binding Navigation.NavigateCommand}" CommandParameter="{x:Static vm:SettingsPage.Updates}">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="9">
+                <svg:Svg Width="15" Height="15" Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource LocUpdates}" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+            <Button Classes="navigation"
                     Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Providers}}"
                     Command="{Binding Navigation.NavigateCommand}"
                     CommandParameter="{x:Static vm:SettingsPage.Providers}">
@@ -313,6 +321,9 @@
           <settings:LoggingSettingsControl DataContext="{Binding Logging}" />
         </Panel>
 
+        <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Updates}}">
+          <settings:UpdatesSettingsControl DataContext="{Binding Updates}" />
+        </Panel>
         <Panel IsVisible="{Binding Navigation.SelectedPage, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Mcp}}">
           <settings:McpServersSettingsControl x:Name="McpPage" DataContext="{Binding Mcp}" />
         </Panel>

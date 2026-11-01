@@ -33,6 +33,7 @@ internal sealed class ProjectWindowManager
     }
 
     public bool CanMergeWindows => _registry.Count >= 2;
+    internal IEnumerable<DesktopViewModel> ViewModels => _registry.Windows.Select(window => window.DataContext).OfType<DesktopViewModel>();
 
     public IReadOnlyList<ProjectItem> OpenProjects => _registry.Windows
         .Select(window => (window.DataContext as DesktopViewModel)?.SelectedProject)

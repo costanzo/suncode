@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
+using SunCode.Desktop.Infrastructure.Updates;
 using SunCode.Sdk;
 #if SUNCODE_CEF
 using Xilium.CefGlue.BrowserProcess;
@@ -19,6 +20,14 @@ internal static class Program
         // CEF relaunches this executable with --type=... for its renderer, GPU,
         // and utility processes on every platform. Divert them before any app
         // startup work (logging, single-instance IPC, Avalonia).
+        if (CefPreviewRuntime.Bundled && args.Any(arg => arg.StartsWith("--type=", StringComparison.Ordinal)))
+        {
+            CefSubProcess.Run(args, true);
+            return;
+        }
+#endif
+        if (UpdateRuntime.HandleBootstrap(args)) return;
+#if SUNCODE_CEF
         if (CefPreviewRuntime.Bundled) CefSubProcess.Run(args, true);
 #endif
         AgentSdk.ConfigureDiagnosticConsoleOutput(false);

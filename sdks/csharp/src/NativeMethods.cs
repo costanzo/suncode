@@ -5,6 +5,32 @@ namespace SunCode.Sdk;
 internal static class NativeMethods
 {
     private const string Library = "suncode_agent";
+    private static string? _libraryPath;
+    private static IntPtr _loadedLibrary;
+    private static bool _resolutionStarted;
+    private static readonly object LibraryLock = new();
+
+    static NativeMethods() => NativeLibrary.SetDllImportResolver(typeof(NativeMethods).Assembly, (name, assembly, search) =>
+    {
+        if (name != Library) return IntPtr.Zero;
+        lock (LibraryLock)
+        {
+            _resolutionStarted = true;
+            if (_libraryPath is null) return IntPtr.Zero;
+            return _loadedLibrary != IntPtr.Zero ? _loadedLibrary : _loadedLibrary = NativeLibrary.Load(_libraryPath);
+        }
+    });
+
+    internal static void ConfigureLibrary(string path)
+    {
+        if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("Native SDK library path must be absolute.", nameof(path));
+        lock (LibraryLock)
+        {
+            if (_resolutionStarted && !string.Equals(_libraryPath, path, StringComparison.Ordinal))
+                throw new InvalidOperationException("The native SDK is already loaded. Restart to select another version.");
+            _libraryPath = path;
+        }
+    }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate void EventCallback(IntPtr eventJson, IntPtr userData);

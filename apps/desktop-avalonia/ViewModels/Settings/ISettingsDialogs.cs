@@ -6,7 +6,9 @@ internal sealed record ConfirmationRequest(
     string Message,
     string Target,
     string TargetLabel,
-    string ConfirmLabel);
+    string ConfirmLabel,
+    string? CancelLabel = null,
+    bool Destructive = true);
 
 // View services the Settings window provides to its page view models.
 internal interface ISettingsDialogs

@@ -7,6 +7,8 @@ namespace SunCode.Desktop.Views.About;
 
 public sealed partial class AboutWindow : Window
 {
+    internal event Action? SoftwareUpdatesRequested;
+    private void OpenSoftwareUpdates(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => SoftwareUpdatesRequested?.Invoke();
     public AboutWindow()
     {
         InitializeComponent();

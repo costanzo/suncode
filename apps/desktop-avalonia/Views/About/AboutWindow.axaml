@@ -19,5 +19,6 @@
       </Grid>
     </Border>
     <TextBlock Text="{DynamicResource LocGeneralPurposeCodingAgent}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+    <Button Classes="compact sc-button" Content="{DynamicResource LocSoftwareUpdates}" Click="OpenSoftwareUpdates" HorizontalAlignment="Center" />
   </StackPanel>
 </Window>

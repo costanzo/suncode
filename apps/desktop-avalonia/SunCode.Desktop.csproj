@@ -20,6 +20,7 @@
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
     <SunCodeBundleCef Condition="'$(SunCodeBundleCef)' == ''">false</SunCodeBundleCef>
+    <SunCodeUpdateDistributionFile Condition="'$(SunCodeUpdateDistributionFile)' == ''">$(MSBuildProjectDirectory)/Updates/update-distribution.json</SunCodeUpdateDistributionFile>
     <DefineConstants Condition="'$(SunCodeBundleCef)' == 'true'">$(DefineConstants);SUNCODE_CEF</DefineConstants>
   </PropertyGroup>
 
@@ -45,6 +46,7 @@
   </Target>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3"
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
@@ -133,6 +135,7 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Content Include="$(SunCodeUpdateDistributionFile)" Link="update-distribution.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Compile Remove="ThirdParty/**/*.cs" />
     <Compile Remove="Compatibility/**/*.cs" />
     <Compile Remove="artifacts/**/*.cs" />

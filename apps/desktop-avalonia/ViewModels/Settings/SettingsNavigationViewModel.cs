@@ -17,6 +17,7 @@ public enum SettingsPage
     LanguageServers,
     Agents,
     Logging,
+    Updates,
     Providers
 }
 

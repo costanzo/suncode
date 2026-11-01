@@ -9,8 +9,8 @@ These are hand-written contracts for the Rust agent, native clients, and their s
 - [`persistence.md`](persistence.md): ownership, retention, recovery, configuration, and secret handling.
 - [`sqlite-schema.md`](sqlite-schema.md): the current 15-table SQLite schema and projection rules.
 
-## Defined protocols awaiting implementation
+## Distribution protocols
 
-- [`updates/README.md`](updates/README.md) and [`updates/updates.openapi.yaml`](updates/updates.openapi.yaml): public, signed Desktop/Agent SDK update catalog (OpenAPI 3.2.1), local C# compatibility planning, caching, integrity, and recovery boundaries. No production updater is implemented.
+- [`updates/README.md`](updates/README.md) and [`updates/updates.openapi.yaml`](updates/updates.openapi.yaml): public, signed Desktop/Agent SDK update catalog (OpenAPI 3.2.1), implemented C# client planning/caching/integrity/activation boundaries, and remaining publisher/installer release verification. Production delivery is unconfigured.
 
 Contract behavior is verified by focused Rust and Avalonia tests in the owning implementation packages. There is no generated schema or fixture directory; changes are made directly to the hand-written contract and its tests.

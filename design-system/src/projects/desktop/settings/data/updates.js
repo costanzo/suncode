@@ -21,9 +21,14 @@ export const updateScenarios = [
   { value: "install-failed", label: "Installation failed", phase: "install-failed" },
   { value: "restored", label: "Previous version restored", phase: "restored" },
   { value: "missing", label: "Agent SDK unavailable", phase: "missing" },
+  { value: "unconfigured", label: "Update delivery not configured", phase: "unconfigured" },
 ];
 
 export const updateMessages = {
+  unconfigured: [
+    "Updates are not configured for this build",
+    "Update delivery is not enabled in this build. You can keep using SunCode.",
+  ],
   idle: ["Check for a newer version", "Your installed versions are shown below."],
   checking: ["Checking for updates…", "Looking for updates for both components."],
   current: ["SunCode is up to date", "Both components are on the latest compatible version."],

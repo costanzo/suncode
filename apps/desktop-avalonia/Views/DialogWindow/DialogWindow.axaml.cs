@@ -87,6 +87,13 @@ public sealed partial class DialogWindow : Window
         Icon = AppIcon.Window;
     }
 
+    internal void ConfigureConfirmation(string? cancelLabel, bool destructive)
+    {
+        if (cancelLabel is not null) CancelButton.Content = cancelLabel;
+        if (!destructive) { ConfirmButton.Classes.Remove("danger"); ConfirmButton.Classes.Add("primary"); }
+        Opened += (_, _) => Dispatcher.UIThread.Post(() => CancelButton.Focus(), DispatcherPriority.Input);
+    }
+
     private void CancelClicked(object? sender, RoutedEventArgs e) => Close();
 
     private void ConfirmClicked(object? sender, RoutedEventArgs e) => Confirm();

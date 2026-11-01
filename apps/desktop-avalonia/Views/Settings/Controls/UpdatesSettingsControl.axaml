@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SunCode.Desktop.ViewModels" xmlns:infra="using:SunCode.Desktop.Infrastructure"
+             x:Class="SunCode.Desktop.Views.Settings.Controls.UpdatesSettingsControl"
+             x:DataType="vm:UpdatesSettingsViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="settings-panel-content" Spacing="0">
+      <StackPanel Classes="settings-panel-heading">
+        <TextBlock Classes="sc-text-title" Text="{DynamicResource LocUpdates}" />
+        <TextBlock Classes="settings-hint" Text="{DynamicResource LocUpdatesPageHint}" />
+      </StackPanel>
+      <StackPanel Margin="0,0,0,20" Spacing="4" AutomationProperties.LiveSetting="Polite">
+        <TextBlock Text="{Binding Heading}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"
+                   infra:StatusToneProperties.Tone="{Binding Tone}" />
+        <TextBlock Text="{Binding Description}" Classes="settings-row-hint" TextWrapping="Wrap" />
+      </StackPanel>
+      <Border BorderThickness="0,1,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,16">
+        <Grid x:Name="DesktopRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="16">
+          <TextBlock Classes="settings-row-title" Text="{DynamicResource LocDesktop}" />
+          <WrapPanel x:Name="DesktopVersions" Grid.Column="1" Orientation="Horizontal">
+            <SelectableTextBlock Text="{Binding DesktopVersion}" Classes="mono" FontSize="12" />
+            <SelectableTextBlock Text="{Binding DesktopTarget}" IsVisible="{Binding ShowDesktopTarget}" Classes="mono" FontSize="12" Margin="8,0,0,0" />
+          </WrapPanel>
+          <TextBlock x:Name="DesktopStatus" Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding DesktopStatus}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        </Grid>
+      </Border>
+      <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,16">
+        <Grid x:Name="SdkRow" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="16">
+          <TextBlock Classes="settings-row-title" Text="{DynamicResource LocAgentSdk}" />
+          <WrapPanel x:Name="SdkVersions" Grid.Column="1" Orientation="Horizontal">
+            <SelectableTextBlock Text="{Binding SdkVersion}" Classes="mono" FontSize="12" />
+            <SelectableTextBlock Text="{Binding SdkTarget}" IsVisible="{Binding ShowSdkTarget}" Classes="mono" FontSize="12" Margin="8,0,0,0" />
+          </WrapPanel>
+          <TextBlock x:Name="SdkStatus" Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SdkStatus}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+        </Grid>
+      </Border>
+      <StackPanel Margin="0,20,0,0" Spacing="8" IsVisible="{Binding ShowProgress}">
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" Height="4"
+                     AutomationProperties.Name="{DynamicResource LocUpdatesDownload}" />
+        <TextBlock Text="{Binding ProgressText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+      </StackPanel>
+      <WrapPanel Margin="0,20,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Classes="compact primary sc-button" Content="{Binding PrimaryText}" Command="{Binding PrimaryCommand}" IsVisible="{Binding ShowPrimary}" Margin="0,0,12,8" />
+        <Button Classes="compact sc-button" Content="{Binding CancelText}" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}" Margin="0,0,12,8" />
+        <TextBlock Text="{Binding PlanSummary}" IsVisible="{Binding ShowPlanSummary}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,12,8" />
+        <Button Classes="compact quiet sc-button" Content="{DynamicResource LocUpdatesCheckAgain}" Command="{Binding CheckCommand}" IsVisible="{Binding ShowCheckAgain}" Margin="0,0,0,8" />
+      </WrapPanel>
+      <Expander Classes="settings-expander" Header="{DynamicResource LocUpdatesWhatsNew}" IsVisible="{Binding ShowNotes}" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+        <SelectableTextBlock Text="{Binding Notes}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,12,0,0" />
+      </Expander>
+      <Border Margin="0,24,0,0" Padding="0,20,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Classes="settings-row-copy">
+              <TextBlock Classes="settings-row-title" Text="{DynamicResource LocUpdatesAutomatic}" TextWrapping="Wrap" />
+              <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocUpdatesAutomaticHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" Classes="settings-switch" IsChecked="{Binding AutomaticChecks}" VerticalAlignment="Center"
+                          OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{DynamicResource LocUpdatesAutomatic}">
+              <ToggleSwitch.Resources>
+                <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="{DynamicResource AccentColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="{DynamicResource AccentInkColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="{DynamicResource AccentInkColor}" />
+                <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="{DynamicResource AccentInkColor}" />
+              </ToggleSwitch.Resources>
+            </ToggleSwitch>
+          </Grid>
+          <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocUpdatesManualDownloadHint}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

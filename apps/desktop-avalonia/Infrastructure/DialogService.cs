@@ -64,6 +64,11 @@ internal sealed class DialogService
         }
 
         _aboutWindow = new AboutWindow();
+        _aboutWindow.SoftwareUpdatesRequested += () =>
+        {
+            _aboutWindow?.Close();
+            ShowSettings(owner, page: SettingsPage.Updates);
+        };
         _setOtherWindowsEnabled(owner, false);
         _aboutWindow.Closed += (_, _) =>
         {

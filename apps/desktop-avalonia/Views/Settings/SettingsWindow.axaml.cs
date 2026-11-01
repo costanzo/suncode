@@ -45,8 +45,7 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
             Rebind();
             if (_settings is not null)
             {
-                await _settings.OpenAsync();
-                if (InitialPage is { } page) NavigateTo(page);
+                await _settings.OpenAsync(InitialPage);
             }
         };
         Closed += (_, _) =>
@@ -118,6 +117,7 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
     {
         var dialog = new ConfirmationWindow(
             request.Title, request.Message, request.Target, confirmed, request.TargetLabel, request.ConfirmLabel);
+        dialog.ConfigureConfirmation(request.CancelLabel, request.Destructive);
         IsEnabled = false;
         dialog.Closed += (_, _) => IsEnabled = true;
         _ = dialog.ShowDialog(this);

@@ -7,6 +7,10 @@ namespace SunCode.Sdk;
 
 public sealed partial class AgentSdk : IDisposable
 {
+    /// <summary>Selects an absolute native runtime path before the first native call. A version change requires process restart.</summary>
+    public static void ConfigureNativeLibrary(string absolutePath) => NativeMethods.ConfigureLibrary(absolutePath);
+    public static uint RequiredNativeAbiVersion => AbiVersion;
+    public static uint GetNativeAbiVersion() => NativeMethods.suncode_agent_sdk_abi_version();
     /// <summary>Controls whether SDK diagnostics are mirrored to host stderr.</summary>
     public static void ConfigureDiagnosticConsoleOutput(bool enabled) =>
         SdkDiagnosticLog.ConfigureConsoleOutput(enabled);

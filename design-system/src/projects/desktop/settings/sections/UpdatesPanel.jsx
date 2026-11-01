@@ -26,6 +26,7 @@ export function UpdatesPanel({ scenario = "sdk" }) {
     "installed",
     "installing",
     "restored",
+    "unconfigured",
   ].includes(phase);
   const targets = updateComponents.filter((item) => kind === "paired" || item.id === kind);
   const size = targets.reduce((sum, item) => sum + item.size, 0);
@@ -197,7 +198,7 @@ export function UpdatesPanel({ scenario = "sdk" }) {
                 : "Download update"}
           </Button>
         ) : (
-          <Button size="sm" disabled={running} onClick={check}>
+          <Button size="sm" disabled={running || phase === "unconfigured"} onClick={check}>
             {phase === "checking"
               ? "Checking…"
               : phase === "installing"
