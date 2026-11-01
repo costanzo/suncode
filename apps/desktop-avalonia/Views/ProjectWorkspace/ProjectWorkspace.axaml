@@ -114,7 +114,7 @@
                       VerticalAlignment="Center" Margin="32,0,0,0" IsVisible="False"
                       chrome:WindowDecorationProperties.ElementRole="User">
             <Button x:Name="WindowsMenuToggle" Classes="titlebar" Width="36" Height="30"
-                    Click="ToggleWindowsMenu" AutomationProperties.Name="Open main menu" ToolTip.Tip="Main menu (F10)">
+                    Click="ToggleWindowsMenu" AutomationProperties.Name="{DynamicResource LocOpenMainMenu}" ToolTip.Tip="{DynamicResource LocMainMenuTip}">
               <svg:Svg Width="22" Height="22" Path="/Assets/icons/menu-lines.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>

@@ -38,12 +38,13 @@ public sealed partial class ProjectWorkspace : UserControl
         var isWindows = platform == OSPlatform.Windows;
         var isMacOS = platform == OSPlatform.OSX;
         var isLinux = platform == OSPlatform.Linux;
+        UsesCompactMenu = isWindows || isLinux;
         MacTitleBarControls.IsVisible = isMacOS;
         MacTitleBarActions.IsVisible = isMacOS;
         UbuntuTitleBarControls.IsVisible = isLinux;
         WindowsTitleBarControls.IsVisible = isWindows;
-        WindowsCompactMenu.IsVisible = isWindows;
-        WindowsMenuLogo.IsVisible = isWindows;
+        WindowsCompactMenu.IsVisible = UsesCompactMenu;
+        WindowsMenuLogo.IsVisible = UsesCompactMenu;
         WindowsMenuBar.Closed += (_, _) => CloseWindowsMenu();
         ProjectSwitcherControl.IsVisible = true;
         if (isWindows)
@@ -57,7 +58,10 @@ public sealed partial class ProjectWorkspace : UserControl
             WorkspaceTitleBar.ColumnDefinitions = new ColumnDefinitions("*,*,*");
             WorkspaceTitleBar.Margin = new Thickness(4, 0);
             WorkspaceTitleBar.ColumnDefinitions[2].MinWidth = 130;
-            ProjectSwitcherControl.Margin = new Thickness(0);
+            ProjectSwitcherControl.Margin = new Thickness(88, 0, 0, 0);
+            WindowsCompactMenu.Margin = new Thickness(36, 0, 0, 0);
+            WindowsMenuBar.Margin = new Thickness(36, 0, 130, 0);
+            WorkspaceTitleBar.SizeChanged += (_, _) => UpdateUbuntuTitleBarSize();
         }
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
@@ -82,6 +86,19 @@ public sealed partial class ProjectWorkspace : UserControl
         UpdateWindowCaptionButtons(owner.WindowState);
     }
 
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        CloseWindowsMenu();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void UpdateUbuntuTitleBarSize()
+    {
+        var compact = WorkspaceTitleBar.Bounds.Width <= 860;
+        ProjectSwitcherControl.MaxWidth = compact ? 120 : 200;
+        ContentSwitcherControl.MaxWidth = compact ? 180 : 280;
+    }
+
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
     private WorkspaceLayoutViewModel Layout => ViewModel.Layout;
 
@@ -92,10 +109,13 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal bool IsWindowsMenuExpanded => WindowsMenuBar.IsVisible;
 
+    internal bool UsesCompactMenu { get; }
+
     internal void SetWindowsMenuItems(IReadOnlyList<MenuItem> items) => WindowsMenuBar.ItemsSource = items;
 
     internal void ToggleWindowsMenu(object? sender, RoutedEventArgs e)
     {
+        if (!UsesCompactMenu) return;
         var expanded = !WindowsMenuBar.IsVisible;
         WindowsMenuBar.IsVisible = expanded;
         WindowsCompactMenu.IsVisible = !expanded;

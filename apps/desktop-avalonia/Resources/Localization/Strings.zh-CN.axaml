@@ -424,6 +424,8 @@
   <x:String x:Key="LocAllowOnce">允许一次</x:String>
   <x:String x:Key="LocDeny">拒绝</x:String>
   <x:String x:Key="LocCloseWindow">关闭窗口</x:String>
+  <x:String x:Key="LocOpenMainMenu">打开主菜单</x:String>
+  <x:String x:Key="LocMainMenuTip">主菜单 (F10)</x:String>
   <x:String x:Key="LocMinimizeWindow">最小化窗口</x:String>
   <x:String x:Key="LocEnterFullScreen">进入全屏</x:String>
   <x:String x:Key="LocMaximizeWindow">最大化窗口</x:String>

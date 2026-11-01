@@ -287,7 +287,7 @@ public partial class WorkspaceWindow : Window
 
     private void WindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (OperatingSystem.IsWindows() && e.Key == Key.F10)
+        if (ActiveWorkspace?.UsesCompactMenu == true && e.Key == Key.F10 && e.KeyModifiers == KeyModifiers.None)
         {
             e.Handled = ActiveWorkspace?.IsWindowsMenuExpanded == true
                 ? ActiveWorkspace.CloseWindowsMenu(restoreFocus: true)

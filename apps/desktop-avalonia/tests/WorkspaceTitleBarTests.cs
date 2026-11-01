@@ -32,6 +32,9 @@ public sealed class WorkspaceTitleBarTests(AvaloniaUiFixture ui)
         foreach (var name in new[] { "UbuntuTitleBarControls", "WindowsTitleBarControls", "MacTitleBarControls" })
             Assert.Equal(name == expected, workspace.FindControl<StackPanel>(name)!.IsVisible);
         Assert.Equal(platform == "OSX", workspace.FindControl<StackPanel>("MacTitleBarActions")!.IsVisible);
+        Assert.Equal(platform != "OSX", workspace.UsesCompactMenu);
+        Assert.Equal(platform != "OSX", workspace.FindControl<StackPanel>("WindowsCompactMenu")!.IsVisible);
+        Assert.Equal(platform != "OSX", workspace.FindControl<Avalonia.Svg.Skia.Svg>("WindowsMenuLogo")!.IsVisible);
     }));
 
     [Theory]
@@ -50,6 +53,9 @@ public sealed class WorkspaceTitleBarTests(AvaloniaUiFixture ui)
         trigger.Content = new TextBlock { Text = new string('W', 200), TextTrimming = TextTrimming.CharacterEllipsis };
         var window = new Window { Content = titleBar, Width = width, Height = 100,
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light };
+        using var model = new DesktopViewModel();
+        var controller = new DesktopMenuController(() => window, () => model, () => workspace, () => Task.CompletedTask);
+        workspace.SetWindowsMenuItems(controller.BarGroups);
         try
         {
             window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
@@ -58,6 +64,9 @@ public sealed class WorkspaceTitleBarTests(AvaloniaUiFixture ui)
                 .Where(button => button.Classes.Contains("ubuntu-titlebar-control")).ToArray();
             Assert.Equal(3, buttons.Length);
             var titleBounds = content.TranslatePoint(default, titleBar)!.Value;
+            var project = workspace.FindControl<ProjectSwitcher>("ProjectSwitcherControl")!;
+            var projectBounds = project.TranslatePoint(default, titleBar)!.Value;
+            Assert.True(projectBounds.X + project.Bounds.Width <= titleBounds.X);
             foreach (var button in buttons)
             {
                 Assert.Equal(new Size(32, 36), button.Bounds.Size);
@@ -96,9 +105,77 @@ public sealed class WorkspaceTitleBarTests(AvaloniaUiFixture ui)
             Assert.Equal((IBrush)window.FindResource(window.ActualThemeVariant, "TextMutedBrush")!,
                 minimize.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Single().Stroke);
             Assert.True(minimize.IsEffectivelyEnabled);
+            var controls = workspace.FindControl<StackPanel>("UbuntuTitleBarControls")!;
+            var controlsOrigin = controls.TranslatePoint(default, titleBar)!.Value;
+            workspace.ToggleWindowsMenu(null, new RoutedEventArgs()); window.UpdateLayout();
+            Assert.True(workspace.IsWindowsMenuExpanded);
+            Assert.False(content.IsVisible);
+            Assert.False(project.IsVisible);
+            var menu = workspace.FindControl<Menu>("WindowsMenuBar")!;
+            Assert.Equal(8, menu.ItemCount);
+            Assert.True(menu.TranslatePoint(default, titleBar)!.Value.X + menu.Bounds.Width <= controlsOrigin.X);
+            Assert.Equal(controlsOrigin, controls.TranslatePoint(default, titleBar)!.Value);
+            Assert.Equal(new Size(32, 36), minimize.Bounds.Size);
+            workspace.CloseWindowsMenu();
+            Assert.True(content.IsVisible);
+            Assert.True(project.IsVisible);
         }
         finally { window.Close(); }
     }));
+
+    [Theory]
+    [InlineData("LINUX")]
+    [InlineData("WINDOWS")]
+    public Task CompactMenusHandleKeysCommandsAndOutsideClicks(string platform) => ui.Run(() => WithResources(() =>
+    {
+        using var model = new DesktopViewModel();
+        var project = new ProjectItem("menu-test", "Menu test", "");
+        model.SetSelectedProjectForTests(project);
+        model.BeginProjectOpening(project);
+        var workspace = new ProjectWorkspace(OSPlatform.Create(platform)) { DataContext = model };
+        var owner = new WorkspaceWindow(workspace, true) { DataContext = model };
+        var toggle = workspace.FindControl<Button>("WindowsMenuToggle")!;
+        var menu = workspace.FindControl<Menu>("WindowsMenuBar")!;
+        try
+        {
+            owner.Show(); Dispatcher.UIThread.RunJobs(); owner.UpdateLayout();
+            Assert.False(Press(toggle, Key.F10, KeyModifiers.Shift).Handled);
+            Assert.False(workspace.IsWindowsMenuExpanded);
+            Assert.True(Press(toggle, Key.F10).Handled);
+            Assert.True(workspace.IsWindowsMenuExpanded);
+            Assert.True(Press(menu, Key.Escape).Handled);
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(workspace.IsWindowsMenuExpanded);
+            Assert.True(toggle.IsFocused);
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.True(workspace.IsWindowsMenuExpanded);
+            var view = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "View"));
+            var pointer = new Pointer(2, PointerType.Mouse, true);
+            view.RaiseEvent(new PointerEventArgs(InputElement.PointerEnteredEvent, view, pointer, owner, default,
+                0, new PointerPointProperties(), KeyModifiers.None));
+            Assert.True(view.IsSubMenuOpen);
+            var review = view.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Review"));
+            var wasVisible = model.Layout.ReviewVisible;
+            Assert.True(review.IsEnabled);
+            Assert.Equal(wasVisible, review.IsChecked);
+            review.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal(!wasVisible, model.Layout.ReviewVisible);
+            Assert.False(workspace.IsWindowsMenuExpanded);
+            toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var outside = workspace.FindControl<StackPanel>(platform == "LINUX" ? "UbuntuTitleBarControls" : "WindowsTitleBarControls")!;
+            outside.RaiseEvent(new PointerPressedEventArgs(outside, pointer, owner, default, 0,
+                new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed), KeyModifiers.None));
+            Assert.False(workspace.IsWindowsMenuExpanded);
+        }
+        finally { owner.Close(); }
+    }));
+
+    private static KeyEventArgs Press(Control target, Key key, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        var args = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
+        target.RaiseEvent(args);
+        return args;
+    }
 
     [Fact]
     public Task UbuntuActionsTargetTheOwningWindowAndRestoreLabelTracksLocale() => ui.Run(() => WithResources(() =>
@@ -153,7 +230,10 @@ public sealed class WorkspaceTitleBarTests(AvaloniaUiFixture ui)
             merged.AddProject("second", secondWindow);
             merged.Show(); Dispatcher.UIThread.RunJobs();
             merged.WindowState = WindowState.Maximized;
+            first.ToggleWindowsMenu(null, new RoutedEventArgs());
+            Assert.True(first.IsWindowsMenuExpanded);
             merged.SelectProject("second");
+            Assert.False(first.IsWindowsMenuExpanded);
             Assert.Equal("Restore window", AutomationProperties.GetName(second.FindControl<Button>("UbuntuMaximizeButton")!));
             merged.SelectProject("first");
             var maximize = first.FindControl<Button>("UbuntuMaximizeButton")!;
