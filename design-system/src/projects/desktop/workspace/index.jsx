@@ -4,6 +4,7 @@ import { McpLoadingStatus, RemoteServerStatus, WorkspaceWindow } from "./shell/i
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
 import { NativeMenuSpecimen } from "./shell/NativeMenuSpecimen.jsx";
 import { DockMenuSpecimen } from "./shell/DockMenuSpecimen.jsx";
+import { WorkspaceTitlebarSpecimen } from "./shell/WorkspaceTitlebarSpecimen.jsx";
 
 export function WorkspacePage() {
   return (
@@ -15,7 +16,7 @@ export function WorkspacePage() {
       <WindowSizeNote width="1440" height="900" minimumWidth="620" minimumHeight="620" />
       <Section id="workspace-window" title="Project workspace"
         description="The first visible frame uses the saved project size, position, and normal/maximized/full-screen state. New windows start at 1440 × 900 DIP, centered and fitted to the originating display's scaled working area, with a 620 × 620 DIP minimum. Custom chrome is ready before the window appears; project loading does not resize or recenter it.">
-        <WorkspaceWindow />
+        <WorkspaceTitlebarSpecimen />
       </Section>
       <Section
         id="workspace-windows-menu"

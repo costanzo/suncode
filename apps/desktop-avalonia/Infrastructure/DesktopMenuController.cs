@@ -86,6 +86,12 @@ internal sealed class DesktopMenuController
         var barGroup = BarItem();
         barGroup.Header = L(name, fallback);
         barGroup.Classes.Add("windows-menu-group");
+        barGroup.PointerEntered += (_, _) =>
+        {
+            if (Workspace?.IsWindowsMenuExpanded != true || barGroup.IsSubMenuOpen) return;
+            Refresh();
+            barGroup.Open();
+        };
         _refresh.Add(() => group.Header = L(name, fallback));
         _refresh.Add(() => barGroup.Header = L(name, fallback));
         menu.NeedsUpdate += (_, _) => Refresh();
@@ -120,7 +126,7 @@ internal sealed class DesktopMenuController
             // Recheck at invocation: context can change while a native menu is open.
             if (!Enabled || enabled?.Invoke() == false) return false;
             execute();
-            if (OperatingSystem.IsWindows()) Workspace?.CloseWindowsMenu();
+            Workspace?.CloseWindowsMenu();
             Refresh();
             return true;
         }
@@ -189,7 +195,7 @@ internal sealed class DesktopMenuController
         {
             if (!Enabled || !enabled()) return;
             execute();
-            if (OperatingSystem.IsWindows()) Workspace?.CloseWindowsMenu();
+            Workspace?.CloseWindowsMenu();
             Refresh();
         }
         item.Click += (_, _) => Execute();

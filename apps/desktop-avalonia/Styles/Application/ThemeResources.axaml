@@ -9,8 +9,14 @@
   <!-- Paints nothing visible but keeps a surface hit-testable, for drag
        regions such as the title bar and pane resize handles. -->
   <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />
+  <x:Double x:Key="UbuntuTitleBarHeight">36</x:Double>
+  <x:Double x:Key="UbuntuCaptionTargetWidth">32</x:Double>
+  <x:Double x:Key="UbuntuCaptionCircleSize">20</x:Double>
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="UbuntuCaptionBrush" Color="#1aedf0f3" />
+      <SolidColorBrush x:Key="UbuntuCaptionHoverBrush" Color="#26edf0f3" />
+      <SolidColorBrush x:Key="UbuntuCaptionPressedBrush" Color="#40edf0f3" />
       <BoxShadows x:Key="WindowsMenuPopoverShadow">0 16 36 0 #42000000</BoxShadows>
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#d4d7d6" />
       <SolidColorBrush x:Key="FileIconBlueBrush" Color="#519aba" />
@@ -115,6 +121,9 @@
       <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#1d2d29" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="UbuntuCaptionBrush" Color="#1a17202a" />
+      <SolidColorBrush x:Key="UbuntuCaptionHoverBrush" Color="#2617202a" />
+      <SolidColorBrush x:Key="UbuntuCaptionPressedBrush" Color="#4017202a" />
       <BoxShadows x:Key="WindowsMenuPopoverShadow">0 16 36 0 #24162634</BoxShadows>
       <SolidColorBrush x:Key="FileIconDefaultBrush" Color="#bfc2c1" />
       <SolidColorBrush x:Key="FileIconBlueBrush" Color="#498ba7" />

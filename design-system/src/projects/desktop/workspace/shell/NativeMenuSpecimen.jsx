@@ -3,8 +3,8 @@ import { Icon } from "../../../../shared/Icon.jsx";
 import { WindowsMenuBar } from "./WindowsMenuBar.jsx";
 
 // Review fixtures only; the native Avalonia controller owns production commands.
-export function NativeMenuSpecimen({ presentation = "reference" }) {
-  const windows = presentation === "windows";
+export function NativeMenuSpecimen({ presentation = "reference", renderPreview }) {
+  const windows = presentation === "windows" || presentation === "ubuntu";
   const [platform, setPlatform] = useState(windows ? "Windows / Linux" : "macOS");
   const [context, setContext] = useState("active");
   const [selectedMenu, setSelectedMenu] = useState("View");
@@ -53,6 +53,17 @@ export function NativeMenuSpecimen({ presentation = "reference" }) {
     Help: [row("Keyboard Shortcuts"), ...(!mac ? [row("About SunCode")] : [])],
   };
   const current = menus[selectedMenu] ? selectedMenu : "File";
+
+  if (renderPreview) {
+    return renderPreview({
+      menus,
+      context,
+      onCommand: (item) => {
+        item.action?.();
+        setFeedback(`${item.label} selected in the review fixture.`);
+      },
+    });
+  }
 
   function renderItems(items, path = current) {
     return items.map((item, index) => {

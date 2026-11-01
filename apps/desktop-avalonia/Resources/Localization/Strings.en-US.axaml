@@ -423,6 +423,8 @@
   <x:String x:Key="LocAllowOnce">Allow once</x:String>
   <x:String x:Key="LocDeny">Deny</x:String>
   <x:String x:Key="LocCloseWindow">Close window</x:String>
+  <x:String x:Key="LocOpenMainMenu">Open main menu</x:String>
+  <x:String x:Key="LocMainMenuTip">Main menu (F10)</x:String>
   <x:String x:Key="LocMinimizeWindow">Minimize window</x:String>
   <x:String x:Key="LocEnterFullScreen">Enter full screen</x:String>
   <x:String x:Key="LocMaximizeWindow">Maximize window</x:String>

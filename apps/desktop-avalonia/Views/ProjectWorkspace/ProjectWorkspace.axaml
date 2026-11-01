@@ -114,7 +114,7 @@
                       VerticalAlignment="Center" Margin="32,0,0,0" IsVisible="False"
                       chrome:WindowDecorationProperties.ElementRole="User">
             <Button x:Name="WindowsMenuToggle" Classes="titlebar" Width="36" Height="30"
-                    Click="ToggleWindowsMenu" AutomationProperties.Name="Open main menu" ToolTip.Tip="Main menu (F10)">
+                    Click="ToggleWindowsMenu" AutomationProperties.Name="{DynamicResource LocOpenMainMenu}" ToolTip.Tip="{DynamicResource LocMainMenuTip}">
               <svg:Svg Width="22" Height="22" Path="/Assets/icons/menu-lines.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
           </StackPanel>
@@ -145,6 +145,28 @@
             <Button x:Name="WindowsCloseButton" Classes="windows-titlebar-control close" chrome:WindowDecorationProperties.ElementRole="CloseButton" Click="CloseProjectWindow" PointerEntered="WindowsCloseEntered" PointerExited="WindowsCloseExited" PointerPressed="WindowsClosePressed" PointerReleased="WindowsCloseReleased" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
               <svg:Svg Width="12" Height="12" Path="/Assets/icons/windows-close.svg" Css="{DynamicResource IconSvgCss}" />
             </Button>
+          </StackPanel>
+          <StackPanel x:Name="UbuntuTitleBarControls" Grid.Column="2" Orientation="Horizontal"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8" IsVisible="False"
+                      chrome:WindowDecorationProperties.ElementRole="User">
+            <Button Classes="titlebar" Width="26" Height="28" Click="OpenSettings"
+                    ToolTip.Tip="{DynamicResource LocOpenSettings}" AutomationProperties.Name="{DynamicResource LocOpenSettings}">
+              <svg:Svg Path="/Assets/icons/settings.svg" Css="{DynamicResource IconSvgCss}" />
+            </Button>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="UbuntuMinimizeButton" Classes="ubuntu-titlebar-control" Click="MinimizeWindow"
+                      ToolTip.Tip="{DynamicResource LocMinimizeWindow}" AutomationProperties.Name="{DynamicResource LocMinimizeWindow}">
+                <Path Width="16" Height="16" Data="M4 8.5h8" />
+              </Button>
+              <Button x:Name="UbuntuMaximizeButton" Classes="ubuntu-titlebar-control" Click="ToggleWindowMaximized"
+                      ToolTip.Tip="{DynamicResource LocMaximizeWindow}" AutomationProperties.Name="{DynamicResource LocMaximizeWindow}">
+                <Path x:Name="UbuntuMaximizeIcon" Width="16" Height="16" Data="M4 4.5h8v8H4z" />
+              </Button>
+              <Button x:Name="UbuntuCloseButton" Classes="ubuntu-titlebar-control" Click="CloseProjectWindow"
+                      ToolTip.Tip="{DynamicResource LocCloseWindow}" AutomationProperties.Name="{DynamicResource LocCloseWindow}">
+                <Path Width="16" Height="16" Data="m4.5 4.5 7 7m0-7-7 7" />
+              </Button>
+            </StackPanel>
           </StackPanel>
         </Grid>
 

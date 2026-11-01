@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../../../shared/Icon.jsx";
 import { workspaceRecentProjects } from "../data/projects.js";
 
-export function ProjectSwitcher({ projects = workspaceRecentProjects }) {
-  const [open, setOpen] = useState(true);
+export function ProjectSwitcher({ projects = workspaceRecentProjects, initialOpen = true }) {
+  const [open, setOpen] = useState(initialOpen);
   const switcherRef = useRef(null);
   const currentProject = projects.find((project) => project.current) ??
     projects[0] ?? { name: "No project", path: "" };

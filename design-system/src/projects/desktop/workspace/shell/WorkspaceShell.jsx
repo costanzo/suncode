@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../../../shared/Icon.jsx";
+import { NativeMenuSpecimen } from "./NativeMenuSpecimen.jsx";
+import { WindowsMenuBar } from "./WindowsMenuBar.jsx";
 import { TrafficLights } from "../../../../shared/TrafficLights.jsx";
+import { UbuntuWindowControls } from "../../../../platforms/desktop/components/titlebar/index.js";
 import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 import { IconButton } from "../shared/IconButton.jsx";
 import { McpLoadingStatus } from "./McpLoadingStatus.jsx";
@@ -195,7 +198,15 @@ export function WorkspaceWindow({
   projectSwitcherProjects = workspaceRecentProjects,
   gitAvailable = true,
   initialDrawer = "tools",
+  titlebarPlatform = "macos",
+  windowMaximized = false,
+  windowActive = true,
+  onWindowMaximize,
+  onWindowMinimize,
+  onWindowClose,
+  onTitlebarCommand,
 }) {
+  const ubuntu = titlebarPlatform === "ubuntu";
   const [navigation, setNavigation] = useState("sessions");
   const [activeFile, setActiveFile] = useState(null);
   const [activeChild, setActiveChild] = useState(null);
@@ -228,26 +239,9 @@ export function WorkspaceWindow({
       [item, ...current.filter((entry) => entry.id !== item.id)].slice(0, 20),
     );
   };
-  return (
-    <div className="workspace-window">
-      <div className="workspace-titlebar">
-        <TrafficLights />
-        <ProjectSwitcher projects={projectSwitcherProjects} />
-        <ContentSwitcher
-          currentItem={currentContent}
-          items={recentContent}
-          onSelect={selectContent}
-        />
-        <div className="workspace-titlebar-actions">
-          <IconButton
-            icon="settings"
-            label="Open settings"
-            onClick={() => {
-              window.location.hash = "/projects/desktop/settings";
-            }}
-          />
-        </div>
-      </div>
+  const renderWindow = (titlebar, keyboardHandlers = {}) => (
+    <div className={`workspace-window ${ubuntu ? "is-ubuntu" : ""}`} {...keyboardHandlers}>
+      {titlebar}
       <div className="workspace-window-body">
         <aside className="workspace-gutter">
           <div>
@@ -403,6 +397,125 @@ export function WorkspaceWindow({
         }}
       />
     </div>
+  );
+  return ubuntu ? (
+    <NativeMenuSpecimen
+      presentation="ubuntu"
+      renderPreview={({ menus, context, onCommand }) => (
+        <WindowsMenuBar
+          platform="ubuntu"
+          isActive={windowActive}
+          context={`${context}-${windowActive}`}
+          menus={{
+            ...menus,
+            View: menus.View.map((item) =>
+              item?.checked === undefined
+                ? item
+                : {
+                    ...item,
+                    checked: {
+                      Sessions: navigation === "sessions",
+                      Explorer: navigation === "explorer",
+                      "Project Navigation": Boolean(navigation),
+                      "Built-in Browser": rightRegion === "preview",
+                      Review: rightRegion === "review",
+                      "Child Sessions": rightRegion === "children",
+                      "Source Control": drawer === "git",
+                      "Provider Trace": drawer === "trace",
+                      "Tool Activity": drawer === "tools",
+                    }[item.label],
+                  },
+            ),
+          }}
+          onCommand={(item) => {
+            onCommand(item);
+            onTitlebarCommand?.(item.label);
+            const destinations = { Sessions: "sessions", Explorer: "explorer" };
+            const regions = {
+              "Built-in Browser": "preview",
+              Review: "review",
+              "Child Sessions": "children",
+            };
+            const drawers = {
+              "Source Control": "git",
+              "Provider Trace": "trace",
+              "Tool Activity": "tools",
+            };
+            if (destinations[item.label])
+              setNavigation((value) =>
+                value === destinations[item.label] ? null : destinations[item.label],
+              );
+            else if (item.label === "Project Navigation")
+              setNavigation((value) => (value ? null : "sessions"));
+            else if (regions[item.label])
+              setRightRegion((value) =>
+                value === regions[item.label] ? null : regions[item.label],
+              );
+            else if (drawers[item.label]) toggleDrawer(drawers[item.label]);
+            else if (item.label === "Minimize") onWindowMinimize?.();
+            else if (item.label === "Zoom") onWindowMaximize?.();
+            else if (item.label === "Close Window") onWindowClose?.();
+          }}
+          projectIdentity={
+            <ProjectSwitcher projects={projectSwitcherProjects} initialOpen={false} />
+          }
+          currentContent={
+            <ContentSwitcher
+              currentItem={currentContent}
+              items={recentContent}
+              onSelect={selectContent}
+            />
+          }
+          windowControls={
+            <div className="ubuntu-menu-window-actions">
+              <IconButton
+                icon="settings"
+                label="Open settings"
+                onClick={() => {
+                  window.location.hash = "/projects/desktop/settings";
+                }}
+              />
+              <UbuntuWindowControls
+                maximized={windowMaximized}
+                isActive={windowActive}
+                onMinimize={onWindowMinimize}
+                onMaximize={onWindowMaximize}
+                onClose={onWindowClose}
+              />
+            </div>
+          }
+          onTitleBarDoubleClick={(event) => {
+            if (
+              event.target === event.currentTarget ||
+              event.target.matches(".windows-menu-region, .windows-menu-rest")
+            )
+              onWindowMaximize?.();
+          }}
+          renderWindow={renderWindow}
+        />
+      )}
+    />
+  ) : (
+    renderWindow(
+      <div className="workspace-titlebar">
+        <TrafficLights />
+        <ProjectSwitcher projects={projectSwitcherProjects} />
+        <ContentSwitcher
+          currentItem={currentContent}
+          items={recentContent}
+          onSelect={selectContent}
+        />
+        <div className="workspace-titlebar-actions">
+          <IconButton
+            icon="settings"
+            label="Open settings"
+            onClick={() => {
+              window.location.hash = "/projects/desktop/settings";
+            }}
+          />
+        </div>
+      </div>,
+    )
   );
 }
 

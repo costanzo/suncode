@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+#if SUNCODE_CEF
 using Xilium.CefGlue;
 using Xilium.CefGlue.BrowserProcess;
 using Xilium.CefGlue.Common;
+#endif
 
 namespace SunCode.Desktop.Infrastructure;
 
@@ -17,8 +19,10 @@ internal static class CefPreviewRuntime
     // Rust connects to this CEF-owned CDP endpoint; CEF remains the sole browser process owner.
     internal const int RemoteDebuggingPort = 9222;
     private static bool _initialized;
+#if SUNCODE_CEF
     // CEF only loads a request-context profile whose CachePath is a direct child of this root.
     private static readonly string CacheRoot = Path.Combine(AppDataPaths.DataDirectory, "cef");
+#endif
 
     internal static bool Available { get; private set; }
     internal static string? Error { get; private set; }
@@ -33,6 +37,7 @@ internal static class CefPreviewRuntime
             DiagnosticLog.Error("browser.preview", new InvalidOperationException(Error), "cef_not_bundled=true");
             return;
         }
+#if SUNCODE_CEF
         try
         {
             Directory.CreateDirectory(CacheRoot);
@@ -62,8 +67,10 @@ internal static class CefPreviewRuntime
             Error = "The embedded Chromium runtime is unavailable.";
             DiagnosticLog.Error("browser.preview", exception, "cef_initialize_failed=true");
         }
+#endif
     }
 
+#if SUNCODE_CEF
     internal static CefRequestContext CreateProjectContext(string projectId, bool browserUse = false)
     {
         if (!Available) throw new InvalidOperationException(Error);
@@ -77,6 +84,7 @@ internal static class CefPreviewRuntime
             PersistSessionCookies = true
         }, null);
     }
+#endif
 
     internal static string BrowserTargetUrl(string projectId)
     {
@@ -88,7 +96,9 @@ internal static class CefPreviewRuntime
     internal static void Shutdown()
     {
         if (!Available) return;
+#if SUNCODE_CEF
         CefRuntime.Shutdown();
+#endif
         Available = false;
     }
 }

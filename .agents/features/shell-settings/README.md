@@ -1,12 +1,14 @@
 # Shell settings and PowerShell setup
 
-**Status:** Implemented with focused verification; Windows installation and ConPTY conformance require a Windows host.
+**Status:** Implemented with focused verification, including Windows 10 ConPTY input/output; official installation and broader platform conformance remain pending.
 
 Settings → Terminal configures Agent shell and desktop Terminal shell independently. Desktop owns selection and checking. Rust persists `agent_shell` and `terminal_shell`, including host-resolved launch facts, as global configuration objects. System defaults use Windows PowerShell on Windows, POSIX sh for Agent execution on macOS/Linux, and the user's login shell for interactive desktop terminals. No bundled PowerShell runtime or Node-based shell packaging remains.
 
 Desktop detects custom absolute paths with bounded executable probes. Invalid drafts cannot replace saved settings; explicit configured failures never silently fall back to another interpreter. Shell families are PowerShell on Windows, and sh, dash, bash, zsh, or PowerShell on Unix. Agent startup uses non-interactive arguments without user profiles, filtered process environments, UTF-8 PowerShell output, existing policy, and existing process-tree cancellation. Terminal startup retains interactive/login behavior and remains Avalonia/RoyalTerminal-owned.
 
 Each new Agent turn captures the persisted host-supplied resolved path, shell family, version, and launch facts in its durable continuation. Its system context uses that captured version, including after approval/recovery. Shell changes affect subsequent turns only. Older continuations with no captured shell refuse bash execution rather than adopting a newly configured interpreter. Terminal reads its current preference when a tab starts or restarts; running tabs retain their process.
+
+Windows interactive terminals use a source-built RoyalTerminal Windows backend override with one Win32 launch correction: explicit null standard handles with `STARTF_USESTDHANDLES` prevent Windows 10 from inheriting the host's input/output instead of using ConPTY. The override retains the 0.7.0 upstream source and license and leaves the Unix backend unchanged. PowerShell does not need reinstallation for this fix; the desktop must be rebuilt/restarted to load the corrected backend.
 
 Windows Settings recommends PowerShell 7 and first looks for a working existing installation in saved custom choices, PATH, and common machine/user directories. It displays the detected version/path with an explicit action to reuse it for both shells; detection alone preserves saved choices. Reuse rechecks PowerShell 7 or later before an atomic save as custom paths. Download controls appear only after discovery finds no usable existing or managed runtime, and installation rechecks for existing PowerShell before accessing the network. Unlisted portable installations can still be selected through Custom path.
 
@@ -16,7 +18,8 @@ When needed, Desktop can install the official pinned 7.6.0 x64/ARM64 ZIP into th
 
 - Rust tests cover persistence without executable probing, structural validation, atomic independent/both preference updates, admission without shell discovery, and approval continuation behavior after settings change.
 - Avalonia tests cover executable detection and timeout/output bounds, existing PowerShell candidate ordering/deduplication, no-download reuse, version revalidation before atomic save, discovery without preference changes, download-offer visibility, detection-before-save, stale detection results, dirty tracking, ZIP path/symlink/duplicate rejection, digest checks, cancellation, shared multi-window lifecycle, proxy routing, and localization consistency. Existing-installation layout checks cover both themes, English/Chinese, default/minimum panel widths, hidden download controls, disabled selection, and path overflow; the React specimen was reviewed in light/default and dark/minimum configurations. A direct Windows discovery/probe reused an installed PowerShell 7.6.0 executable without installation.
-- Real Windows PowerShell 5.1/7 output, official ZIP installation/cancellation/repair, Windows x64/ARM64 compatibility, and ConPTY startup remain release conformance checks; macOS verification cannot establish them.
+- Windows 10 build 19045 integration tests verify PowerShell 5.1/7 prompts, interactive command execution, resizing, and input/output through the production Avalonia Terminal control. The original 0.7.0 backend fails the same control regression test; the patched backend passes. Tests disable history saving and isolate 5.1's module search from an inherited PowerShell 7 parent environment.
+- Official ZIP installation/cancellation/repair, Windows 11/ARM64 compatibility, installed-app ConPTY startup, and release packaging remain conformance checks; macOS verification cannot establish them.
 
 Contracts and behavior: `contracts/agent-sdk/README.md`, `DESIGN.md`, and `.agents/specs/shell-settings.md`.
 

@@ -1,0 +1,53 @@
+.ubuntu-window-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--text);
+}
+.ubuntu-window-controls button {
+  display: grid;
+  flex: 0 0 var(--ubuntu-caption-target-width);
+  width: var(--ubuntu-caption-target-width);
+  height: var(--ubuntu-titlebar-height);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: default;
+}
+.ubuntu-window-controls button > span {
+  display: grid;
+  width: var(--ubuntu-caption-circle-size);
+  height: var(--ubuntu-caption-circle-size);
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ubuntu-caption-background);
+}
+.ubuntu-window-controls button:hover > span,
+.ubuntu-window-controls button.is-hover > span {
+  background: var(--ubuntu-caption-hover);
+}
+.ubuntu-window-controls button:active > span,
+.ubuntu-window-controls button.is-pressed > span {
+  background: var(--ubuntu-caption-pressed);
+}
+.ubuntu-window-controls button:focus-visible,
+.ubuntu-window-controls button.is-focus {
+  outline: 0;
+}
+.ubuntu-window-controls button:focus-visible > span,
+.ubuntu-window-controls button.is-focus > span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ubuntu-window-controls.is-inactive {
+  color: var(--text-muted);
+}
+.ubuntu-window-controls.is-inactive button > span {
+  background: transparent;
+}
+.ubuntu-window-controls.is-inactive button:hover > span {
+  background: var(--ubuntu-caption-hover);
+}

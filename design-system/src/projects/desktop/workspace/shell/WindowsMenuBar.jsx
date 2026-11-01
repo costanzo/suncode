@@ -9,13 +9,31 @@ const focusFirst = (element) => enabledItems(element)[0]?.focus();
 function MenuPanel({ items, label, onCommand, onClose, onSwitch, nested = false }) {
   const panelRef = useRef(null);
   const [child, setChild] = useState(null);
-  const [flip, setFlip] = useState(false);
+  const [{ flip, offset, offsetY }, setPosition] = useState({ flip: false, offset: 0, offsetY: 0 });
 
   useLayoutEffect(() => {
     if (!nested) return;
     const panel = panelRef.current;
-    const frame = panel.closest(".windows-menu-preview").getBoundingClientRect();
-    setFlip(panel.getBoundingClientRect().right > Math.min(frame.right, window.innerWidth));
+    const frame = panel.closest(".windows-menu-preview, .workspace-window").getBoundingClientRect();
+    const bounds = panel.getBoundingClientRect();
+    const left = Math.max(frame.left, 0);
+    const right = Math.min(frame.right, window.innerWidth);
+    const flip = bounds.right > right;
+    const target = flip ? bounds.left - 2 * bounds.width : bounds.left;
+    // At minimum width, cascading menus may overlap so every submenu stays readable.
+    const fitted = Math.max(left, Math.min(target, right - bounds.width));
+    const trigger = panel.parentElement.parentElement.querySelector(":scope > button.is-open");
+    let offsetY = 0;
+    if (Math.abs(fitted - target) > 1 && trigger) {
+      const triggerBounds = trigger.getBoundingClientRect();
+      // An overlapping submenu must not cover its trigger between pointer-down and click.
+      const top =
+        triggerBounds.bottom + bounds.height <= frame.bottom
+          ? triggerBounds.bottom
+          : Math.max(frame.top, triggerBounds.top - bounds.height);
+      offsetY = top - bounds.top;
+    }
+    setPosition({ flip, offset: fitted - bounds.left, offsetY });
   }, [nested]);
 
   function onKeyDown(event) {
@@ -62,6 +80,7 @@ function MenuPanel({ items, label, onCommand, onClose, onSwitch, nested = false 
       role="menu"
       aria-label={label}
       className={`windows-menu-panel ${nested ? "is-nested" : ""} ${flip ? "opens-left" : ""}`}
+      style={nested ? { transform: `translate(${offset}px, ${offsetY}px)` } : undefined}
       onKeyDown={onKeyDown}
     >
       {items.map((item, index) =>
@@ -131,7 +150,18 @@ function MenuPanel({ items, label, onCommand, onClose, onSwitch, nested = false 
   );
 }
 
-export function WindowsMenuBar({ menus, context, onCommand }) {
+export function WindowsMenuBar({
+  menus,
+  context,
+  onCommand,
+  platform = "windows",
+  renderWindow,
+  projectIdentity,
+  currentContent,
+  windowControls,
+  onTitleBarDoubleClick,
+  isActive = true,
+}) {
   const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState(null);
   const [offset, setOffset] = useState(0);
@@ -205,123 +235,127 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
       );
   }, [selected]);
 
-  return (
-    <div
-      className="windows-menu-preview"
-      tabIndex={-1}
-      aria-label="Windows project window preview"
-      onKeyDownCapture={(event) => {
-        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-        const shortcut = `Ctrl+${event.key.toUpperCase()}`;
-        const item = Object.entries(menus)
-          .filter(([group]) => group !== "Edit")
-          .flatMap(([, items]) => items)
-          .find((item) => item?.shortcut === shortcut && !item.disabled);
-        if (!item) return;
+  const keyboardHandlers = {
+    onKeyDownCapture: (event) => {
+      if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      const shortcut = `Ctrl+${event.key.toUpperCase()}`;
+      const item = Object.entries(menus)
+        .filter(([group]) => group !== "Edit")
+        .flatMap(([, items]) => items)
+        .find((item) => item?.shortcut === shortcut && !item.disabled);
+      if (!item) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onCommand(item);
+      close();
+    },
+    onKeyDown: (event) => {
+      if (event.key === "F10" && !event.shiftKey) {
         event.preventDefault();
-        event.stopPropagation();
-        onCommand(item);
-        close();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "F10" && !event.shiftKey) {
-          event.preventDefault();
-          if (expanded) close(true);
-          else open(true);
-        } else if (event.key === "Escape" && expanded) {
-          event.preventDefault();
-          close(true);
-        }
-      }}
+        if (expanded) close(true);
+        else open(true);
+      } else if (event.key === "Escape" && expanded) {
+        event.preventDefault();
+        close(true);
+      }
+    },
+  };
+  const titlebar = (
+    <header
+      className={`windows-menu-titlebar ${platform === "ubuntu" ? "is-ubuntu" : ""} ${!isActive ? "is-inactive" : ""}`}
+      onDoubleClick={onTitleBarDoubleClick}
     >
-      <header className="windows-menu-titlebar">
-        <img className="windows-menu-logo" src={logoUrl} alt="SunCode" />
-        <div className="windows-menu-region" ref={regionRef}>
-          {expanded ? (
-            <nav
-              ref={labelsRef}
-              className="windows-menu-labels"
-              role="menubar"
-              aria-label="Windows application menu"
-              onScroll={() => {
-                if (selected) setSelected(null);
-              }}
-            >
-              {labels.map((label, index) => (
-                <button
-                  key={label}
-                  type="button"
-                  role="menuitem"
-                  data-menu={label}
-                  tabIndex={selected === label || (!selected && index === 0) ? 0 : -1}
-                  aria-haspopup="menu"
-                  aria-expanded={selected === label}
-                  className={selected === label ? "is-open" : ""}
-                  onPointerEnter={() => select(label)}
-                  onClick={() => select(label, true)}
-                  onKeyDown={(event) => {
-                    if (["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
-                      event.preventDefault();
-                      const next =
-                        event.key === "Home"
-                          ? 0
-                          : event.key === "End"
-                            ? labels.length - 1
-                            : (index + (event.key === "ArrowRight" ? 1 : -1) + labels.length) %
-                              labels.length;
-                      labelsRef.current.querySelector(`[data-menu="${labels[next]}"]`)?.focus();
-                      select(labels[next]);
-                    } else if (["ArrowDown", "Enter", " "].includes(event.key)) {
-                      event.preventDefault();
-                      select(label, true);
-                    }
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : (
-            <div className="windows-menu-rest">
+      <img className="windows-menu-logo" src={logoUrl} alt="SunCode" />
+      <div className="windows-menu-region" ref={regionRef}>
+        {expanded ? (
+          <nav
+            ref={labelsRef}
+            className="windows-menu-labels"
+            role="menubar"
+            aria-label={`${platform === "ubuntu" ? "Ubuntu" : "Windows"} application menu`}
+            onScroll={() => {
+              if (selected) setSelected(null);
+            }}
+          >
+            {labels.map((label, index) => (
               <button
-                ref={triggerRef}
+                key={label}
                 type="button"
-                className="windows-menu-trigger"
-                aria-label="Open main menu"
-                aria-expanded="false"
+                role="menuitem"
+                data-menu={label}
+                tabIndex={selected === label || (!selected && index === 0) ? 0 : -1}
                 aria-haspopup="menu"
-                title="Main menu (F10)"
-                onClick={() => open(true)}
+                aria-expanded={selected === label}
+                className={selected === label ? "is-open" : ""}
+                onPointerEnter={() => select(label)}
+                onClick={() => select(label, true)}
+                onKeyDown={(event) => {
+                  if (["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
+                    event.preventDefault();
+                    const next =
+                      event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? labels.length - 1
+                          : (index + (event.key === "ArrowRight" ? 1 : -1) + labels.length) %
+                            labels.length;
+                    labelsRef.current.querySelector(`[data-menu="${labels[next]}"]`)?.focus();
+                    select(labels[next]);
+                  } else if (["ArrowDown", "Enter", " "].includes(event.key)) {
+                    event.preventDefault();
+                    select(label, true);
+                  }
+                }}
               >
-                <Icon name="menu-lines" size={22} />
+                {label}
               </button>
+            ))}
+          </nav>
+        ) : (
+          <div className="windows-menu-rest">
+            <button
+              ref={triggerRef}
+              type="button"
+              className="windows-menu-trigger"
+              aria-label="Open main menu"
+              aria-expanded="false"
+              aria-haspopup="menu"
+              title="Main menu (F10)"
+              onClick={() => open(true)}
+            >
+              <Icon name="menu-lines" size={22} />
+            </button>
+            {projectIdentity ?? (
               <span className="windows-menu-project">
                 <Icon name="project" size={16} />
                 <strong>{context === "hub" ? "Projects" : "suncode"}</strong>
                 <span>SunCode</span>
               </span>
-            </div>
-          )}
-          {expanded && selected && (
-            <div className="windows-menu-popup-anchor" style={{ left: offset }}>
-              <MenuPanel
-                key={`${selected}-${context}`}
-                items={menus[selected]}
-                label={`${selected} menu`}
-                onSwitch={switchMenu}
-                onClose={() => close(true)}
-                onCommand={(item) => {
-                  onCommand(item);
-                  close();
-                  requestAnimationFrame(() => {
-                    if (previousFocus.current?.isConnected) previousFocus.current.focus();
-                    else triggerRef.current?.focus();
-                  });
-                }}
-              />
-            </div>
-          )}
-        </div>
+            )}
+            {currentContent && <div className="ubuntu-menu-current-content">{currentContent}</div>}
+          </div>
+        )}
+        {expanded && selected && (
+          <div className="windows-menu-popup-anchor" style={{ left: offset }}>
+            <MenuPanel
+              key={`${selected}-${context}`}
+              items={menus[selected]}
+              label={`${selected} menu`}
+              onSwitch={switchMenu}
+              onClose={() => close(true)}
+              onCommand={(item) => {
+                onCommand(item);
+                close();
+                requestAnimationFrame(() => {
+                  if (previousFocus.current?.isConnected) previousFocus.current.focus();
+                  else triggerRef.current?.focus();
+                });
+              }}
+            />
+          </div>
+        )}
+      </div>
+      {windowControls ?? (
         <div className="windows-window-controls" aria-label="Window controls (design preview)">
           <button
             type="button"
@@ -349,7 +383,19 @@ export function WindowsMenuBar({ menus, context, onCommand }) {
             <Icon name="close" size={12} />
           </button>
         </div>
-      </header>
+      )}
+    </header>
+  );
+  if (renderWindow) return renderWindow(titlebar, keyboardHandlers);
+
+  return (
+    <div
+      className="windows-menu-preview"
+      tabIndex={-1}
+      aria-label="Windows project window preview"
+      {...keyboardHandlers}
+    >
+      {titlebar}
       <div className="windows-menu-client">
         <aside>
           <strong>Sessions</strong>

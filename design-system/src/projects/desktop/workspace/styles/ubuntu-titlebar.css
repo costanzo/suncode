@@ -1,0 +1,98 @@
+.workspace-titlebar-specimen {
+  display: grid;
+  gap: var(--space-3);
+}
+.ubuntu-workspace-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.ubuntu-workspace-preview {
+  min-width: var(--ubuntu-workspace-min-width);
+  container-type: inline-size;
+}
+.ubuntu-workspace-preview.is-minimum {
+  width: var(--ubuntu-workspace-min-width);
+}
+.workspace-window.is-ubuntu {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.windows-menu-titlebar.is-ubuntu {
+  position: relative;
+  height: var(--ubuntu-titlebar-height);
+  background: var(--canvas);
+  border-radius: 0;
+}
+.windows-menu-titlebar.is-ubuntu .project-switcher {
+  position: relative;
+  top: auto;
+  left: auto;
+  min-width: 0;
+  max-width: var(--ubuntu-menu-project-width);
+}
+.windows-menu-titlebar.is-ubuntu .project-switcher-trigger {
+  max-width: 100%;
+}
+.ubuntu-menu-current-content {
+  position: absolute;
+  top: 50%;
+  left: calc(50cqw - var(--space-3) - var(--windows-menu-logo-size) - var(--space-2));
+  width: max-content;
+  max-width: var(--ubuntu-menu-content-width);
+  transform: translate(-50%, -50%);
+}
+.ubuntu-menu-current-content .content-switcher-trigger {
+  max-width: 100%;
+}
+.ubuntu-menu-window-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding-right: var(--space-1);
+}
+.windows-menu-titlebar.is-ubuntu.is-inactive .windows-menu-trigger,
+.windows-menu-titlebar.is-ubuntu.is-inactive .project-switcher-trigger,
+.windows-menu-titlebar.is-ubuntu.is-inactive .content-switcher-trigger {
+  color: var(--text-muted);
+}
+.ubuntu-titlebar-feedback {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.ubuntu-caption-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+}
+.ubuntu-caption-state {
+  display: grid;
+  gap: var(--space-1);
+}
+.ubuntu-caption-state > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+@container (max-width: 1100px) {
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-review,
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-child-sessions {
+    display: none;
+  }
+}
+@container (max-width: 860px) {
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-sessions,
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-explorer {
+    display: none;
+  }
+}
+
+@container (max-width: 860px) {
+  .windows-menu-titlebar.is-ubuntu .project-switcher {
+    max-width: var(--ubuntu-menu-project-compact-width);
+  }
+  .ubuntu-menu-current-content {
+    max-width: var(--ubuntu-menu-content-compact-width);
+  }
+}

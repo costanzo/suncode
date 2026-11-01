@@ -8,6 +8,9 @@
   --surface-inset: #15191e;
   --surface-accent: #20262d;
   --text: #edf0f3;
+  --ubuntu-caption-background: color-mix(in srgb, var(--text) 10%, transparent);
+  --ubuntu-caption-hover: color-mix(in srgb, var(--text) 15%, transparent);
+  --ubuntu-caption-pressed: color-mix(in srgb, var(--text) 25%, transparent);
   --text-secondary: #a7afb9;
   --text-muted: #7f8994;
   --text-disabled: #525a64;
