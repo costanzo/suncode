@@ -4,7 +4,7 @@ The Phase 1 desktop client targets .NET 10 and Avalonia. It embeds the Rust agen
 
 The Avalonia client owns the desktop presentation and embeds the Rust agent through the native SDK boundary.
 
-Settings → Updates and About → Software updates use one C# coordinator for independent Desktop/native SDK packages. The client implements signed metadata checks, compatible plans, verified staging, SDK repair, and confirmed restart with immutable payloads. The checked-in build disables update delivery and makes no update requests. Production origins/keys, publisher and initial-installer receipts, and signed installed-platform verification are still required; see the [updater guide](Infrastructure/Updates/README.md) for configuration, package layout, and limits. No Rust update implementation or C# SQLite access is introduced.
+Settings → Updates and About → Software updates use one C# coordinator for independent Desktop/native SDK packages. The client implements signed metadata checks, compatible plans, verified staging, SDK repair, and confirmed restart with immutable payloads. The checked-in build enables catalog checks against `https://www.suncode.ai`, with apex and www archive origins allowed. Current catalog package values are samples; real archives, initial-installer receipts, platform signing identities, and signed installed-platform verification are still required; see the [updater guide](Infrastructure/Updates/README.md) for configuration, package layout, and limits. No Rust update implementation or C# SQLite access is introduced.
 
 ## Requirements
 

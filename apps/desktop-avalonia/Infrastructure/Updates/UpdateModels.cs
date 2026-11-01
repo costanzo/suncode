@@ -143,6 +143,7 @@ internal sealed record UpdateDistribution
 }
 
 internal sealed record VerifiedCatalog(UpdateCatalog Catalog, byte[] Envelope, string SignedSha256);
+internal sealed record RunningUpdateVersions(string DesktopVersion, uint DesktopAbi, string? SdkVersion = null, uint? SdkAbi = null);
 internal sealed record InstalledComponent(string Version, int Abi, string ArchiveSha256, string Directory, Dictionary<string, string> Files);
 internal sealed record UpdateInstallation(string Target, InstalledComponent Desktop, InstalledComponent? Sdk);
 internal sealed record UpdatePlan(VerifiedCatalog Verified, UpdateInstallation Installed, bool Desktop, bool Sdk, bool Repair)

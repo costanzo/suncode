@@ -27,12 +27,16 @@ export function UpdatesPanel({ scenario = "sdk" }) {
     "installing",
     "restored",
     "unconfigured",
+    "unmanaged",
+    "check-timeout",
   ].includes(phase);
   const targets = updateComponents.filter((item) => kind === "paired" || item.id === kind);
   const size = targets.reduce((sum, item) => sum + item.size, 0);
   const summary = kind === "paired" ? "Desktop and Agent SDK" : targets[0].label;
-  const error = phase.endsWith("failed");
-  const warning = ["busy", "restored", "missing"].includes(phase);
+  const error =
+    phase.endsWith("failed") ||
+    ["check-timeout", "download-timeout", "download-stalled"].includes(phase);
+  const warning = ["busy", "restored", "missing", "unmanaged"].includes(phase);
   const [title, description] =
     phase === "available"
       ? [
@@ -59,7 +63,7 @@ export function UpdatesPanel({ scenario = "sdk" }) {
     let timer;
     if (phase === "checking")
       timer = setTimeout(() => {
-        setPhase(installed ? "current" : "available");
+        setPhase(scenario === "unmanaged" ? "unmanaged" : installed ? "current" : "available");
         setPlaying(false);
       }, 1000);
     if (phase === "downloading")
@@ -80,7 +84,7 @@ export function UpdatesPanel({ scenario = "sdk" }) {
         setPlaying(false);
       }, 1100);
     return () => clearTimeout(timer);
-  }, [phase, playing, progress, installed]);
+  }, [phase, playing, progress, installed, scenario]);
 
   const check = () => {
     setPhase("checking");
@@ -203,7 +207,7 @@ export function UpdatesPanel({ scenario = "sdk" }) {
               ? "Checking…"
               : phase === "installing"
                 ? "Restarting…"
-                : phase === "check-failed"
+                : ["check-failed", "check-timeout"].includes(phase)
                   ? "Try again"
                   : "Check for updates"}
           </Button>

@@ -22,9 +22,29 @@ export const updateScenarios = [
   { value: "restored", label: "Previous version restored", phase: "restored" },
   { value: "missing", label: "Agent SDK unavailable", phase: "missing" },
   { value: "unconfigured", label: "Update delivery not configured", phase: "unconfigured" },
+  { value: "unmanaged", label: "Automatic installation unavailable", phase: "unmanaged" },
+  { value: "check-timeout", label: "Check timed out", phase: "check-timeout" },
+  { value: "download-timeout", label: "Download timed out", phase: "download-timeout" },
+  { value: "download-stalled", label: "Download stopped responding", phase: "download-stalled" },
 ];
 
 export const updateMessages = {
+  "check-timeout": [
+    "Checking for updates timed out",
+    "The update service took too long to respond. Check your connection and try again.",
+  ],
+  "download-timeout": [
+    "The download timed out",
+    "The download took too long. Your installed versions have not changed. Try downloading again.",
+  ],
+  "download-stalled": [
+    "The download stopped responding",
+    "No data was received for 30 seconds. Your installed versions have not changed. Try downloading again.",
+  ],
+  unmanaged: [
+    "Automatic installation is unavailable for this build",
+    "This build wasn’t installed with automatic update support. You can keep using SunCode.",
+  ],
   unconfigured: [
     "Updates are not configured for this build",
     "Update delivery is not enabled in this build. You can keep using SunCode.",

@@ -844,7 +844,15 @@
   <x:String x:Key="LocUpdatesVerificationFailed">The update couldn’t be verified</x:String>
   <x:String x:Key="LocUpdatesInstallFailed">The update couldn’t be installed</x:String>
   <x:String x:Key="LocUpdatesRepairDesktop">This installation needs repair</x:String>
+  <x:String x:Key="LocUpdatesUnmanaged">Automatic installation is unavailable for this build</x:String>
+  <x:String x:Key="LocUpdatesUnmanagedHint">This build wasn’t installed with automatic update support. You can keep using SunCode.</x:String>
   <x:String x:Key="LocUpdatesCheckFailed">Couldn’t check for updates</x:String>
+  <x:String x:Key="LocUpdatesCheckTimedOut">Checking for updates timed out</x:String>
+  <x:String x:Key="LocUpdatesCheckTimedOutHint">The update service took too long to respond. Check your connection and try again.</x:String>
+  <x:String x:Key="LocUpdatesDownloadTimedOut">The download timed out</x:String>
+  <x:String x:Key="LocUpdatesDownloadTimedOutHint">The download took too long. Your installed versions have not changed. Try downloading again.</x:String>
+  <x:String x:Key="LocUpdatesDownloadStalled">The download stopped responding</x:String>
+  <x:String x:Key="LocUpdatesDownloadStalledHint">No data was received for 30 seconds. Your installed versions have not changed. Try downloading again.</x:String>
   <x:String x:Key="LocUpdatesDownloadFailed">The download was interrupted</x:String>
   <x:String x:Key="LocUpdatesDownloadFailedHint">Your installed versions have not changed. Try downloading again.</x:String>
   <x:String x:Key="LocUpdatesDistributionPending">Update delivery is not enabled in this build. You can keep using SunCode.</x:String>

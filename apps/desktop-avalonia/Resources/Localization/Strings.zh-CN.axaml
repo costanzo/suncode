@@ -844,7 +844,15 @@
   <x:String x:Key="LocUpdatesVerificationFailed">无法验证此次更新</x:String>
   <x:String x:Key="LocUpdatesInstallFailed">无法安装此次更新</x:String>
   <x:String x:Key="LocUpdatesRepairDesktop">此安装需要修复</x:String>
+  <x:String x:Key="LocUpdatesUnmanaged">此构建暂不支持自动安装更新</x:String>
+  <x:String x:Key="LocUpdatesUnmanagedHint">此构建的安装方式未包含自动更新支持。你可以继续使用 SunCode。</x:String>
   <x:String x:Key="LocUpdatesCheckFailed">无法检查更新</x:String>
+  <x:String x:Key="LocUpdatesCheckTimedOut">检查更新超时</x:String>
+  <x:String x:Key="LocUpdatesCheckTimedOutHint">更新服务响应时间过长。请检查网络连接后重试。</x:String>
+  <x:String x:Key="LocUpdatesDownloadTimedOut">下载更新超时</x:String>
+  <x:String x:Key="LocUpdatesDownloadTimedOutHint">下载用时过长。已安装的版本没有更改，请重新下载。</x:String>
+  <x:String x:Key="LocUpdatesDownloadStalled">下载长时间无响应</x:String>
+  <x:String x:Key="LocUpdatesDownloadStalledHint">连续 30 秒未收到数据。已安装的版本没有更改，请重新下载。</x:String>
   <x:String x:Key="LocUpdatesDownloadFailed">下载已中断</x:String>
   <x:String x:Key="LocUpdatesDownloadFailedHint">已安装的版本没有更改。请重新下载。</x:String>
   <x:String x:Key="LocUpdatesDistributionPending">此构建尚未启用更新分发。你可以继续使用 SunCode。</x:String>

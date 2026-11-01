@@ -3,7 +3,6 @@ using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Infrastructure.Updates;
 using SunCode.Desktop.Models;
-using SunCode.Sdk;
 using static SunCode.Desktop.ViewModels.SettingsFormatting;
 
 namespace SunCode.Desktop.ViewModels;
@@ -73,12 +72,16 @@ public sealed class UpdatesSettingsViewModel : ObservableObject, IPolledPage, ID
     };
     private string ErrorTitle => Snapshot.ErrorCode switch
     {
+        "check_timed_out" => L("LocUpdatesCheckTimedOut", "Checking for updates timed out"),
+        "download_timed_out" => L("LocUpdatesDownloadTimedOut", "The download timed out"),
+        "download_stalled" => L("LocUpdatesDownloadStalled", "The download stopped responding"),
         "integrity_failed" or "signature_invalid" or "platform_signature_invalid" => L("LocUpdatesVerificationFailed", "The update couldn’t be verified"),
         "archive_invalid" or "package_layout" => L("LocUpdatesVerificationFailed", "The update couldn’t be verified"),
         "download_failed" => L("LocUpdatesDownloadFailed", "The download was interrupted"),
         "network_failed" when Snapshot.FailedOperation == UpdateOperation.Download => L("LocUpdatesDownloadFailed", "The download was interrupted"),
         "install_failed" or "activation_invalid" or "helper_failed" => L("LocUpdatesInstallFailed", "The update couldn’t be installed"),
-        "desktop_damaged" or "installation_unmanaged" or "state_invalid" => L("LocUpdatesRepairDesktop", "This installation needs repair"),
+        "installation_unmanaged" => L("LocUpdatesUnmanaged", "Automatic installation is unavailable for this build"),
+        "desktop_damaged" or "state_invalid" => L("LocUpdatesRepairDesktop", "This installation needs repair"),
         _ when Snapshot.FailedOperation == UpdateOperation.Installation => L("LocUpdatesInstallFailed", "The update couldn’t be installed"),
         _ when Snapshot.FailedOperation == UpdateOperation.Verification => L("LocUpdatesVerificationFailed", "The update couldn’t be verified"),
         _ => L("LocUpdatesCheckFailed", "Couldn’t check for updates")
@@ -100,19 +103,23 @@ public sealed class UpdatesSettingsViewModel : ObservableObject, IPolledPage, ID
     };
     private string ErrorDescription => Snapshot.ErrorCode switch
     {
+        "check_timed_out" => L("LocUpdatesCheckTimedOutHint", "The update service took too long to respond. Check your connection and try again."),
+        "download_timed_out" => L("LocUpdatesDownloadTimedOutHint", "The download took too long. Your installed versions have not changed. Try downloading again."),
+        "download_stalled" => L("LocUpdatesDownloadStalledHint", "No data was received for 30 seconds. Your installed versions have not changed. Try downloading again."),
         "configuration_missing" => L("LocUpdatesDistributionPending", "Update delivery is not enabled in this build. You can keep using SunCode."),
         "integrity_failed" or "signature_invalid" or "platform_signature_invalid" => L("LocUpdatesInvalidDownloadHint", "It won’t be installed. Check for updates and download a fresh copy."),
         "archive_invalid" or "package_layout" => L("LocUpdatesInvalidDownloadHint", "It won’t be installed. Check for updates and download a fresh copy."),
         "download_failed" => L("LocUpdatesDownloadFailedHint", "Your installed versions have not changed. Try downloading again."),
         "network_failed" when Snapshot.FailedOperation == UpdateOperation.Download => L("LocUpdatesDownloadFailedHint", "Your installed versions have not changed. Try downloading again."),
-        "desktop_damaged" or "installation_unmanaged" or "state_invalid" => L("LocUpdatesReinstallHint", "Reinstall SunCode from an official distribution to repair update support. Your project files are not changed."),
+        "installation_unmanaged" => L("LocUpdatesUnmanagedHint", "This build wasn’t installed with automatic update support. You can keep using SunCode."),
+        "desktop_damaged" or "state_invalid" => L("LocUpdatesReinstallHint", "Reinstall SunCode from an official distribution to repair update support. Your project files are not changed."),
         "no_compatible_update" or "target_mismatch" or "schema_unsupported" => L("LocUpdatesIncompatibleHint", "No compatible update is available for this installation. Check again later or reinstall SunCode."),
         "clock_invalid" => L("LocUpdatesClockHint", "Check your system clock and try again."),
         "catalog_expired" => L("LocUpdatesExpiredHint", "The update information has expired. Check again before installing."),
         "install_failed" or "activation_invalid" or "helper_failed" => L("LocUpdatesInstallationFailedHint", "Your previous installation is still available. Check for updates and try again."),
         _ => L("LocUpdatesConnectionHint", "Check your connection and try again. Your installed versions have not changed.")
     };
-    public StatusTone Tone => Snapshot.Phase == UpdatePhase.Failed ? StatusTone.Danger : IsRestartBlocked || Snapshot.Phase == UpdatePhase.Unconfigured ? StatusTone.Warning : Snapshot.Phase is UpdatePhase.Current or UpdatePhase.Ready ? StatusTone.Success : StatusTone.Neutral;
+    public StatusTone Tone => Snapshot.ErrorCode == "installation_unmanaged" ? StatusTone.Warning : Snapshot.Phase == UpdatePhase.Failed ? StatusTone.Danger : IsRestartBlocked || Snapshot.Phase == UpdatePhase.Unconfigured ? StatusTone.Warning : Snapshot.Phase is UpdatePhase.Current or UpdatePhase.Ready ? StatusTone.Success : StatusTone.Neutral;
     public string PrimaryText => IsReady ? L("LocUpdatesRestartAction", "Restart SunCode")
         : Snapshot.Phase == UpdatePhase.Checking ? L("LocUpdatesChecking", "Checking for updates…")
         : Snapshot.Phase == UpdatePhase.Restarting ? L("LocUpdatesRestarting", "Restarting SunCode…")
@@ -152,8 +159,9 @@ public sealed class UpdatesSettingsViewModel : ObservableObject, IPolledPage, ID
         {
             try
             {
-                _nativeAvailable = AgentSdk.GetNativeAbiVersion() == AgentSdk.RequiredNativeAbiVersion;
-                _sdkVersion = _nativeAvailable == true ? AppInfo.FormatVersion((await AgentSdk.GetVersionAsync()).Version) : "";
+                var running = await _coordinator.ReadRunningVersionsAsync();
+                _nativeAvailable = running.SdkAbi == running.DesktopAbi && !string.IsNullOrWhiteSpace(running.SdkVersion);
+                _sdkVersion = _nativeAvailable == true ? AppInfo.FormatVersion(running.SdkVersion) : "";
                 _coordinator.RecordSdkRuntimeAvailability(_nativeAvailable == true);
             }
             catch (Exception) { _sdkVersion = ""; _nativeAvailable = false; _coordinator.RecordSdkRuntimeAvailability(false); }

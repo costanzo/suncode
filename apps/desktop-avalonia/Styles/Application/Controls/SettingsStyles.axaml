@@ -237,4 +237,7 @@
   <Style Selector="TextBlock.tone-danger">
     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
   </Style>
+  <Style Selector="TextBlock.tone-warning">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
 </Styles>

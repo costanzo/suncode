@@ -1,6 +1,6 @@
 # Desktop component update protocol
 
-Status: v1 contract with a focused-tested Avalonia C# client, Next.js catalog route, and offline signed publisher. Production delivery remains disabled: real component archives, deployed signed catalogs, platform signing configuration, initial-installer integration, and installed OS conformance remain release work. The configured origin and pinned public key do not claim a deployed update release.
+Status: v1 contract with a focused-tested Avalonia C# client, Next.js catalog route, and offline signed publisher. Catalog checking is enabled against the canonical www domain. Real component archives, platform signing configuration, initial-installer integration, and installed OS conformance remain release work. The configured origin and pinned public key do not claim a deployed update release.
 
 [`updates.openapi.yaml`](updates.openapi.yaml) is the normative HTTP/schema description, using [OpenAPI 3.2.1](https://spec.openapis.org/oas/v3.2.1.html), the latest published version checked on 2026-11-01. This document supplies the normative rules that schemas cannot express. Contracts and eventual C# DTOs are hand-written; no code is generated.
 
@@ -21,18 +21,20 @@ The CLI embeds the Rust facade directly and is not updated by this protocol. Ful
 
 ```http
 GET /updates/v1/stable/win-x64/latest.json HTTP/1.1
-Host: suncode.ai
+Host: www.suncode.ai
 Accept: application/json
 If-None-Match: "stable-win-x64-42"
 ```
 
-The distribution uses `https://suncode.ai/updates` as its update root: `catalogOrigin` is `https://suncode.ai`, and the client appends `/updates/v1/{channel}/{target}/latest.json`. This configuration does not claim that signed catalogs are deployed. The origin is configured by the installed Desktop distribution, never supplied by a project, model, or provider. The URL selects the release channel and **running process/native-library target**, including architecture under emulation. Known targets are `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, and `linux-arm64`; listing a target does not claim that a build is published. v1 supports `stable` only. No installed version, project path, user identifier, API key, cookie, or SDK handle is sent.
+The distribution uses `https://www.suncode.ai/updates` as its update root: `catalogOrigin` is `https://www.suncode.ai`, and the client appends `/updates/v1/{channel}/{target}/latest.json`. This configuration does not claim that signed catalogs are deployed. The origin is configured by the installed Desktop distribution, never supplied by a project, model, or provider. The URL selects the release channel and **running process/native-library target**, including architecture under emulation. Known targets are `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, and `linux-arm64`; listing a target does not claim that a build is published. v1 supports `stable` only. No installed version, project path, user identifier, API key, cookie, or SDK handle is sent.
 
 - **200:** A signed catalog, even if both installed versions already match. The client derives update availability locally; there is no server-computed `updateAvailable` field.
 - **304:** No body. Use only a previously verified catalog for the exact origin and request path after checking trust, expiry, and publication revision again. Recompute the plan because installed versions may have changed. If no usable cache exists, retry once without `If-None-Match`; failure to obtain a valid 200 remains a failed check. A 304 never extends signed expiry or directly means Up to date.
 - **400 / 404:** Invalid request or no published catalog. Neither means Up to date. A static host may return a generic 404 instead of the documented problem body; it is still a failed check.
 - **429 / 503:** Respect an optional seconds-form `Retry-After`, bounded to 24 hours; use normal retry scheduling when it is absent or invalid. Do not retry in a tight loop.
 - **Other status, malformed/non-JSON body, unsupported schema, signature failure, or transport failure:** Retain the installed versions and last-known display information, mark the check failed, and do not create a new installable plan from untrusted/stale information. Error text is display-only and never release authority.
+
+Client timeout policy distinguishes failure from explicit cancellation. A catalog request has 30 seconds for headers and body; each archive response wait has 30 seconds, each streamed body read has a 30-second no-data deadline, and the whole archive transfer (including redirects) has a 30-minute budget. Receiving data resets only the idle deadline. HTTP 408/504 are timeout failures as well. A timeout never means Up to date or a completed download. Explicit user/lifetime cancellation is handled separately; failures preserve installed identities, remove incomplete transfer/staging files, and expose manual retry. These budgets do not add immediate automatic retries or resumable transfers.
 
 200/304 responses must carry `ETag` and `Cache-Control: public, max-age=300, must-revalidate`, or a shorter freshness lifetime. Static hosting/CDN is sufficient. Cache at most 1 MiB of decompressed catalog JSON, reject duplicate object keys, and require the schema's numeric and collection limits. Manual checking revalidates the catalog even if its HTTP cache is fresh. The client may check at startup and periodically when automatic checks are enabled; checks never imply permission to download or restart.
 
@@ -60,7 +62,9 @@ The OpenAPI examples are independent synthetic publication scenarios, **not a se
 
 Local installation records identify the active component versions, target, archive digest, and Desktop binding/SDK ABI. The running Desktop must confirm its own assembly identity. Records are update metadata, not Agent SQLite rows; a staged archive is not an installed version. Reuse a component or cached download only after validating its identity/integrity. A missing/damaged SDK is repairable without invoking that SDK. A missing/mismatched Desktop identity requires installer repair rather than guessing a version.
 
-For a verified catalog:
+Version status and installation eligibility are separate. Without a trusted installation receipt, the Desktop may still report Up to date after authenticating a fresh catalog if its running assembly product version and binding ABI, plus the native library's existing product-version/ABI exports, exactly match the recommended certified pair. These native queries do not open an Agent or SQLite. A missing/unloadable SDK or any version/ABI mismatch cannot produce Up to date. This informational check neither verifies archive identity nor enrolls the installation; it creates no receipt, download plan, or activation authority. Managed installations continue to require their full receipt/file/release identity checks. A differing unmanaged build reports that automatic installation is unavailable until a trusted initial installer provisions its receipt.
+
+For a verified catalog on a managed installation:
 
 1. Consider combinations of the installed Desktop or catalog Desktop and the installed healthy SDK or catalog SDK. A missing/damaged SDK cannot be retained; select a catalog SDK for repair even when its version equals the installation record.
 2. A changed combination must occur exactly in `compatiblePairs`, match the target and declared platform prerequisites, and have matching exact Desktop-binding and SDK ABI values. Use local binding/installation metadata for a retained component and the signed descriptor for a replacement. If an applicable prerequisite cannot be determined, refuse that candidate. Numeric dotted OS/glibc comparisons pad missing parts with zero; non-Linux packages must not declare a glibc prerequisite.

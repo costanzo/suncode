@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
-  "enabled": false,
+  "enabled": true,
   "channel": "stable",
-  "catalogOrigin": "https://suncode.ai",
+  "catalogOrigin": "https://www.suncode.ai",
   "downloadOrigins": [
-    "https://suncode.ai"
+    "https://suncode.ai",
+    "https://www.suncode.ai"
   ],
   "publicKeys": [
     {

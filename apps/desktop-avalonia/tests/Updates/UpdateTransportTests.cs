@@ -16,17 +16,40 @@ public sealed class UpdateTransportTests
     {
         using var f = new UpdateFixture();
         var configured = UpdateJson.Read<UpdateDistribution>(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "update-distribution.json")));
-        Assert.False(configured.Enabled);
+        Assert.True(configured.Enabled);
         Assert.True(configured.AllowsDownload(new Uri("https://suncode.ai/updates/releases/0.1.0/sdk.zip")));
+        Assert.True(configured.AllowsDownload(new Uri("https://www.suncode.ai/updates/releases/0.1.0/sdk.zip")));
         Assert.False(configured.AllowsDownload(new Uri("https://other.example/sdk.zip")));
-        using var client = new UpdateTransport(configured with { Enabled = true }, f.Store, new(target, "99.0", null), f.Handler, f.Time);
+        using var client = new UpdateTransport(configured, f.Store, new(target, "99.0", null), f.Handler, f.Time);
         f.Handler.Respond = (request, _) =>
         {
-            Assert.Equal($"https://suncode.ai/updates/v1/stable/{target}/latest.json", request.RequestUri!.AbsoluteUri);
+            Assert.Equal($"https://www.suncode.ai/updates/v1/stable/{target}/latest.json", request.RequestUri!.AbsoluteUri);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         };
         Assert.Equal("check_failed", (await Assert.ThrowsAsync<UpdateException>(() => client.CheckAsync(default))).Code);
         Assert.Equal(1, f.Handler.Requests);
+    }
+    [Fact]
+    public async Task PackagedDistributionAllowsVerifiedArchiveRedirectFromApexToWww()
+    {
+        using var f = new UpdateFixture();
+        var configured = UpdateJson.Read<UpdateDistribution>(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "update-distribution.json")));
+        using var client = new UpdateTransport(configured, f.Store, f.Environment, f.Handler, f.Time);
+        f.Handler.Respond = (request, _) =>
+        {
+            if (request.RequestUri!.Host == "suncode.ai")
+            {
+                var redirect = new HttpResponseMessage(HttpStatusCode.PermanentRedirect);
+                redirect.Headers.Location = new("https://www.suncode.ai/sdk.zip");
+                return Task.FromResult(redirect);
+            }
+            Assert.Equal("https://www.suncode.ai/sdk.zip", request.RequestUri.AbsoluteUri);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(f.Packages["/sdk.zip"]) });
+        };
+        var destination = Path.Combine(f.Root, "download.zip");
+        await client.DownloadAsync(f.Catalog.Components.Sdk.Package with { Url = "https://suncode.ai/sdk.zip" }, destination, null, default);
+        Assert.Equal(f.Catalog.Components.Sdk.Package.Sha256, UpdateStateStore.HashFile(destination));
+        Assert.Equal(2, f.Handler.Requests);
     }
     [Theory]
     [InlineData(false, "catalog_expired")]

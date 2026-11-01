@@ -7,6 +7,99 @@ namespace SunCode.Desktop.Tests.Updates;
 
 public sealed class UpdateCoordinatorTests
 {
+    [Fact]
+    public async Task MatchingRunningVersionsAreCurrentWithoutEnrollingAnUnmanagedBuild()
+    {
+        using var f = new UpdateFixture();
+        f.Store.Change(state => state.Installation = null);
+        f.Catalog = f.Catalog with { Components = f.Catalog.Components with { Sdk = f.Catalog.Components.Sdk with { Version = "0.1.0" } } };
+        using var coordinator = new UpdateCoordinator(f.Distribution, f.Store, f.Environment, new StubPlatformVerifier(), f.Handler, f.Time);
+        coordinator.ReadRunningVersionsAsync = () => Task.FromResult(new RunningUpdateVersions("0.1.0", 27, "0.1.0", 27));
+        using var model = new UpdatesSettingsViewModel(coordinator, action => action());
+        await model.LoadIdentityAsync();
+        await coordinator.CheckAsync();
+        Assert.Equal(UpdatePhase.Current, coordinator.Snapshot.Phase);
+        Assert.Equal(StatusTone.Success, model.Tone);
+        Assert.Equal("v0.1.0", model.SdkVersion);
+        Assert.False(model.ShowSdkTarget); Assert.False(model.ShowDesktopTarget);
+        Assert.Null(coordinator.Snapshot.Plan);
+        await coordinator.DownloadAsync();
+        await coordinator.RestartAsync();
+        Assert.Null(f.Store.Read().Installation);
+        Assert.Null(f.Store.Read().Staged);
+        Assert.Null(f.Store.Read().Activation);
+        Assert.Equal(1, f.Handler.Requests);
+    }
+    [Theory]
+    [InlineData("0.0.9", 27, "0.1.0", 27)]
+    [InlineData("0.1.0", 27, "0.0.9", 27)]
+    [InlineData("0.1.0", 27, null, null)]
+    [InlineData("0.1.0", 27, "0.1.0", 28)]
+    [InlineData("0.1.0", 28, "0.1.0", 28)]
+    public async Task UnmanagedVersionOrAbiMismatchCannotBeCalledCurrent(string desktop, int desktopAbi, string? sdk, int? sdkAbi)
+    {
+        using var f = new UpdateFixture();
+        f.Store.Change(state => state.Installation = null);
+        f.Catalog = f.Catalog with { Components = f.Catalog.Components with { Sdk = f.Catalog.Components.Sdk with { Version = "0.1.0" } } };
+        using var coordinator = new UpdateCoordinator(f.Distribution, f.Store, f.Environment, new StubPlatformVerifier(), f.Handler, f.Time);
+        coordinator.ReadRunningVersionsAsync = () => Task.FromResult(new RunningUpdateVersions(desktop, (uint)desktopAbi, sdk, sdkAbi is { } value ? (uint)value : null));
+        await coordinator.CheckAsync();
+        Assert.Equal("installation_unmanaged", coordinator.Snapshot.ErrorCode);
+        Assert.NotEqual(UpdatePhase.Current, coordinator.Snapshot.Phase);
+        Assert.Null(coordinator.Snapshot.Plan);
+    }
+    [Theory]
+    [InlineData(false, "signature_invalid")]
+    [InlineData(true, "catalog_expired")]
+    public async Task UnmanagedCurrentCheckStillRequiresTrustedFreshMetadata(bool expired, string expected)
+    {
+        using var f = new UpdateFixture();
+        f.Store.Change(state => state.Installation = null);
+        f.Catalog = f.Catalog with { Components = f.Catalog.Components with { Sdk = f.Catalog.Components.Sdk with { Version = "0.1.0" } } };
+        if (expired) f.Time.Now = f.Time.Now.AddDays(8);
+        else f.Handler.Respond = (_, _) =>
+        {
+            var changed = System.Text.Json.Nodes.JsonNode.Parse(f.Sign())!;
+            changed["signed"]!["components"]!["sdk"]!["releaseNotes"]!["en-US"] = "tampered";
+            return Task.FromResult(UpdateFixture.JsonResponse(System.Text.Encoding.UTF8.GetBytes(changed.ToJsonString())));
+        };
+        using var coordinator = new UpdateCoordinator(f.Distribution, f.Store, f.Environment, new StubPlatformVerifier(), f.Handler, f.Time);
+        var identityQueries = 0;
+        coordinator.ReadRunningVersionsAsync = () => { identityQueries++; return Task.FromResult(new RunningUpdateVersions("0.1.0", 27, "0.1.0", 27)); };
+        await coordinator.CheckAsync();
+        Assert.Equal(expected, coordinator.Snapshot.ErrorCode);
+        Assert.Equal(0, identityQueries);
+        Assert.Null(coordinator.Snapshot.Plan);
+    }
+    [Fact]
+    public async Task MissingInstallationReceiptIsAWarningAndNeverCreatesAnInstallablePlan()
+    {
+        using var f = new UpdateFixture();
+        f.Store.Change(state => state.Installation = null);
+        using var coordinator = new UpdateCoordinator(f.Distribution, f.Store, f.Environment, new StubPlatformVerifier(), f.Handler, f.Time);
+        coordinator.ReadRunningVersionsAsync = () => Task.FromResult(new RunningUpdateVersions("0.1.0", 27, "0.1.0", 27));
+        using var vm = new UpdatesSettingsViewModel(coordinator, action => action());
+        await coordinator.CheckAsync();
+        Assert.Equal("installation_unmanaged", coordinator.Snapshot.ErrorCode);
+        Assert.Equal(StatusTone.Warning, vm.Tone);
+        Assert.Null(coordinator.Snapshot.Plan);
+        Assert.False(vm.IsReady);
+        await coordinator.DownloadAsync();
+        Assert.Null(f.Store.Read().Installation);
+        Assert.Null(f.Store.Read().Staged);
+    }
+    [Fact]
+    public async Task DamagedManagedDesktopStillRequiresRepair()
+    {
+        using var f = new UpdateFixture();
+        File.WriteAllText(Path.Combine(f.Installed.Desktop.Directory, "SunCode.dll"), "damaged");
+        using var coordinator = new UpdateCoordinator(f.Distribution, f.Store, f.Environment, new StubPlatformVerifier(), f.Handler, f.Time);
+        using var vm = new UpdatesSettingsViewModel(coordinator, action => action());
+        await coordinator.CheckAsync();
+        Assert.Equal("desktop_damaged", coordinator.Snapshot.ErrorCode);
+        Assert.Equal(StatusTone.Danger, vm.Tone);
+        Assert.Null(coordinator.Snapshot.Plan);
+    }
     [Theory]
     [InlineData("network_failed", "The download was interrupted")]
     [InlineData("download_failed", "The download was interrupted")]

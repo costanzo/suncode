@@ -13,8 +13,8 @@ info:
     See README.md for normative signing, selection, caching, and failure rules.
     Implementations are hand-written; this document is not a code-generation input.
 servers:
-  - url: https://suncode.ai
-    description: Configured distribution origin; signed catalog publication remains pending
+  - url: https://www.suncode.ai
+    description: Canonical distribution origin; current 0.1.0 catalogs use sample package values
 security: []
 tags:
   - name: Updates

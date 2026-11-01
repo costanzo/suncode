@@ -54,20 +54,8 @@
               <TextBlock Classes="settings-row-title" Text="{DynamicResource LocUpdatesAutomatic}" TextWrapping="Wrap" />
               <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocUpdatesAutomaticHint}" TextWrapping="Wrap" />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" Classes="settings-switch" IsChecked="{Binding AutomaticChecks}" VerticalAlignment="Center"
-                          OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{DynamicResource LocUpdatesAutomatic}">
-              <ToggleSwitch.Resources>
-                <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="{DynamicResource AccentColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="{DynamicResource AccentInkColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPointerOver" Color="{DynamicResource AccentInkColor}" />
-                <SolidColorBrush x:Key="ToggleSwitchKnobFillOnPressed" Color="{DynamicResource AccentInkColor}" />
-              </ToggleSwitch.Resources>
-            </ToggleSwitch>
+            <ToggleSwitch Grid.Column="1" Classes="sc-toggle-switch settings-switch" IsChecked="{Binding AutomaticChecks}" VerticalAlignment="Center"
+                          OnContent="{x:Null}" OffContent="{x:Null}" AutomationProperties.Name="{DynamicResource LocUpdatesAutomatic}" />
           </Grid>
           <TextBlock Classes="settings-row-hint" Text="{DynamicResource LocUpdatesManualDownloadHint}" TextWrapping="Wrap" />
         </StackPanel>
