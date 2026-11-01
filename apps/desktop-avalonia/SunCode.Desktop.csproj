@@ -19,7 +19,6 @@
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
-    <CefGlueForkRoot Condition="'$(CefGlueForkRoot)' == ''">D:\appData\github\costanzo\CefGlue</CefGlueForkRoot>
     <SunCodeBundleCef Condition="'$(SunCodeBundleCef)' == ''">false</SunCodeBundleCef>
     <DefineConstants Condition="'$(SunCodeBundleCef)' == 'true'">$(DefineConstants);SUNCODE_CEF</DefineConstants>
   </PropertyGroup>
@@ -50,7 +49,8 @@
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <ProjectReference Include="ThirdParty/RoyalTerminal.Pty.Windows/RoyalTerminal.Pty.Windows.csproj" />
-    <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj" />
+    <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj"
+                      Condition="'$(SunCodeBundleCef)' == 'true'" />
     <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
     <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
@@ -71,6 +71,14 @@
                       Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
   </ItemGroup>
+  <Target Name="ValidateCefGlueFork" BeforeTargets="CollectPackageReferences;PrepareForBuild"
+          Condition="'$(SunCodeBundleCef)' == 'true'">
+    <Error Condition="'$(CefGlueForkRoot)' == ''"
+           Text="SunCodeBundleCef=true requires CefGlueForkRoot to point to the Avalonia 12-compatible CefGlue fork. Pass -p:CefGlueForkRoot=/path/to/CefGlue." />
+    <Error Condition="!Exists('$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj')"
+           Text="CefGlueForkRoot must contain CefGlue.Avalonia/CefGlue.Avalonia.csproj." />
+  </Target>
+
   <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
           Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
     <PropertyGroup>

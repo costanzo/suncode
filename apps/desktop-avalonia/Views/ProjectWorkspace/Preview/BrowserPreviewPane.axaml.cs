@@ -8,9 +8,11 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
+#if SUNCODE_CEF
 using Xilium.CefGlue;
 using Xilium.CefGlue.Avalonia;
 using Xilium.CefGlue.Common.Handlers;
+#endif
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Preview;
 
@@ -26,7 +28,9 @@ public sealed class BrowserTab : ObservableObject
 
     public string Title { get; }
     public string Address { get; set; }
+#if SUNCODE_CEF
     public AvaloniaCefBrowser? Browser { get; set; }
+#endif
     public bool IsBrowserUse { get; set; }
     public bool BrowserInitialized { get; set; }
     public bool IsActive
@@ -38,6 +42,7 @@ public sealed class BrowserTab : ObservableObject
 
 public sealed partial class BrowserPreviewPane : UserControl
 {
+#if SUNCODE_CEF
     private const string DefaultAddress = "http://localhost:5173/";
 
     private readonly ObservableCollection<BrowserTab> _tabs = new();
@@ -467,12 +472,6 @@ public sealed partial class BrowserPreviewPane : UserControl
         ReloadButton.IsEnabled = !browser.IsLoading;
     }
 
-    internal static bool IsAllowedPreviewUrl(string? value) =>
-        Uri.TryCreate(value, UriKind.Absolute, out var uri)
-        && uri.Scheme == Uri.UriSchemeHttp
-        && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
-        && uri.UserInfo.Length == 0;
-
     private sealed class PreviewRequestHandler : RequestHandler
     {
         protected override bool OnBeforeBrowse(CefBrowser browser, CefFrame frame, CefRequest request, bool userGesture, bool isRedirect) =>
@@ -487,4 +486,41 @@ public sealed partial class BrowserPreviewPane : UserControl
             CefWindowInfo windowInfo, ref CefClient client, CefBrowserSettings settings,
             ref CefDictionaryValue extraInfo, ref bool noJavascriptAccess) => true;
     }
+#else
+    // The pane remains in the shared XAML tree, but its entry points are hidden
+    // when CEF is excluded. Keep host callbacks independent of CefGlue types.
+    public BrowserPreviewPane() => InitializeComponent();
+
+    public void CloseBrowser([CallerMemberName] string caller = "") { }
+
+    internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
+        => initialized.TrySetResult(false);
+
+    private void OpenClicked(object? sender, RoutedEventArgs e)
+    {
+        CefPreviewRuntime.Initialize();
+        StatusText.Text = CefPreviewRuntime.Error;
+    }
+
+    private void AddressKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        OpenClicked(sender, e);
+        e.Handled = true;
+    }
+
+    private void NewTabClicked(object? sender, RoutedEventArgs e) { }
+    private void TabClicked(object? sender, RoutedEventArgs e) { }
+    private void CloseTabClicked(object? sender, RoutedEventArgs e) { }
+    private void BackClicked(object? sender, RoutedEventArgs e) { }
+    private void ForwardClicked(object? sender, RoutedEventArgs e) { }
+    private void ReloadClicked(object? sender, RoutedEventArgs e) { }
+    private void DisconnectClicked(object? sender, RoutedEventArgs e) { }
+#endif
+
+    internal static bool IsAllowedPreviewUrl(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttp
+        && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1")
+        && uri.UserInfo.Length == 0;
 }
