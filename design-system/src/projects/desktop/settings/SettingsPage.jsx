@@ -26,9 +26,12 @@ import { NetworkPanel } from "./sections/NetworkPanel.jsx";
 import { RemoteServerPanel } from "./sections/RemoteServerPanel.jsx";
 import { TerminalPanel } from "./sections/TerminalPanel.jsx";
 import { TerminalReviewControls } from "./components/TerminalReviewControls.jsx";
+import { UpdatesPanel } from "./sections/UpdatesPanel.jsx";
+import { UpdateReviewControls } from "./components/UpdateReviewControls.jsx";
 import "../styles/remote-server.css";
 import "./styles/provider-credentials.css";
 import "./styles/terminal.css";
+import "./styles/updates.css";
 
 export function SettingsPage({
   initialPage = "defaults",
@@ -43,6 +46,8 @@ export function SettingsPage({
   const [shellArchitecture, setShellArchitecture] = useState("x64");
   const [shellScenario, setShellScenario] = useState("default");
   const [shellWindowSize, setShellWindowSize] = useState("default");
+  const [updateScenario, setUpdateScenario] = useState("sdk");
+  const [updateWindowSize, setUpdateWindowSize] = useState("default");
   const [issue, setIssue] = useState("none");
   const [reviewVersion, setReviewVersion] = useState(0);
   const [credentials, setCredentials] = useState(() =>
@@ -70,7 +75,7 @@ export function SettingsPage({
   };
   const save = (message = "Saved to the local agent.") => setStatus(message);
   const renderPanel = () => {
-    if (page === "terminal") return null;
+    if (page === "terminal" || page === "updates") return null;
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
@@ -156,6 +161,16 @@ export function SettingsPage({
           setWindowSize={setShellWindowSize}
         />
       )}
+      {page === "updates" && (
+        <UpdateReviewControls
+          scenario={updateScenario}
+          setScenario={setUpdateScenario}
+          platform={platform}
+          setPlatform={setPlatform}
+          windowSize={updateWindowSize}
+          setWindowSize={setUpdateWindowSize}
+        />
+      )}
       {credentialReview && (
         <div className="credential-review-controls" aria-label="Credential specimen controls">
           <div>
@@ -215,9 +230,19 @@ export function SettingsPage({
           <NativeWindowFrame
             platform={platform}
             title="Settings"
-            width={page === "terminal" && shellWindowSize === "minimum" ? "720px" : "900px"}
-            height={page === "terminal" && shellWindowSize === "minimum" ? "552px" : "672px"}
-            className={`settings-window${page === "terminal" ? " terminal-settings-window" : ""}`}
+            width={
+              (page === "terminal" && shellWindowSize === "minimum") ||
+              (page === "updates" && updateWindowSize === "minimum")
+                ? "720px"
+                : "900px"
+            }
+            height={
+              (page === "terminal" && shellWindowSize === "minimum") ||
+              (page === "updates" && updateWindowSize === "minimum")
+                ? "552px"
+                : "672px"
+            }
+            className={`settings-window${page === "terminal" ? " terminal-settings-window" : ""}${page === "updates" ? " updates-settings-window" : ""}`}
           >
             <div className="settings-toolbar">
               <strong>Settings</strong>
@@ -240,6 +265,9 @@ export function SettingsPage({
                 setProvidersExpanded={setProvidersExpanded}
               />
               <main className="settings-panel">
+                <div hidden={page !== "updates"}>
+                  <UpdatesPanel key={updateScenario} scenario={updateScenario} />
+                </div>
                 <div hidden={page !== "terminal"}>
                   <TerminalPanel
                     key={`${platform}-${shellArchitecture}-${shellScenario}`}

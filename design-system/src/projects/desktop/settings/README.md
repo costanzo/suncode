@@ -14,6 +14,14 @@ Language servers use a SunCode-owned catalog rather than a free-form server edit
 
 The Remote Server specimen covers disconnected input, pairing-code validation, connected status, mobile QR presentation, the pairing link with a copy affordance below the QR, QR renewal, and disconnect. Its pairing QR is a visual placeholder and does not encode a live credential.
 
+## Updates — review only
+
+Open `#/projects/desktop/settings/updates` for the update proposal. Updates follows Logging in the Settings navigation. `sections/UpdatesPanel.jsx` owns the in-memory interaction, `data/updates.js` owns synthetic releases and 16 scenarios, `components/UpdateReviewControls.jsx` owns the external review toolbar, and `styles/updates.css` owns the scoped styles.
+
+The two version rows keep Desktop and Agent SDK distinct. A single compatible plan covers either component or a required pair, with its total download size and expandable release notes. Automatic checks default on; download and confirmed restart are explicit. Downloaded targets become installed versions only after simulated restart success. The shared confirmation initially focuses Later, and the active-work fixture disables restart while a turn and terminal are running. Failed targets retain installed version identity and show Update not installed; verification failure never offers restart. The restored-version fixture applies only after safe, supported recovery and does not specify database downgrade or data restoration. SDK repair remains accessible without a running SDK.
+
+The toolbar selects macOS, Windows, or Linux, default 900 × 672 or minimum 720 × 552 window size, and static review scenarios. Explicit actions animate checks, downloads, verification, and restart in memory. The panel stays mounted across Settings navigation. Both navigation and content scroll inside the native frame; below a 620px catalog viewport the bounded navigation stacks above the panel. All versions, sizes, and notes are examples; no update service, filesystem installation, or system restart is invoked. Desktop/C# update coordination is proposed, not implemented by this React surface. See root `DESIGN.md` for the interaction contract.
+
 ## Provider credentials — review only
 
 Open `#/projects/desktop/settings/provider-credentials` for the interactive API key storage proposal. The toolbar outside the Settings specimen selects macOS, Windows, or Linux wording and normal, locked, denied, unavailable, missing-entry, saving, save-failed, or remove-failed states. Retry returns the fixture to Normal; it performs no OS request.

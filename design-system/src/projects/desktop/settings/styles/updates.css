@@ -1,0 +1,241 @@
+/* Updates extends the native Settings surface. Preview controls stay outside it. */
+.updates-settings-window .settings-body {
+  min-height: 0;
+  overflow: hidden;
+}
+.update-review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  margin-block: var(--space-4) var(--space-8);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.update-review-controls > div {
+  display: grid;
+  flex: 1 1 100%;
+  gap: var(--space-1);
+}
+.update-review-controls strong {
+  font-size: 12px;
+}
+.update-review-controls span,
+.update-review-controls label {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.update-review-controls label {
+  display: grid;
+  flex: 1 1 140px;
+  gap: var(--space-1);
+}
+.update-review-controls select {
+  width: 100%;
+  min-height: var(--control-md);
+}
+.update-review-controls select:focus-visible,
+.updates-switch input:focus-visible + .settings-switch-track {
+  box-shadow: var(--focus-ring);
+}
+.updates-content .updates-heading {
+  margin-bottom: var(--space-6);
+}
+.updates-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.updates-summary > .ds-icon {
+  margin-top: var(--space-1);
+  color: var(--success);
+}
+.updates-summary[data-tone="danger"] > .ds-icon {
+  color: var(--danger);
+}
+.updates-summary[data-tone="warning"] > .ds-icon {
+  color: var(--warning);
+}
+.updates-summary h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+.updates-summary p,
+.updates-busy-reason,
+.updates-footnote,
+.updates-release-notes p,
+.updates-preferences > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.updates-components {
+  border-top: 1px solid var(--border);
+}
+.updates-component {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.updates-component > strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.updates-version {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+}
+.updates-version code,
+.updates-release-notes code {
+  font: 12px/1.5 var(--font-mono);
+}
+.updates-version > .ds-icon,
+.updates-version > span,
+.updates-component-status {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.updates-component-status {
+  grid-column: 1 / -1;
+}
+.updates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-5);
+}
+.updates-actions > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.updates-actions .btn:disabled {
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+.updates-actions .updates-recheck {
+  margin-left: auto;
+}
+.updates-progress {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.updates-progress progress {
+  display: block;
+  width: 100%;
+  height: var(--space-1);
+  overflow: hidden;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  background: var(--surface-active);
+  accent-color: var(--accent);
+}
+.updates-progress progress::-webkit-progress-bar {
+  background: var(--surface-active);
+}
+.updates-progress progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.updates-progress progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.updates-progress progress:indeterminate {
+  opacity: 0.65;
+}
+.updates-progress > span {
+  color: var(--text-secondary);
+  font: 11px/1.5 var(--font-mono);
+}
+.updates-content .updates-busy-reason,
+.updates-content .updates-footnote {
+  margin-top: var(--space-3);
+}
+.updates-content .updates-busy-reason {
+  color: var(--warning);
+}
+.updates-release-notes {
+  margin-top: var(--space-4);
+  font-size: 11px;
+}
+.updates-release-notes summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.updates-release-notes summary:hover {
+  color: var(--text);
+}
+.updates-release-notes summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+.updates-release-notes > div {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+.updates-preferences {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+.updates-preferences .settings-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+}
+.updates-working-icon {
+  animation: updates-working 1.6s linear infinite;
+}
+@keyframes updates-working {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .updates-working-icon {
+    animation: none;
+  }
+}
+@container (max-width: 420px) {
+  .updates-component {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .updates-version {
+    justify-content: flex-start;
+  }
+  .updates-actions .updates-recheck {
+    margin-left: 0;
+  }
+}
+@media (max-width: 620px) {
+  .updates-settings-window .settings-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .updates-settings-window .settings-nav {
+    max-height: calc(var(--control-lg) * 3);
+  }
+}

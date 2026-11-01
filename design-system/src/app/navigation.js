@@ -230,8 +230,14 @@ export const primaryModules = [
             path: "/projects/desktop/settings",
             label: "Settings",
             keywords:
-              "defaults appearance keyboard shortcuts network remote server pairing mobile qr mcp language servers lsp semantic diagnostics logging model providers credentials",
+              "defaults appearance keyboard shortcuts network remote server pairing mobile qr mcp language servers lsp semantic diagnostics logging updates model providers credentials",
             children: [
+              {
+                path: "/projects/desktop/settings/updates",
+                label: "Updates",
+                keywords:
+                  "desktop agent sdk independent update download verify restart repair version",
+              },
               {
                 path: "/projects/desktop/settings/provider-credentials",
                 label: "Provider credentials",
@@ -240,7 +246,8 @@ export const primaryModules = [
               {
                 path: "/projects/desktop/settings/terminal",
                 label: "Terminal",
-                keywords: "agent shell terminal powershell windows path install download validation",
+                keywords:
+                  "agent shell terminal powershell windows path install download validation",
               },
               {
                 path: "/projects/desktop/settings/remote-server",

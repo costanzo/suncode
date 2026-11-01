@@ -101,6 +101,7 @@ export const navItems = [
   { id: "mcp", label: "MCP servers", icon: "server" },
   { id: "lsp", label: "Language servers", icon: "file-code" },
   { id: "logging", label: "Logging", icon: "assets" },
+  { id: "updates", label: "Updates", icon: "refresh" },
 ];
 
 export const shortcutCatalog = [

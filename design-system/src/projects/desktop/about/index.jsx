@@ -4,12 +4,14 @@ import { NativeWindowFrame } from "../../../platforms/desktop/components/titleba
 import logoUrl from "../../../assets/logos/suncode-logo-128.png";
 import { WorkspaceGuideState } from "../workspace/WorkspaceGuide.jsx";
 import { WindowSizeNote } from "../WindowSizeNote.jsx";
+import { Button } from "../../../components/universal/button/index.js";
 
 const aboutGuide = {
   tabs: {
     actions: [
       "Open About SunCode from the operating system application menu.",
       "Read the Desktop and Agent SDK versions beneath the SunCode identity.",
+      "Use Software updates to close About and open Settings → Updates.",
       "Close the native window to return control to the window that opened it.",
     ],
     style: [
@@ -64,7 +66,7 @@ export function AboutPage() {
               <div className="about-versions" aria-label="Component versions">
                 <div className="about-version-row">
                   <span>Desktop</span>
-                  <code>v0.0.1</code>
+                  <code>v0.1.0</code>
                 </div>
                 <div className="about-version-row">
                   <span>Agent SDK</span>
@@ -72,6 +74,14 @@ export function AboutPage() {
                 </div>
               </div>
               <span>General-purpose coding agent</span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  window.location.hash = "/projects/desktop/settings/updates";
+                }}
+              >
+                Software updates
+              </Button>
             </div>
           </NativeWindowFrame>
         </WorkspaceGuideState>

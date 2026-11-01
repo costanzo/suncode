@@ -1,7 +1,7 @@
 export const settingsGuide = {
   tabs: {
     actions: [
-      "Choose Defaults, Appearance, Keyboard shortcuts, Terminal, Network, Computer use, Browser use, MCP servers, Language servers, Agents, or Logging from the left navigation.",
+      "Choose Defaults, Appearance, Keyboard shortcuts, Terminal, Network, Computer use, Browser use, MCP servers, Language servers, Logging, Updates, or Agents from the left navigation.",
       "Use the chevrons beside Agents and Model providers to collapse or expand their fixed catalogs.",
       "Select an agent beneath Agents to inspect its immutable identity, tool allowlist, and authority boundaries.",
       "Select a provider to edit its OpenAI-compatible URL or credential.",
@@ -14,6 +14,8 @@ export const settingsGuide = {
       "Use Terminal to configure Agent shell and Terminal shell independently; custom paths are checked before saving.",
       "On Windows, download PowerShell 7 and optionally apply it to both shells after verification succeeds.",
       "Use the folder buttons in Logging to choose log and image storage directories.",
+      "Use Updates to review separate Desktop and Agent SDK versions, download a compatible update plan, and confirm a restart.",
+      "The Updates review toolbar outside the window selects platform, window size, and static scenarios; explicit actions simulate checks, downloads, verification, and restart.",
       "Use MCP servers to add, edit, delete, enable, disable, and retry local or remote servers.",
       "Use Language servers to configure project-scoped semantic analysis for diagnostics, definitions, references, hover details, and symbols.",
       "Use the basedpyright detail to select the project interpreter and analysis policy while keeping team-owned checking rules in pyproject.toml or pyrightconfig.json.",
@@ -29,7 +31,8 @@ export const settingsGuide = {
       "Rows use 12px labels, 11px hints, 36px controls, 24px column gaps, and 16px section gaps.",
     ],
     logic: [
-      "Settings are local to the embedded agent and are grouped by defaults, appearance, keyboard shortcuts, network, language tooling, logging, agents, and providers.",
+      "Settings combines Desktop-owned preferences with Rust-owned agent configuration. Update coordination is proposed as Desktop/C# owned; this review implements no production updater.",
+      "Updates uses synthetic versions, sizes, and release notes. Automatic checks default on, downloads are manual, and downloaded versions become installed only after the simulated confirmed restart succeeds.",
       "Built-in agents cannot be created, edited, enabled, disabled, or deleted from Settings.",
       "Provider URL changes and default resets are persisted and applied to subsequent requests without changing credentials or models.",
       "Custom proxy controls are subordinate to the selected proxy mode, preserve write-only password state, and apply to every Rust-owned HTTP client.",
