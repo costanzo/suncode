@@ -47,7 +47,7 @@ public partial class WorkspaceWindow : Window
         PropertyChanged += (_, change) =>
         {
             if (_initialized && change.Property == Window.WindowStateProperty)
-                ActiveWorkspace?.UpdateWindowsMaximizeButton(WindowState);
+                ActiveWorkspace?.UpdateWindowCaptionButtons(WindowState);
         };
         Closing += OnClosing;
         Activated += async (_, _) =>
@@ -92,7 +92,7 @@ public partial class WorkspaceWindow : Window
     {
         if (_initialized) return;
         _initialized = true;
-        ActiveWorkspace?.UpdateWindowsMaximizeButton(WindowState);
+        ActiveWorkspace?.UpdateWindowCaptionButtons(WindowState);
         if (!IsMergedHost) ViewModel.SessionEntered += SessionEntered;
         if (ViewModel.IsProjectOpening)
         {

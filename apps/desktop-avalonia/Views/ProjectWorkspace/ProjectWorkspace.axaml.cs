@@ -5,6 +5,8 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SvgControl = Avalonia.Svg.Skia.Svg;
@@ -12,6 +14,7 @@ using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectWorkspace.Review;
+using System.Runtime.InteropServices;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace;
 
@@ -24,12 +27,20 @@ public sealed partial class ProjectWorkspace : UserControl
     private MessageItem? _longUserMessage;
     private bool _terminalSessionRestoreQueued;
 
-    public ProjectWorkspace()
+    public ProjectWorkspace() : this(OperatingSystem.IsWindows() ? OSPlatform.Windows :
+        OperatingSystem.IsMacOS() ? OSPlatform.OSX : OSPlatform.Linux)
+    {
+    }
+
+    internal ProjectWorkspace(OSPlatform platform)
     {
         InitializeComponent();
-        var isWindows = OperatingSystem.IsWindows();
-        MacTitleBarControls.IsVisible = !isWindows;
-        MacTitleBarActions.IsVisible = !isWindows;
+        var isWindows = platform == OSPlatform.Windows;
+        var isMacOS = platform == OSPlatform.OSX;
+        var isLinux = platform == OSPlatform.Linux;
+        MacTitleBarControls.IsVisible = isMacOS;
+        MacTitleBarActions.IsVisible = isMacOS;
+        UbuntuTitleBarControls.IsVisible = isLinux;
         WindowsTitleBarControls.IsVisible = isWindows;
         WindowsCompactMenu.IsVisible = isWindows;
         WindowsMenuLogo.IsVisible = isWindows;
@@ -39,6 +50,14 @@ public sealed partial class ProjectWorkspace : UserControl
         {
             WorkspaceTitleBar.ColumnDefinitions[2].MinWidth = 184;
             ProjectSwitcherControl.Margin = new Thickness(84, 0, 0, 0);
+        }
+        else if (isLinux)
+        {
+            WorkspaceTitleBar.Classes.Add("ubuntu-titlebar");
+            WorkspaceTitleBar.ColumnDefinitions = new ColumnDefinitions("*,*,*");
+            WorkspaceTitleBar.Margin = new Thickness(4, 0);
+            WorkspaceTitleBar.ColumnDefinitions[2].MinWidth = 130;
+            ProjectSwitcherControl.Margin = new Thickness(0);
         }
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
@@ -53,6 +72,16 @@ public sealed partial class ProjectWorkspace : UserControl
     }
 
     private WorkspaceWindow? Owner => TopLevel.GetTopLevel(this) as WorkspaceWindow;
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // Reparenting into a merged host must use that host's state, not the source window's.
+        if (Owner is not { } owner) return;
+        SetTrafficLightFocus(owner.IsActive);
+        UpdateWindowCaptionButtons(owner.WindowState);
+    }
+
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
     private WorkspaceLayoutViewModel Layout => ViewModel.Layout;
 
@@ -465,13 +494,19 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ToggleFullScreen(object? sender, RoutedEventArgs e) => Owner?.ToggleFullScreen();
     internal void SetTrafficLightFocus(bool isActive)
     {
+        WorkspaceTitleBar.Classes.Set("window-inactive", !isActive);
         ProjectCloseLight.IsWindowActive = isActive;
         ProjectMinimizeLight.IsWindowActive = isActive;
         ProjectMaximizeLight.IsWindowActive = isActive;
     }
 
-    internal void UpdateWindowsMaximizeButton(WindowState state)
+    internal void UpdateWindowCaptionButtons(WindowState state)
     {
+        var label = state == WindowState.Maximized ? "LocRestoreWindow" : "LocMaximizeWindow";
+        UbuntuMaximizeIcon.Data = Geometry.Parse(state == WindowState.Maximized
+            ? "M6 4.5h6v6M4 6.5h6v6H4z" : "M4 4.5h8v8H4z");
+        UbuntuMaximizeButton.Bind(AutomationProperties.NameProperty, new DynamicResourceExtension(label));
+        UbuntuMaximizeButton.Bind(ToolTip.TipProperty, new DynamicResourceExtension(label));
         WindowsMaximizeIcon.Path = $"/Assets/icons/{GetWindowsMaximizeIcon(state)}";
         SvgControl.SetCss(WindowsMaximizeIcon, this.FindResource("IconSvgCss") as string);
         AutomationProperties.SetName(

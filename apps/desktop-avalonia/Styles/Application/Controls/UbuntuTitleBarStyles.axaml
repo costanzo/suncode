@@ -1,0 +1,61 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Compact GNOME/Yaru mapping from the approved Ubuntu Workspace specimen. -->
+  <Style Selector="Button.ubuntu-titlebar-control">
+    <Setter Property="Width" Value="{DynamicResource UbuntuCaptionTargetWidth}" />
+    <Setter Property="Height" Value="{DynamicResource UbuntuTitleBarHeight}" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource UbuntuCaptionBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="Transparent">
+          <Border Name="CaptionCircle" Width="{DynamicResource UbuntuCaptionCircleSize}"
+                  Height="{DynamicResource UbuntuCaptionCircleSize}" CornerRadius="10"
+                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Background="{TemplateBinding Background}" />
+          <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <Border Name="CaptionFocus" Width="28" Height="28" CornerRadius="14"
+                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                  BorderThickness="2" BorderBrush="Transparent" IsHitTestVisible="False" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <!-- Global button feedback paints PART_ContentPresenter. Caption feedback
+       belongs only to the circular surface and its keyboard-focus ring. -->
+  <Style Selector="Button.ubuntu-titlebar-control:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.ubuntu-titlebar-control:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.ubuntu-titlebar-control:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.ubuntu-titlebar-control Path">
+    <Setter Property="Stroke" Value="{DynamicResource TextBrush}" />
+    <Setter Property="StrokeThickness" Value="1.25" />
+  </Style>
+  <Style Selector="Grid.window-titlebar.window-inactive Button.ubuntu-titlebar-control">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Grid.window-titlebar.window-inactive Button.ubuntu-titlebar-control Path">
+    <Setter Property="Stroke" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Grid.window-titlebar.window-inactive.ubuntu-titlebar Button.project-switcher-trigger, Grid.window-titlebar.window-inactive.ubuntu-titlebar Button.content-switcher-trigger">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="Button.ubuntu-titlebar-control:pointerover /template/ Border#CaptionCircle">
+    <Setter Property="Background" Value="{DynamicResource UbuntuCaptionHoverBrush}" />
+  </Style>
+  <Style Selector="Button.ubuntu-titlebar-control:pressed /template/ Border#CaptionCircle">
+    <Setter Property="Background" Value="{DynamicResource UbuntuCaptionPressedBrush}" />
+  </Style>
+  <Style Selector="Button.ubuntu-titlebar-control:focus-visible /template/ Border#CaptionFocus">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+</Styles>
