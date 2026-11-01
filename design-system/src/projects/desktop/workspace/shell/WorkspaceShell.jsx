@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../../../shared/Icon.jsx";
 import { TrafficLights } from "../../../../shared/TrafficLights.jsx";
+import { UbuntuWindowControls } from "../../../../platforms/desktop/components/titlebar/index.js";
 import { DialogWindowConfirmation } from "../../dialog-window/index.jsx";
 import { IconButton } from "../shared/IconButton.jsx";
 import { McpLoadingStatus } from "./McpLoadingStatus.jsx";
@@ -195,7 +196,14 @@ export function WorkspaceWindow({
   projectSwitcherProjects = workspaceRecentProjects,
   gitAvailable = true,
   initialDrawer = "tools",
+  titlebarPlatform = "macos",
+  windowMaximized = false,
+  windowActive = true,
+  onWindowMaximize,
+  onWindowMinimize,
+  onWindowClose,
 }) {
+  const ubuntu = titlebarPlatform === "ubuntu";
   const [navigation, setNavigation] = useState("sessions");
   const [activeFile, setActiveFile] = useState(null);
   const [activeChild, setActiveChild] = useState(null);
@@ -229,10 +237,15 @@ export function WorkspaceWindow({
     );
   };
   return (
-    <div className="workspace-window">
-      <div className="workspace-titlebar">
-        <TrafficLights />
-        <ProjectSwitcher projects={projectSwitcherProjects} />
+    <div className={`workspace-window ${ubuntu ? "is-ubuntu" : ""}`}>
+      <div
+        className={`workspace-titlebar ${ubuntu ? "is-ubuntu" : ""} ${ubuntu && !windowActive ? "is-inactive" : ""}`}
+        onDoubleClick={ubuntu ? (event) => {
+          if (event.target === event.currentTarget) onWindowMaximize?.();
+        } : undefined}
+      >
+        {!ubuntu && <TrafficLights />}
+        <ProjectSwitcher projects={projectSwitcherProjects} initialOpen={!ubuntu} />
         <ContentSwitcher
           currentItem={currentContent}
           items={recentContent}
@@ -246,6 +259,15 @@ export function WorkspaceWindow({
               window.location.hash = "/projects/desktop/settings";
             }}
           />
+          {ubuntu && (
+            <UbuntuWindowControls
+              maximized={windowMaximized}
+              isActive={windowActive}
+              onMinimize={onWindowMinimize}
+              onMaximize={onWindowMaximize}
+              onClose={onWindowClose}
+            />
+          )}
         </div>
       </div>
       <div className="workspace-window-body">

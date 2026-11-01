@@ -30,4 +30,8 @@
   --windows-menu-row-height: 30px;
   --windows-menu-preview-height: 460px;
   --windows-menu-preview-min-width: 620px;
+  --ubuntu-titlebar-height: 36px;
+  --ubuntu-caption-target-width: 32px;
+  --ubuntu-caption-circle-size: 20px;
+  --ubuntu-workspace-min-width: 620px;
 }

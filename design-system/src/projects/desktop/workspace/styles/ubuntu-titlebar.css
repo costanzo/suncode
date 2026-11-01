@@ -1,0 +1,90 @@
+.workspace-titlebar-specimen {
+  display: grid;
+  gap: var(--space-3);
+}
+.ubuntu-workspace-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.ubuntu-workspace-preview {
+  min-width: var(--ubuntu-workspace-min-width);
+  container-type: inline-size;
+}
+.ubuntu-workspace-preview.is-minimum {
+  width: var(--ubuntu-workspace-min-width);
+}
+.workspace-window.is-ubuntu {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.workspace-titlebar.is-ubuntu {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  height: var(--ubuntu-titlebar-height);
+  min-height: var(--ubuntu-titlebar-height);
+  padding: 0 var(--space-1);
+}
+.workspace-titlebar.is-ubuntu > .project-switcher {
+  position: relative;
+  top: auto;
+  left: auto;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+}
+.workspace-titlebar.is-ubuntu .project-switcher-trigger {
+  max-width: 100%;
+}
+.workspace-titlebar.is-ubuntu .project-switcher-menu {
+  left: 0;
+}
+.workspace-titlebar.is-ubuntu > .content-switcher {
+  grid-row: 1;
+}
+.workspace-titlebar.is-ubuntu .content-switcher-trigger {
+  max-width: 100%;
+}
+.workspace-titlebar.is-ubuntu > .workspace-titlebar-actions {
+  grid-row: 1;
+  align-items: center;
+  gap: var(--space-2);
+}
+.workspace-titlebar.is-ubuntu.is-inactive {
+  color: var(--text-muted);
+}
+.workspace-titlebar.is-ubuntu.is-inactive .project-switcher-trigger,
+.workspace-titlebar.is-ubuntu.is-inactive .content-switcher-trigger {
+  color: var(--text-muted);
+}
+.ubuntu-titlebar-feedback {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.ubuntu-caption-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+}
+.ubuntu-caption-state {
+  display: grid;
+  gap: var(--space-1);
+}
+.ubuntu-caption-state > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+@container (max-width: 1100px) {
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-review,
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-child-sessions {
+    display: none;
+  }
+}
+@container (max-width: 860px) {
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-sessions,
+  .workspace-window.is-ubuntu .workspace-main-row > .workspace-explorer {
+    display: none;
+  }
+}
