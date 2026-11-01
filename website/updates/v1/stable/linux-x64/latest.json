@@ -1,0 +1,55 @@
+{
+  "signed": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "channel": "stable",
+    "target": "linux-x64",
+    "publishedAt": "2026-11-01T10:02:21.691Z",
+    "expiresAt": "2026-11-08T10:02:21.691Z",
+    "components": {
+      "desktop": {
+        "version": "0.1.0",
+        "publishedAt": "2026-11-01T10:02:21.691Z",
+        "package": {
+          "url": "https://suncode.ai/updates/releases/linux-x64/desktop/0.1.0.tar.gz",
+          "format": "tar.gz",
+          "sizeBytes": 1,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "releaseNotes": {
+          "en-US": "First release.",
+          "zh-CN": "First release."
+        },
+        "requiredSdkAbi": 27
+      },
+      "sdk": {
+        "version": "0.1.0",
+        "publishedAt": "2026-11-01T10:02:21.691Z",
+        "package": {
+          "url": "https://suncode.ai/updates/releases/linux-x64/sdk/0.1.0.tar.gz",
+          "format": "tar.gz",
+          "sizeBytes": 1,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "releaseNotes": {
+          "en-US": "First release.",
+          "zh-CN": "First release."
+        },
+        "abi": 27
+      }
+    },
+    "compatiblePairs": [
+      {
+        "desktop": "0.1.0",
+        "sdk": "0.1.0"
+      }
+    ]
+  },
+  "signatures": [
+    {
+      "keyId": "release-20261101-a16ba224",
+      "algorithm": "Ed25519",
+      "value": "Znda0BsEGsKhyV6J36vYXAHaAPIV1knPAsNhsZF-hGJP0HTrOeCUSbLGE03Tc4_0e8lI6rY22S9-W7-ZiRPfAg"
+    }
+  ]
+}

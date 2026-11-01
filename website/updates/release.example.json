@@ -1,0 +1,32 @@
+{
+  "target": "osx-arm64",
+  "revision": 1,
+  "components": {
+    "desktop": {
+      "version": "0.1.0",
+      "requiredSdkAbi": 27,
+      "publishedAt": "2026-11-01T00:00:00Z",
+      "archive": "/replace-with-real-release/desktop-0.1.0-osx-arm64.tar.gz",
+      "releaseNotes": {
+        "en-US": "First release.",
+        "zh-CN": "First release."
+      }
+    },
+    "sdk": {
+      "version": "0.1.0",
+      "abi": 27,
+      "publishedAt": "2026-11-01T00:00:00Z",
+      "archive": "/replace-with-real-release/sdk-0.1.0-osx-arm64.tar.gz",
+      "releaseNotes": {
+        "en-US": "First release.",
+        "zh-CN": "First release."
+      }
+    }
+  },
+  "compatiblePairs": [
+    {
+      "desktop": "0.1.0",
+      "sdk": "0.1.0"
+    }
+  ]
+}

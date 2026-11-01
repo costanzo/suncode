@@ -1,4 +1,16 @@
 {
   "schemaVersion": 1,
-  "enabled": false
+  "enabled": false,
+  "channel": "stable",
+  "catalogOrigin": "https://suncode.ai",
+  "downloadOrigins": [
+    "https://suncode.ai"
+  ],
+  "publicKeys": [
+    {
+      "id": "release-20261101-a16ba224",
+      "publicKey": "R3VzupYbF27VqyTWFowp_xX6X0tFSJ_Ko2pw-fM0kcM",
+      "revoked": false
+    }
+  ]
 }

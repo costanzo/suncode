@@ -6,6 +6,29 @@ namespace SunCode.Desktop.Tests.Updates;
 public sealed class UpdateTransportTests
 {
     [Theory]
+    [InlineData("win-x64")]
+    [InlineData("win-arm64")]
+    [InlineData("osx-x64")]
+    [InlineData("osx-arm64")]
+    [InlineData("linux-x64")]
+    [InlineData("linux-arm64")]
+    public async Task PackagedDistributionUsesSunCodeUpdatePathForEachTarget(string target)
+    {
+        using var f = new UpdateFixture();
+        var configured = UpdateJson.Read<UpdateDistribution>(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "update-distribution.json")));
+        Assert.False(configured.Enabled);
+        Assert.True(configured.AllowsDownload(new Uri("https://suncode.ai/updates/releases/0.1.0/sdk.zip")));
+        Assert.False(configured.AllowsDownload(new Uri("https://other.example/sdk.zip")));
+        using var client = new UpdateTransport(configured with { Enabled = true }, f.Store, new(target, "99.0", null), f.Handler, f.Time);
+        f.Handler.Respond = (request, _) =>
+        {
+            Assert.Equal($"https://suncode.ai/updates/v1/stable/{target}/latest.json", request.RequestUri!.AbsoluteUri);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        };
+        Assert.Equal("check_failed", (await Assert.ThrowsAsync<UpdateException>(() => client.CheckAsync(default))).Code);
+        Assert.Equal(1, f.Handler.Requests);
+    }
+    [Theory]
     [InlineData(false, "catalog_expired")]
     [InlineData(true, "clock_invalid")]
     public async Task UnusableAuthenticatedTimesStillPersistRevisionBeforeRejectingReplay(bool future, string code)

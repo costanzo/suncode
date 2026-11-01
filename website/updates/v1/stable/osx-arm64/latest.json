@@ -1,0 +1,55 @@
+{
+  "signed": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "channel": "stable",
+    "target": "osx-arm64",
+    "publishedAt": "2026-11-01T10:02:21.691Z",
+    "expiresAt": "2026-11-08T10:02:21.691Z",
+    "components": {
+      "desktop": {
+        "version": "0.1.0",
+        "publishedAt": "2026-11-01T10:02:21.691Z",
+        "package": {
+          "url": "https://suncode.ai/updates/releases/osx-arm64/desktop/0.1.0.tar.gz",
+          "format": "tar.gz",
+          "sizeBytes": 1,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "releaseNotes": {
+          "en-US": "First release.",
+          "zh-CN": "First release."
+        },
+        "requiredSdkAbi": 27
+      },
+      "sdk": {
+        "version": "0.1.0",
+        "publishedAt": "2026-11-01T10:02:21.691Z",
+        "package": {
+          "url": "https://suncode.ai/updates/releases/osx-arm64/sdk/0.1.0.tar.gz",
+          "format": "tar.gz",
+          "sizeBytes": 1,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "releaseNotes": {
+          "en-US": "First release.",
+          "zh-CN": "First release."
+        },
+        "abi": 27
+      }
+    },
+    "compatiblePairs": [
+      {
+        "desktop": "0.1.0",
+        "sdk": "0.1.0"
+      }
+    ]
+  },
+  "signatures": [
+    {
+      "keyId": "release-20261101-a16ba224",
+      "algorithm": "Ed25519",
+      "value": "gt62_Sm-5JdZYUG59TLyyrfGwrps-6U3nhhAxLkGYhe6TNVtNjO5Su6Mg3wm7uO2pkYqETynm7IWM4frN8wyBw"
+    }
+  ]
+}

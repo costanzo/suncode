@@ -2,11 +2,14 @@
   "name": "@suncode/official-website",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:updates": "node --experimental-strip-types --test tests/updates.test.ts",
+    "updates:publish": "node --experimental-strip-types scripts/publish-updates.ts"
   },
   "dependencies": {
     "lucide-react": "latest",

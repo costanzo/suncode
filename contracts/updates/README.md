@@ -1,6 +1,6 @@
 # Desktop component update protocol
 
-Status: v1 contract with a focused-tested Avalonia C# client. Production delivery is disabled: publisher/initial-installer integration, deployment origins and trust keys, platform-signed release packages, and installed OS conformance remain release work. The design-system specimen and client implementation do not claim a deployed update service.
+Status: v1 contract with a focused-tested Avalonia C# client, Next.js catalog route, and offline signed publisher. Production delivery remains disabled: real component archives, deployed signed catalogs, platform signing configuration, initial-installer integration, and installed OS conformance remain release work. The configured origin and pinned public key do not claim a deployed update release.
 
 [`updates.openapi.yaml`](updates.openapi.yaml) is the normative HTTP/schema description, using [OpenAPI 3.2.1](https://spec.openapis.org/oas/v3.2.1.html), the latest published version checked on 2026-11-01. This document supplies the normative rules that schemas cannot express. Contracts and eventual C# DTOs are hand-written; no code is generated.
 
@@ -21,12 +21,12 @@ The CLI embeds the Rust facade directly and is not updated by this protocol. Ful
 
 ```http
 GET /updates/v1/stable/win-x64/latest.json HTTP/1.1
-Host: updates.suncode.example
+Host: suncode.ai
 Accept: application/json
 If-None-Match: "stable-win-x64-42"
 ```
 
-The origin is illustrative, not a deployed service. It is configured by the installed Desktop distribution, never supplied by a project, model, or provider. The URL selects the release channel and **running process/native-library target**, including architecture under emulation. Known targets are `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, and `linux-arm64`; listing a target does not claim that a build is published. v1 supports `stable` only. No installed version, project path, user identifier, API key, cookie, or SDK handle is sent.
+The distribution uses `https://suncode.ai/updates` as its update root: `catalogOrigin` is `https://suncode.ai`, and the client appends `/updates/v1/{channel}/{target}/latest.json`. This configuration does not claim that signed catalogs are deployed. The origin is configured by the installed Desktop distribution, never supplied by a project, model, or provider. The URL selects the release channel and **running process/native-library target**, including architecture under emulation. Known targets are `win-x64`, `win-arm64`, `osx-x64`, `osx-arm64`, `linux-x64`, and `linux-arm64`; listing a target does not claim that a build is published. v1 supports `stable` only. No installed version, project path, user identifier, API key, cookie, or SDK handle is sent.
 
 - **200:** A signed catalog, even if both installed versions already match. The client derives update availability locally; there is no server-computed `updateAvailable` field.
 - **304:** No body. Use only a previously verified catalog for the exact origin and request path after checking trust, expiry, and publication revision again. Recompute the plan because installed versions may have changed. If no usable cache exists, retry once without `If-None-Match`; failure to obtain a valid 200 remains a failed check. A 304 never extends signed expiry or directly means Up to date.
@@ -86,4 +86,4 @@ Retain the previous usable binary combination, but restore it only when compatib
 
 ## Validation and implementation conformance
 
-Validate the OpenAPI document with the official [3.2 JSON Schema](https://spec.openapis.org/oas/3.2/schema/2026-08-30) and all examples against their referenced schemas. JSON Schema cannot verify signatures, cross-field pairs, numeric version parts, time ordering, or local plan selection. C# tests under `apps/desktop-avalonia/tests/Updates/` exercise these client rules and startup/extraction/state behavior; the client source README records coverage and remaining release checks. Publisher and initial-installer conformance, native signed-package application, and platform recovery must also be verified against this contract. Fixture, headless, and preflight tests alone do not claim production distribution conformance.
+Validate the OpenAPI document with the official [3.2 JSON Schema](https://spec.openapis.org/oas/3.2/schema/2026-08-30) and all examples against their referenced schemas. JSON Schema cannot verify signatures, cross-field pairs, numeric version parts, time ordering, or local plan selection. C# tests under `apps/desktop-avalonia/tests/Updates/` exercise these client rules and startup/extraction/state behavior; the client source README records coverage and remaining release checks. The Next.js route and offline publisher under `website/` have focused tests; see `website/updates/README.md` for real-archive publication and renewal. Initial-installer conformance, native signed-package application, and platform recovery must also be verified against this contract. Fixture, headless, and preflight tests alone do not claim production distribution conformance.
