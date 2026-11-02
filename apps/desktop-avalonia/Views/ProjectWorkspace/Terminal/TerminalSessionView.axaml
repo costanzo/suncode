@@ -9,7 +9,6 @@
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             AutoScroll="True"
-                            FontFamilyName="JetBrains Mono"
                             TerminalFontSize="9"
                             ScrollbackLimit="10000"
                             Padding="0" />

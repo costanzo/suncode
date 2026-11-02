@@ -116,7 +116,7 @@
   height: calc(var(--workspace-terminal-height) - 37px);
   min-height: calc(var(--workspace-terminal-min-height) - 37px);
   background: var(--terminal-canvas);
-  font: 11px/1.55 var(--font-mono);
+  font: 11px/1.55 var(--font-terminal);
 }
 
 .workspace-terminal-output {

@@ -10,6 +10,7 @@ const promptLines = [
 ];
 
 export function TerminalPanel({ onClose, standalone = false, state = "running" }) {
+  const fontPlatform = /Mac/i.test(navigator.platform) ? "macos" : /Win/i.test(navigator.platform) ? "windows" : "linux";
   const [command, setCommand] = useState("");
   const [activeTab, setActiveTab] = useState("zsh");
   const [restarted, setRestarted] = useState(false);
@@ -26,6 +27,7 @@ export function TerminalPanel({ onClose, standalone = false, state = "running" }
     <section
       className={`workspace-drawer workspace-terminal ${standalone ? "is-standalone" : ""} is-${state}`}
       aria-label="Terminal"
+      style={{ "--font-terminal": `var(--font-terminal-${fontPlatform})` }}
     >
       <header className="workspace-terminal-header">
         <div className="workspace-terminal-tabs" role="tablist" aria-label="Terminal sessions">

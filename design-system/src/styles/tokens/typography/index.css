@@ -3,6 +3,9 @@
     "Noto Sans", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial,
     sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --font-terminal-macos: Menlo, Monaco, Courier, monospace;
+  --font-terminal-windows: Consolas, "Cascadia Mono", "Courier New", monospace;
+  --font-terminal-linux: "DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", monospace;
   --conversation-caption-size: 11px;
   --conversation-queue-size: 12px;
   --conversation-queue-preview-lines: 2;

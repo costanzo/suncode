@@ -39,6 +39,7 @@ public sealed class TerminalLayoutTests(AvaloniaUiFixture ui)
             Assert.True(terminal.Bounds.Width > 0);
             Assert.True(terminal.Bounds.Height > 0);
             Assert.Equal(1, resolutions);
+            Assert.True(terminal.Renderer!.GlyphCache.RegularTypeface.IsFixedPitch);
         }
         finally { session.RequestStop(); window.Close(); pending.TrySetCanceled(); }
     });

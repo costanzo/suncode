@@ -5,12 +5,35 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using RoyalTerminal.Terminal;
 using RoyalTerminal.Terminal.Theming;
+using SkiaSharp;
 using SunCode.Desktop.ViewModels;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Terminal;
 
 public sealed partial class TerminalSessionView : UserControl
 {
+    private static readonly Lazy<string> SystemTerminalFont = new(ResolveSystemTerminalFont);
+
+    private static string ResolveSystemTerminalFont()
+    {
+        string[] preferred = OperatingSystem.IsMacOS()
+            ? ["Menlo", "Monaco", "Courier"]
+            : OperatingSystem.IsWindows()
+                ? ["Consolas", "Cascadia Mono", "Courier New"]
+                : ["DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono"];
+        using var manager = SKFontManager.CreateDefault();
+        var installed = manager.FontFamilies.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Check installed families first: a missing name can silently match a
+        // proportional system default. Fall back only to another fixed-pitch face.
+        foreach (var family in preferred.Concat(installed.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)))
+        {
+            if (!installed.Contains(family)) continue;
+            using var face = manager.MatchFamily(family, SKFontStyle.Normal);
+            if (face?.IsFixedPitch == true) return face.FamilyName;
+        }
+        throw new InvalidOperationException("No system monospace font is available. Install a monospace font and restart SunCode.");
+    }
+
     // ANSI order: black, red, green, yellow, blue, magenta, cyan, white,
     // followed by their bright variants. Keep aligned with DESIGN.md and the terminal specimen.
     private static readonly TerminalTheme LightTheme = TerminalTheme.FromBase16(
@@ -89,6 +112,7 @@ public sealed partial class TerminalSessionView : UserControl
         await _launchGate.WaitAsync();
         try
         {
+            Terminal.FontFamilyName = SystemTerminalFont.Value;
             var shell = await (session.ResolveShellAsync?.Invoke() ?? throw new InvalidOperationException("Terminal shell resolver is unavailable"));
             if (generation != _generation || !ReferenceEquals(session, _session)) return;
             session.ShellLabel = shell.Family == "powershell" ? "PowerShell" : shell.Family;
