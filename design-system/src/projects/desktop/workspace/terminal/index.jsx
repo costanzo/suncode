@@ -9,7 +9,7 @@ const guides = {
     tabs: {
       actions: ["Enter a command in the focused prompt.", "Use the tab and restart controls from the toolbar."],
       style: ["The drawer uses a 36px header and a dense monospace viewport.", "Output and the active prompt share one reading column."],
-      logic: ["The shell belongs to the desktop client and is independent from Agent sessions.", "The project root is the default working directory."],
+      logic: ["The shell belongs to the desktop client and is independent from Agent sessions.", "The project root is the default working directory.", "New and restarted shells use the measured visible grid; wrapping follows the current viewport through startup and resize."],
     },
   },
   empty: {

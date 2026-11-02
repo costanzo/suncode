@@ -5,7 +5,7 @@ import { Icon } from "../../../../../shared/Icon.jsx";
 import { IconButton } from "../../shared/IconButton.jsx";
 
 const promptLines = [
-  { prompt: "~/Projects/suncode", command: "git status --short", output: " M design-system/src/projects/desktop/workspace" },
+  { prompt: "~/Projects/suncode", command: "git status --short", output: " M design-system/src/projects/desktop/workspace", outputColor: 9 },
   { prompt: "~/Projects/suncode", command: "dotnet test apps/desktop-avalonia/tests", output: "Passed · 42 tests" },
 ];
 
@@ -89,11 +89,28 @@ export function TerminalPanel({ onClose, standalone = false, state = "running" }
               <div className="workspace-terminal-entry" key={line.command}>
                 <div className="workspace-terminal-command">
                   <span className="workspace-terminal-prompt">{line.prompt} %</span>
-                  <code>{line.command}</code>
+                  <code>
+                    <span style={{ color: "var(--terminal-ansi-11)" }}>{line.command.split(" ")[0]}</span>
+                    {line.command.slice(line.command.indexOf(" "))}
+                  </code>
                 </div>
-                <code className="workspace-terminal-result">{line.output}</code>
+                <code
+                  className="workspace-terminal-result"
+                  style={line.outputColor === undefined ? undefined : { color: `var(--terminal-ansi-${line.outputColor})` }}
+                >
+                  {line.output}
+                </code>
               </div>
             ))}
+            {standalone && (
+              <div className="workspace-terminal-palette" aria-label="ANSI text colors, normal then bright">
+                {Array.from({ length: 16 }, (_, index) => (
+                  <span key={index} style={{ color: `var(--terminal-ansi-${index})` }}>
+                    {["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"][index % 8]}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <form className="workspace-terminal-input" onSubmit={handleSubmit}>
             <span className="workspace-terminal-prompt">~/Projects/suncode %</span>

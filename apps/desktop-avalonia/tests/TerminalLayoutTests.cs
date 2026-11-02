@@ -17,6 +17,60 @@ namespace SunCode.Desktop.Tests;
 [Collection("Avalonia UI")]
 public sealed class TerminalLayoutTests(AvaloniaUiFixture ui)
 {
+    [Fact]
+    public Task ShellStartupWaitsForVisibleMeasuredLayout() => ui.Run(() =>
+    {
+        var resolutions = 0;
+        var pending = new TaskCompletionSource<ResolvedShell>();
+        using var session = new TerminalSessionViewModel("deferred", Path.GetTempPath())
+        {
+            ResolveShellAsync = () => { resolutions++; return pending.Task; }
+        };
+        var view = new TerminalSessionView { DataContext = session };
+        var container = new Border { IsVisible = false, Child = view };
+        var window = new Window { Width = 620, Height = 180, Content = container };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, resolutions);
+            container.IsVisible = true;
+            window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
+            var terminal = view.FindControl<TerminalControl>("Terminal")!;
+            Assert.True(terminal.Bounds.Width > 0);
+            Assert.True(terminal.Bounds.Height > 0);
+            Assert.Equal(1, resolutions);
+        }
+        finally { session.RequestStop(); window.Close(); pending.TrySetCanceled(); }
+    });
+
+    [Theory]
+    [InlineData("exited")]
+    [InlineData("error")]
+    public Task LayoutChangesDoNotRestartEndedShells(string state) => ui.Run(() =>
+    {
+        var resolutions = 0;
+        var pending = new TaskCompletionSource<ResolvedShell>();
+        using var session = new TerminalSessionViewModel("ended", Path.GetTempPath())
+        {
+            State = state,
+            ResolveShellAsync = () => { resolutions++; return pending.Task; }
+        };
+        var view = new TerminalSessionView { DataContext = session };
+        var window = new Window { Width = 620, Height = 180, Content = view };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            window.Width = 1100;
+            window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, resolutions);
+            Assert.Equal(state, session.State);
+            session.RequestRestart(); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, resolutions);
+            Assert.Equal("starting", session.State);
+        }
+        finally { session.RequestStop(); window.Close(); pending.TrySetCanceled(); }
+    });
+
     [Theory]
     [InlineData(620, 180, false)]
     [InlineData(1100, 280, true)]

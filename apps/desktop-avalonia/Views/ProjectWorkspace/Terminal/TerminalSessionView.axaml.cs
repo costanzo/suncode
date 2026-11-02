@@ -1,16 +1,36 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using RoyalTerminal.Terminal;
+using RoyalTerminal.Terminal.Theming;
 using SunCode.Desktop.ViewModels;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Terminal;
 
 public sealed partial class TerminalSessionView : UserControl
 {
+    // ANSI order: black, red, green, yellow, blue, magenta, cyan, white,
+    // followed by their bright variants. Keep aligned with DESIGN.md and the terminal specimen.
+    private static readonly TerminalTheme LightTheme = TerminalTheme.FromBase16(
+        new uint[]
+        {
+            0xFF26313A, 0xFFB42318, 0xFF287667, 0xFF805B00,
+            0xFF245EAD, 0xFF8A3FA0, 0xFF006B78, 0xFF4B5563,
+            0xFF65717D, 0xFFC12D22, 0xFF216E39, 0xFF856000,
+            0xFF245EAD, 0xFF8A3FA0, 0xFF006B78, 0xFF26313A,
+        },
+        defaultForeground: 0xFF26313A,
+        defaultBackground: 0xFFF2F5F7,
+        cursorColor: 0xFF26313A,
+        selectionForeground: 0xFF26313A,
+        selectionBackground: 0xFFBAC6D0);
+
+    private static readonly TerminalTheme DarkTheme = TerminalTheme.Dark
+        .WithDefaultBackground(0xFF0D1115)
+        .WithDefaultForeground(0xFFD9E0E6);
+
     private TerminalSessionViewModel? _session;
     private bool _started;
     private bool _stopping;
@@ -22,6 +42,8 @@ public sealed partial class TerminalSessionView : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) => BindSession();
         AttachedToVisualTree += (_, _) => QueueStartSession();
+        Terminal.SizeChanged += (_, _) => QueueStartSession();
+        Terminal.EffectiveViewportChanged += (_, _) => QueueStartSession();
         ActualThemeVariantChanged += (_, _) => QueueApplyTheme();
         Terminal.ProcessExited += ProcessExited;
     }
@@ -49,14 +71,17 @@ public sealed partial class TerminalSessionView : UserControl
     private void ApplyTheme()
     {
         var dark = ActualThemeVariant == ThemeVariant.Dark;
-        Terminal.DefaultBackground = Color.Parse(dark ? "#0D1115" : "#F2F5F7");
-        Terminal.DefaultForeground = Color.Parse(dark ? "#D9E0E6" : "#26313A");
+        Terminal.Theme = dark ? DarkTheme : LightTheme;
         Terminal.VtProcessorPreference = VtProcessorPreference.Managed;
     }
 
     private async void StartSession()
     {
-        if (_started || _session is null || string.IsNullOrWhiteSpace(_session.WorkingDirectory)) return;
+        if (_started || _session is null || _session.HasExited || string.IsNullOrWhiteSpace(_session.WorkingDirectory)) return;
+        if (VisualRoot is null || !Terminal.IsEffectivelyVisible) return;
+        Terminal.UpdateLayout();
+        // Hidden/restored tabs may be attached before their first measured layout.
+        if (!Terminal.IsArrangeValid || Terminal.Bounds.Width <= 0 || Terminal.Bounds.Height <= 0) return;
         _started = true;
         _session.State = "starting";
         var session = _session;
@@ -68,13 +93,20 @@ public sealed partial class TerminalSessionView : UserControl
             if (generation != _generation || !ReferenceEquals(session, _session)) return;
             session.ShellLabel = shell.Family == "powershell" ? "PowerShell" : shell.Family;
             ApplyTheme();
+            Terminal.UpdateLayout();
+            var dimensions = GetSessionDimensions();
             var options = new PtyTransportOptions(
                 Command: new TerminalCommandSpec(FileName: shell.Path, Arguments: shell.InteractiveArgs.ToArray()),
                 WorkingDirectory: _session.WorkingDirectory,
                 Environment: null,
-                Dimensions: new TerminalSessionDimensions(120, 36, 960, 576));
+                Dimensions: dimensions);
             await Terminal.StartSessionAsync(options);
             if (generation != _generation || !ReferenceEquals(session, _session)) { Terminal.StopPty(); return; }
+            // A layout resize during asynchronous transport startup can precede the
+            // active PTY. Reconcile that gap; RoyalTerminal owns subsequent resizes.
+            Terminal.UpdateLayout();
+            if (Terminal.Columns != dimensions.Columns || Terminal.Rows != dimensions.Rows)
+                Terminal.Pty?.Resize(Terminal.Columns, Terminal.Rows);
             session.State = "running";
         }
         catch (Exception exception)
@@ -82,6 +114,16 @@ public sealed partial class TerminalSessionView : UserControl
             if (generation == _generation && ReferenceEquals(session, _session)) { session.State = "error"; session.ErrorMessage = exception.Message; _started = false; }
         }
         finally { _launchGate.Release(); }
+    }
+
+    private TerminalSessionDimensions GetSessionDimensions()
+    {
+        var renderer = Terminal.Renderer ?? throw new InvalidOperationException("Terminal renderer is unavailable");
+        return new TerminalSessionDimensions(
+            Terminal.Columns,
+            Terminal.Rows,
+            Math.Max(1, (int)Math.Round(Terminal.Columns * renderer.CellWidth)),
+            Math.Max(1, (int)Math.Round(Terminal.Rows * renderer.CellHeight)));
     }
 
     private void ProcessExited(object? sender, int exitCode)
@@ -111,6 +153,7 @@ public sealed partial class TerminalSessionView : UserControl
     private void Restart() => Dispatcher.UIThread.Post(() =>
     {
         StopSession();
+        if (_session is not null) _session.State = "starting";
         StartSession();
     });
 }

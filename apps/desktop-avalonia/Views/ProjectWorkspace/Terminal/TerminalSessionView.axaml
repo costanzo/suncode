@@ -10,7 +10,7 @@
                             VerticalAlignment="Stretch"
                             AutoScroll="True"
                             FontFamilyName="JetBrains Mono"
-                            TerminalFontSize="12"
+                            TerminalFontSize="9"
                             ScrollbackLimit="10000"
                             Padding="0" />
     <Border IsVisible="{Binding HasError}" Background="{DynamicResource CanvasBrush}" Padding="16">

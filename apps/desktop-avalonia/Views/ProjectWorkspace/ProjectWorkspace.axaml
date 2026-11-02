@@ -280,7 +280,7 @@
               <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveToolActivityVisible}">
                 <review:ToolActivityViewer x:Name="ToolActivityViewer" VerticalAlignment="Stretch" />
               </Border>
-              <Border Classes="terminal-drawer" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveTerminalVisible}">
+              <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveTerminalVisible}">
                 <terminal:TerminalPanel x:Name="TerminalPanel" VerticalAlignment="Stretch" />
               </Border>
             </Grid>

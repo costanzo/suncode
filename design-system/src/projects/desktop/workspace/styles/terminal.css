@@ -132,6 +132,12 @@
   margin-bottom: 11px;
 }
 
+.workspace-terminal-palette {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px 8px;
+}
+
 .workspace-terminal-command {
   display: flex;
   gap: 8px;

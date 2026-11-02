@@ -1,5 +1,21 @@
 :root {
   color-scheme: dark;
+  --terminal-ansi-0: #000000;
+  --terminal-ansi-1: #cd0000;
+  --terminal-ansi-2: #00cd00;
+  --terminal-ansi-3: #cdcd00;
+  --terminal-ansi-4: #0000ee;
+  --terminal-ansi-5: #cd00cd;
+  --terminal-ansi-6: #00cdcd;
+  --terminal-ansi-7: #e5e5e5;
+  --terminal-ansi-8: #7f7f7f;
+  --terminal-ansi-9: #ff0000;
+  --terminal-ansi-10: #00ff00;
+  --terminal-ansi-11: #ffff00;
+  --terminal-ansi-12: #5c5cff;
+  --terminal-ansi-13: #ff00ff;
+  --terminal-ansi-14: #00ffff;
+  --terminal-ansi-15: #ffffff;
   --canvas: #0d0f12;
   --surface: #121519;
   --surface-raised: #181c21;

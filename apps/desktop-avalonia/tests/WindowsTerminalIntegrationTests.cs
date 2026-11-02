@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -69,6 +70,81 @@ public sealed class WindowsTerminalIntegrationTests(AvaloniaUiFixture ui)
             }
             finally { model.RequestStop(); window.Close(); }
         });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task DesktopShellGridMatchesLayoutOnStartResizeAndRestart(bool powerShell7, bool delayedResolution)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var path = powerShell7 ? (await PowerShellDiscovery.FindAsync(default))?.Shell?.Path : ShellResolver.SystemPath(false);
+        if (path is null) return;
+        await ui.Run(async () =>
+        {
+            var resolved = new ResolvedShell(path, "powershell", powerShell7 ? "7" : "5.1", Arguments);
+            var pending = new TaskCompletionSource<ResolvedShell>();
+            using var model = new TerminalSessionViewModel("grid", Path.GetTempPath())
+            {
+                ResolveShellAsync = () => delayedResolution ? pending.Task : Task.FromResult(resolved)
+            };
+            var view = new TerminalSessionView { DataContext = model };
+            var window = new Window { Width = 1400, Height = 300, Content = view };
+            var terminal = Assert.IsType<TerminalControl>(view.FindControl<TerminalControl>("Terminal"));
+            var output = new TerminalOutput();
+            terminal.DataReceived += (_, args) => output.Append(args.Data.Span);
+            try
+            {
+                window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                if (delayedResolution)
+                {
+                    window.Width = 1600;
+                    window.UpdateLayout();
+                    pending.SetResult(resolved);
+                }
+                await output.Prompt.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                await AssertShellGridAsync(terminal, 1);
+
+                window.Width = 620;
+                window.Height = 240;
+                window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
+                await AssertShellGridAsync(terminal, 2);
+
+                var restarted = new TerminalOutput();
+                terminal.DataReceived += (_, args) => restarted.Append(args.Data.Span);
+                model.RequestRestart(); Dispatcher.UIThread.RunJobs();
+                await restarted.Prompt.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                await AssertShellGridAsync(terminal, 3);
+            }
+            finally { model.RequestStop(); window.Close(); pending.TrySetCanceled(); }
+        });
+    }
+
+    private static async Task AssertShellGridAsync(TerminalControl terminal, int sequence)
+    {
+        var result = new TaskCompletionSource<(int Columns, int Rows, int BufferColumns)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var text = new StringBuilder();
+        // A unique marker excludes command echo and repaint of earlier query results.
+        var pattern = new Regex($@"SCGrid{sequence}:(\d+),(\d+),(\d+)");
+        void OnData(object? sender, TerminalDataEventArgs args)
+        {
+            lock (text)
+            {
+                text.Append(Encoding.UTF8.GetString(args.Data.Span));
+                var match = pattern.Match(text.ToString());
+                if (match.Success) result.TrySetResult((int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value), int.Parse(match.Groups[3].Value)));
+            }
+        }
+        terminal.DataReceived += OnData;
+        try
+        {
+            terminal.SendInput($"Write-Output ('SCGrid{sequence}:' + [Console]::WindowWidth + ',' + [Console]::WindowHeight + ',' + [Console]::BufferWidth)\r");
+            var actual = await result.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(terminal.Columns, actual.Columns);
+            Assert.Equal(terminal.Rows, actual.Rows);
+            Assert.Equal(terminal.Columns, actual.BufferColumns);
+        }
+        finally { terminal.DataReceived -= OnData; }
     }
 
     private sealed class TerminalOutput
