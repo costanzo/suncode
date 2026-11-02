@@ -14,12 +14,6 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.ProjectWorkspace"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
-    <Style Selector="Border.terminal-drawer">
-      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,1,0,0" />
-      <Setter Property="CornerRadius" Value="0" />
-    </Style>
     <Style Selector="TextBox.expanded-composer-input:focus">
       <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
