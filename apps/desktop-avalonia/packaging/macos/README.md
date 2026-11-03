@@ -39,3 +39,5 @@ Sign native Mach-O leaves before the app envelope, applying hardened runtime and
 `SUNCODE_UPDATE_DISTRIBUTION_FILE` selects an existing Desktop update configuration. Managed updates additionally require the correct `macTeamId`, signed independent archives and a trusted initial receipt; a signed DMG does not enroll an unmanaged baseline.
 
 Only static Bash/XML/workflow/whitespace inspection was performed on Windows. No native build, notarization request, DMG mount, installed startup/JIT, notification activation or uninstall was executed. The manual CI workflow was not triggered. Native release validation remains required.
+
+A subsequent user-reported ARM64 run completed publishing but stopped at architecture validation because `lipo -verify_arch` consumed the trailing input path as another architecture name. The script now passes the input file before `-verify_arch`. This correction has static verification only; a complete native DMG run remains unverified.

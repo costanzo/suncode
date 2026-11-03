@@ -32,7 +32,9 @@ app="$packaging_publish/SunCode.app"
 native_arch=x86_64
 [[ "$packaging_arch" != arm64 ]] || native_arch=arm64
 for binary in SunCode libsuncode_agent.dylib libcoreclr.dylib libhostfxr.dylib libsuncode_notifications.dylib; do
-  lipo -verify_arch "$native_arch" "$app/Contents/MacOS/$binary"
+  # -verify_arch consumes all following arguments as architecture names.
+  # Put the input first so its path cannot be parsed as another architecture.
+  lipo "$app/Contents/MacOS/$binary" -verify_arch "$native_arch"
 done
 for key in CFBundleShortVersionString CFBundleVersion; do
   [[ "$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/Contents/Info.plist")" == "$packaging_version" ]] || packaging_fail "bundle $key does not match Desktop version"

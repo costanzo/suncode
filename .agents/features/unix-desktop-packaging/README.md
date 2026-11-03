@@ -1,6 +1,6 @@
 # macOS and Linux desktop packaging
 
-Status: Packaging source implemented and statically inspected on Windows. Native builds, installed behavior and signing/notarization have not been executed or verified.
+Status: Packaging source implemented and statically inspected on Windows. A user-reported macOS ARM64 run completed native publishing, then stopped at an incorrect `lipo -verify_arch` argument order; the input now precedes that variadic option. Complete native packaging, installed behavior and release signing/notarization remain unverified.
 
 `scripts/package-macos.sh` and `scripts/package-linux.sh` share Bash 3.2-compatible host/version/publish/checksum validation. They require native OS/architecture and matching Rust host toolchains, include .NET and the Rust SDK, exclude CEF/CLI, check native payload architecture and write ignored version/RID-scoped artifacts.
 
