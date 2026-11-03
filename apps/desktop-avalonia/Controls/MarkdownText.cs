@@ -8,6 +8,8 @@ namespace SunCode.Desktop.Controls;
 
 public sealed class MarkdownText : ContentControl
 {
+    static MarkdownText() => MarkdownRendering.Initialize();
+
     public static readonly StyledProperty<string?> MarkdownProperty =
         AvaloniaProperty.Register<MarkdownText, string?>(nameof(Markdown));
     public static readonly StyledProperty<bool> IsSecondaryProperty =

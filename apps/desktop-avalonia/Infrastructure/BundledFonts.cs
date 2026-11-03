@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Fonts;
 
 namespace SunCode.Desktop.Infrastructure;
@@ -9,7 +10,10 @@ internal static class BundledFonts
     private static readonly Uri ResourceRoot = new("avares://SunCode/Assets/fonts", UriKind.Absolute);
 
     internal static AppBuilder UseSunCodeFonts(this AppBuilder builder) =>
-        builder.ConfigureFonts(fontManager =>
+        builder.With(new FontManagerOptions
+        {
+            FontFallbacks = [new FontFallback { FontFamily = new FontFamily("fonts:SunCode#Noto Sans SC") }]
+        }).ConfigureFonts(fontManager =>
         {
             fontManager.AddFontCollection(new EmbeddedFontCollection(CollectionKey, ResourceRoot));
         });

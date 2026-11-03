@@ -903,4 +903,5 @@
   <x:String x:Key="LocUpdatesCheckAgain">再次检查</x:String>
   <x:String x:Key="LocUpdatesWhatsNew">更新内容</x:String>
   <x:String x:Key="LocSoftwareUpdates">软件更新</x:String>
+  <x:String x:Key="LocMarkdownDiagramSource">Mermaid 源码</x:String>
 </ResourceDictionary>

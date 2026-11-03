@@ -1,7 +1,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia">
+        xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
+        xmlns:diagram="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia.Mermaid">
   <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
+  <StyleInclude Source="avares://LiveMarkdown.Avalonia.Mermaid/Styles.axaml" />
   <Style Selector="md|MarkdownRenderer">
     <Setter Property="MaxWidth" Value="Infinity" />
     <!-- Headings -->
@@ -359,5 +361,75 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="12,8" />
     <Setter Property="Margin" Value="0,8" />
+  </Style>
+  <Style Selector="md|MarkdownTextBlock.MathBlock">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="Margin" Value="0,12" />
+  </Style>
+  <Style Selector="md|MarkdownTextBlock.Math.Error, md|MarkdownTextBlock.MathBlock.Error">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+  </Style>
+  <Style Selector="diagram|MermaidPresenter">
+    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="SecondaryForeground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="LineStroke" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="ThickLineStroke" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="DottedLineStroke" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="NodeStroke" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="GroupStroke" Value="{DynamicResource BorderStrongBrush}" />
+    <Setter Property="EdgeLabelStroke" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="NodeFill" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="GroupFill" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="GroupHeaderFill" Value="{DynamicResource FieldBrush}" />
+    <Setter Property="EdgeLabelBackground" Value="{DynamicResource SurfaceBrush}" />
+  </Style>
+  <Style Selector="diagram|PanAndZoom.MermaidBlock">
+    <Setter Property="MaxHeight" Value="480" />
+    <Setter Property="Margin" Value="0,12" />
+  </Style>
+  <Style Selector="Expander.MermaidSource">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    <Setter Property="Margin" Value="0,0,0,12" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel>
+          <ToggleButton x:Name="SourceToggle"
+                        IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                        HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                        Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}"
+                        Background="Transparent" BorderThickness="0" Padding="0,8" MinHeight="30">
+            <ToggleButton.Template>
+              <ControlTemplate>
+                <Border x:Name="SourceFocus" BorderThickness="1" CornerRadius="4" Padding="2">
+                  <ContentPresenter Content="{TemplateBinding Content}" />
+                </Border>
+              </ControlTemplate>
+            </ToggleButton.Template>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Path x:Name="SourceChevron" Width="8" Height="8" Stretch="Uniform"
+                    VerticalAlignment="Center" Fill="{DynamicResource TextMutedBrush}"
+                    Data="M 0,0 L 6,4 L 0,8 Z" />
+              <ContentPresenter Content="{TemplateBinding Header}" />
+            </StackPanel>
+          </ToggleButton>
+          <ContentPresenter IsVisible="{TemplateBinding IsExpanded}" Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Stretch" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Expander.MermaidSource:expanded /template/ Path#SourceChevron">
+    <Setter Property="Data" Value="M 0,0 L 8,0 L 4,6 Z" />
+  </Style>
+  <Style Selector="Expander.MermaidSource /template/ ToggleButton#SourceToggle:focus-visible /template/ Border#SourceFocus">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="Expander.MermaidSource /template/ ToggleButton#SourceToggle:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="md|CodeBlock.MermaidSource">
+    <Setter Property="Margin" Value="0,4,0,12" />
   </Style>
 </Styles>

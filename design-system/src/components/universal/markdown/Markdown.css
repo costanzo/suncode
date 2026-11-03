@@ -1,3 +1,76 @@
+.markdown-math-display {
+  margin-block: var(--space-3);
+  padding-block: var(--space-2);
+  overflow-x: auto;
+  font-size: var(--markdown-display-math-size);
+}
+
+.markdown-math-display math {
+  width: max-content;
+  margin-inline: 0;
+}
+
+.markdown .markdown-secondary,
+.markdown-diagram-source summary {
+  color: var(--text-muted);
+  font-size: var(--conversation-queue-size);
+}
+
+.markdown .markdown-math-error {
+  color: var(--danger);
+}
+
+.markdown-diagram-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.markdown-diagram-states [aria-pressed="true"] {
+  background: var(--surface-active);
+  border-color: var(--border-strong);
+}
+
+.markdown-diagram-viewport {
+  max-height: var(--markdown-diagram-max-height);
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.markdown-diagram-viewport:active {
+  cursor: grabbing;
+}
+
+.markdown-diagram-viewport svg {
+  display: block;
+  width: 100%;
+  fill: var(--surface-inset);
+  stroke: var(--border-strong);
+}
+
+.markdown-diagram-viewport text {
+  fill: var(--text);
+  stroke: none;
+  font-family: var(--font-ui);
+  font-size: var(--conversation-queue-size);
+}
+
+.markdown-diagram-edge {
+  fill: none;
+}
+
+.markdown-diagram-source {
+  margin-block: var(--space-3);
+}
+
+.markdown-diagram-source summary {
+  cursor: pointer;
+  width: fit-content;
+  padding-block: var(--space-2);
+}
+
 .markdown-sample {
   --syntax-comment: #7f8994;
   --syntax-keyword: #9eb9d0;

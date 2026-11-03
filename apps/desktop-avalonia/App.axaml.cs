@@ -32,6 +32,7 @@ public sealed partial class App : Application
 
     public override void Initialize()
     {
+        Controls.MarkdownRendering.Initialize();
         DiagnosticLog.Info("app.initialize", "xaml_load begin");
         AvaloniaXamlLoader.Load(this);
         ConfigureNativeApplicationMenu();

@@ -6,6 +6,7 @@
 
 ## What it contains
 
+- The universal Markdown route includes MathML formula and SVG diagram specimens with complete, streaming, unsupported, source-copy, and constrained-width states. These are review fixtures rather than Markdown parsers; production rendering belongs to Avalonia.
 - One entry point (`index.html` and `src/main.jsx`) with hash routes, so `npm run build` produces a static `dist/index.html` that works from any subpath or opened directly. `dist/` and `node_modules/` are ignored.
 - Five primary layers, switched by name from the upper-right: Core, Components, Platforms, Projects, and Agents. Each layer opens a card index. The left sidebar is a contextual, recursive tree for the active layer only. Every child entry has its own stable route, and parent pages stay as indexes.
 - Universal component specimens under `src/components/universal/<component>/`. Each folder owns its specimen, its styles, and an `index.js` export. Category pages (Actions, Fields, Selection, Surfaces, Overlays, Navigation, Feedback, Data, Markdown) live under `modules/`.

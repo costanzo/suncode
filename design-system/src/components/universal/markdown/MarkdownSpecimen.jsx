@@ -4,6 +4,7 @@ import { Icon } from "../../../shared/Icon.jsx";
 import { Button } from "../button/index.js";
 import markdownSource from "./markdown-specimen.md?raw";
 import "./Markdown.css";
+import { TechnicalMarkdownSpecimen } from "./TechnicalMarkdownSpecimen.jsx";
 
 async function copyText(text) {
   if (navigator.clipboard?.writeText) {
@@ -468,6 +469,8 @@ export function MarkdownSpecimen() {
           {"\n"}
           {"}"}
         </CodeBlock>
+
+        <TechnicalMarkdownSpecimen CodeBlock={CodeBlock} />
 
         <h2>Image</h2>
         <p>Images respect the reading measure and never overflow their container.</p>

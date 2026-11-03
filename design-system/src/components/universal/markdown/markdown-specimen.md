@@ -187,6 +187,39 @@ fi
 }
 ```
 
+## Mathematics
+
+Inline notation stays on the reading baseline: $E=mc^2$. The source accepts both dollar and backslash delimiters.
+
+$$
+x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}
+$$
+
+Secondary messages preserve their quieter size: \(a^2+b^2\).
+
+\[
+S=x_1+x_2+x_3+x_4+x_5+x_6+x_7+x_8+x_9+x_{10}+x_{11}+x_{12}+x_{13}+x_{14}+x_{15}+x_{16}+x_{17}+x_{18}+x_{19}+x_{20}+x_{21}+x_{22}+x_{23}+x_{24}
+\]
+
+Invalid formula source: $\frac{1}{$
+
+A missing native math library keeps the formula source selectable.
+
+## Mermaid
+
+```mermaid
+flowchart LR
+  A[User submission] --> B[Agent turn]
+  B --> C[Review changes]
+```
+
+Unsupported diagram source remains inspectable and copyable:
+
+```mermaid
+unsupportedDiagram
+  A --> B
+```
+
 ## Image
 
 Images respect the reading measure and never overflow their container.
