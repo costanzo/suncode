@@ -64,6 +64,9 @@ dist/
 build/
 bin/
 obj/
+# Custom root-level .NET test build outputs.
+/test-obj/
+/test-output/
 out/
 release/
 dist-electron/
