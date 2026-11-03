@@ -23,6 +23,11 @@ if [[ "$format" != tar ]]; then
   for tool in dpkg-deb dpkg-shlibdeps dpkg-query desktop-file-validate; do packaging_require "$tool"; done
 fi
 packaging_publish_app
+# The optional .NET LTTng provider can require a legacy liblttng-ust SONAME
+# absent on the target distro. CoreCLR explicitly tolerates its dlopen failure
+# (runtime/src/coreclr/pal/src/misc/tracepointprovider.cpp). Omit that provider
+# from both distribution formats instead of weakening ELF dependency checks.
+rm -f -- "$packaging_publish/libcoreclrtraceptprovider.so"
 machine_pattern='Machine:.*Advanced Micro Devices X86-64'
 [[ "$packaging_arch" != arm64 ]] || machine_pattern='Machine:.*AArch64'
 for binary in SunCode libsuncode_agent.so libcoreclr.so libhostfxr.so; do

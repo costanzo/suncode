@@ -8,13 +8,13 @@ bash scripts/package-linux.sh --format deb --runtime linux-x64
 bash scripts/package-linux.sh --format tar
 ```
 
-Ubuntu 24.04 build/packaging dependencies (also installed by the native CI job):
+Ubuntu 22.04/24.04 build/packaging dependencies (also installed by native CI):
 
 ```sh
 sudo apt-get install build-essential pkg-config libssl-dev libdbus-1-dev \
   libx11-dev libxext-dev libxi-dev libxcursor-dev libxrandr-dev libxtst-dev \
   libxdo-dev libxkbcommon-dev libfontconfig1-dev libfreetype6-dev libicu-dev \
-  zlib1g-dev libunwind-dev liblttng-ust-dev dpkg-dev desktop-file-utils hicolor-icon-theme
+  zlib1g-dev libunwind-dev dpkg-dev desktop-file-utils hicolor-icon-theme
 ```
 
 Other distributions use their corresponding dependencies and `--format tar`; `deb`/`all` requires Debian tools. ARM64 maps to the native `aarch64-unknown-linux-gnu` host and Debian `arm64`; x64 uses `x86_64-unknown-linux-gnu` and `amd64`. Mismatched hosts/RIDs are refused.
@@ -41,6 +41,8 @@ Maintainer scripts refresh desktop/MIME and icon caches when tools are available
 
 `dpkg-shlibdeps` scans every ELF and derives ABI dependency versions from the build distribution. Missing libraries remain fatal; missing dpkg ownership metadata for private bundled libraries is ignored. Explicit dependencies cover dynamically loaded ICU/OpenSSL and X11/font/D-Bus/desktop services. Build on the intended distribution baseline: Ubuntu-built packages are not automatically compatible with every Debian/Ubuntu release. `SUNCODE_DEB_MAINTAINER` can provide the release maintainer's actual `Name <email>`; local builds use the non-routing placeholder `SunCode <noreply@localhost>`.
 
+The optional .NET `libcoreclrtraceptprovider.so` is deliberately removed from the publish inputs before either archive is staged. A user-reported Ubuntu 22.04 x64 build published successfully and created the portable archive, but Debian dependency scanning failed because this provider required unavailable `liblttng-ust.so.0`. Installing an LTTng package with a different SONAME does not satisfy that dependency. [CoreCLR's loader](https://github.com/dotnet/runtime/blob/v10.0.0/src/coreclr/pal/src/misc/tracepointprovider.cpp) explicitly permits failing to load this optional provider. Packaged applications omit this LTTng integration; they retain the rest of the runtime and strict dependency scanning for every shipped ELF. No incompatible library symlinks or missing-library bypass are introduced. Other plugin/unresolved-symbol warnings in `dpkg-shlibdeps` are distinct from the fatal missing-library error.
+
 ## Portable archive and release limits
 
 Extract the tar.gz and run `./suncode` inside `SunCode-<version>-<rid>/`. Its directory-relative wrapper forwards arguments and supports spaces in the extracted path. It installs no global launcher, desktop entry, icons or protocol handler. Remove the extracted folder to remove binaries; the separate data directory survives.
@@ -49,4 +51,4 @@ Self-contained .NET still needs compatible native system libraries: glibc/libstd
 
 `SUNCODE_UPDATE_DISTRIBUTION_FILE` selects existing update configuration. These full baseline packages are not independent component archives and create no trusted receipt. SHA-256 sidecars detect corruption rather than authenticate the publisher; repository/package signing and managed-update enrollment remain release work.
 
-Only static Bash/XML/workflow/whitespace inspection was performed on Windows. Native builds, dependency resolution, package installation/upgrades/removal, extracted startup, desktop/protocol/notification activation and retention checks were not run. Manual native CI was not triggered; both architectures and clean-machine behavior require release validation.
+Local verification is static Bash/XML/workflow/whitespace inspection on Windows. A user reported successful Ubuntu 22.04 x64 publishing and portable archive creation, followed by the LTTng dependency error described above. The corrected Debian path has not been rerun natively. Package installation/upgrades/removal, extracted startup, desktop/protocol/notification activation and retention checks remain unverified. Manual native CI, including the added Ubuntu 22.04 x64 job, was not triggered; both architectures and clean-machine behavior require release validation.
