@@ -95,6 +95,8 @@ dotnet publish apps/desktop-avalonia/SunCode.Desktop.csproj \
 open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 ```
 
+For a Windows offline installer, run `./scripts/package-windows.ps1` with Inno Setup installed. The resulting `Setup.exe` includes the .NET runtime, native SDK and app-local Visual C++ CRT. See the [Windows packaging guide](apps/desktop-avalonia/packaging/windows/README.md) for requirements, uninstall behavior and release verification limits.
+
 ## Repository Layout
 
 | Path | Purpose |

@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261103-windows-inno-installer
+
+- Date: 2026-11-03
+- Status: Accepted; x64 packaging and isolated lifecycle verified; signed distribution and managed enrollment pending
+- Context: Windows publishing produces a self-contained directory but no Desktop installer. Rust also imports the Visual C++ CRT, which is not supplied by self-contained .NET publishing.
+- Decision: Package that directory and the matching app-local redistributable CRT into one offline Inno Setup executable. Inno owns current-user installation, shortcuts/protocol registration and uninstall, with stable identity, downgrade/architecture checks and user-data preservation. Keep native binaries separate after installation. Use Inno's standard platform-owned wizard rather than a custom Avalonia/React installation UI.
+- Consequences: The existing native build must match the .NET RID; ARM64 remains unverified. CEF and CLI stay outside this installer. Inno does not replace the component updater, inspect SQLite, infer trusted receipts or reset active managed payloads. Authenticode, trusted initial receipts, clean-machine and visual OS conformance remain release work.
+- Details: `apps/desktop-avalonia/packaging/windows/README.md`, `.agents/features/windows-installer/README.md`
+
 ## ADR-20261101-desktop-component-update-catalog
 
 - Date: 2026-11-01

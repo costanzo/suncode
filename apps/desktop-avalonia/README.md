@@ -48,6 +48,10 @@ The build compiles the `sdks/c` native library (`suncode_agent`, which embeds th
 
 Implemented workflows include the project hub, independent draggable project windows over one shared agent handle, project/session navigation, ordered conversation streaming, completed-response Markdown rendering, model selection, Enter-to-send and Shift+Enter newline handling, turn submission and cancellation, approvals, checkpoint undo, touched-file review, agent diagnostics, Git status and structured file diffs, provider credentials, default model selection, dark/light appearance, dialogs and traffic lights, full-screen geometry, the IDE-style native menu hierarchy, the macOS Dock menu and Windows taskbar Jump List for open and recent projects, and background session-attention notifications with notification-click navigation. Notification activation uses a desktop-only Named Pipe on Windows and Unix Domain Socket on macOS/Linux; it never exposes the embedded agent over IPC.
 
+### Windows installer
+
+Build one offline Inno Setup installer with `./scripts/package-windows.ps1` on Windows. It bundles .NET, the Rust SDK and the app-local Visual C++ CRT, registers current-user shortcuts/activation and uninstall, and preserves session data on uninstall. See the [Windows packaging guide](packaging/windows/README.md) for prerequisites, outputs, lifecycle checks and signing/update-enrollment limits.
+
 ### Bundled fonts
 
 The desktop client bundles static Noto Sans and Noto Sans SC
