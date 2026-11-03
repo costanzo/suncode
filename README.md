@@ -97,6 +97,8 @@ open apps/desktop-avalonia/bin/Release/net10.0/osx-arm64/publish/SunCode.app
 
 For a Windows offline installer, run `./scripts/package-windows.ps1` with Inno Setup installed. The resulting `Setup.exe` includes the .NET runtime, native SDK and app-local Visual C++ CRT. See the [Windows packaging guide](apps/desktop-avalonia/packaging/windows/README.md) for requirements, uninstall behavior and release verification limits.
 
+On macOS, `bash scripts/package-macos.sh` generates the app bundle and DMG, with optional Developer ID signing/notarization. On GNU Linux, `bash scripts/package-linux.sh` generates `.deb` and portable `.tar.gz` packages. Each runs on its native OS/architecture and includes .NET and the Rust SDK. Native execution of these new entry points remains unverified; see the [desktop packaging guide](apps/desktop-avalonia/packaging/README.md) for prerequisites, installation/removal and the manual native build workflow.
+
 ## Repository Layout
 
 | Path | Purpose |

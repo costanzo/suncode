@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261103-unix-desktop-packaging
+
+- Date: 2026-11-03
+- Status: Accepted; packaging source and static checks complete, native execution unverified
+- Context: Desktop has macOS app-bundle and Linux directory publishing, but lacks distributable DMG/Debian/portable entry points, synchronized bundle versions and a package-owned Linux launcher/integration path.
+- Decision: Add native Bash entry points for macOS app/DMG and GNU Linux Debian/tar.gz, with project-owned version metadata, matching native Rust/.NET architecture checks and version-scoped artifacts. Finder and the Debian package manager own installation/removal. Offer Developer ID/hardened-runtime signing and keychain-profile notarization, retaining ad hoc local macOS builds. Derive Debian ABI dependencies from ELF files and declare dynamic prerequisites explicitly. Provide manual native build CI for both architectures.
+- Consequences: No application-owned installer UI, cross-compilation, universal/musl package, RPM/AppImage, CLI/CEF bundling or automatic public release is added. User data and managed component pointers remain outside package ownership, and trusted initial updater enrollment remains separate work. Static Windows checks do not establish native build, signing, OS compatibility or installed conformance.
+- Details: `apps/desktop-avalonia/packaging/README.md`, `.agents/features/unix-desktop-packaging/README.md`, `DESIGN.md`
+
 ## ADR-20261103-windows-inno-installer
 
 - Date: 2026-11-03

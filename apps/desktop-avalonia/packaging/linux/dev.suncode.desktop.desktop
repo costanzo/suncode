@@ -2,7 +2,8 @@
 Type=Application
 Name=SunCode
 Comment=General-purpose coding agent
-Exec=SunCode %u
+Exec=/usr/bin/suncode %u
+TryExec=/usr/bin/suncode
 Icon=suncode
 Terminal=false
 Categories=Development;

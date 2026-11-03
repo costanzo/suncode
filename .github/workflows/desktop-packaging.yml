@@ -1,0 +1,80 @@
+name: Desktop macOS and Linux Packaging
+
+# Native build artifacts for manual review. Publishing signed releases and
+# provisioning trusted component-update receipts remain separate release work.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos
+            target: osx-arm64
+          - os: macos-15-intel
+            platform: macos
+            target: osx-x64
+          - os: ubuntu-24.04
+            platform: linux
+            target: linux-x64
+          - os: ubuntu-24.04-arm
+            platform: linux
+            target: linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build and packaging dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev libdbus-1-dev \
+            libx11-dev libxext-dev libxi-dev libxcursor-dev libxrandr-dev libxtst-dev \
+            libxdo-dev libxkbcommon-dev libfontconfig1-dev libfreetype6-dev libicu-dev \
+            zlib1g-dev libunwind-dev liblttng-ust-dev dpkg-dev desktop-file-utils hicolor-icon-theme
+
+      - name: Cache Cargo build inputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+          key: desktop-packaging-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', '.cargo/config.toml') }}
+
+      - name: Package macOS
+        if: matrix.platform == 'macos'
+        run: bash scripts/package-macos.sh --runtime '${{ matrix.target }}'
+
+      - name: Package Linux
+        if: matrix.platform == 'linux'
+        run: bash scripts/package-linux.sh --runtime '${{ matrix.target }}'
+
+      - name: Upload desktop packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: SunCode-${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            artifacts/${{ matrix.platform }}/**/*.dmg
+            artifacts/${{ matrix.platform }}/**/*.deb
+            artifacts/${{ matrix.platform }}/**/*.tar.gz
+            artifacts/${{ matrix.platform }}/**/*.sha256

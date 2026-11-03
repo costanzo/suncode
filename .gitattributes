@@ -1,0 +1,4 @@
+# Unix entry points and Debian maintainer scripts must survive Windows checkouts.
+*.sh text eol=lf
+apps/desktop-avalonia/packaging/linux/postinst text eol=lf
+apps/desktop-avalonia/packaging/linux/postrm text eol=lf

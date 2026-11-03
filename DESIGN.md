@@ -414,9 +414,11 @@ The left bay is project and session navigation, with uppercase section labels, a
 
 Merged Workspace windows place a compact project tab strip below the Workspace title bar and above its main content. The active project tab uses the standard surface and accent underline; inactive tabs remain neutral, scroll horizontally instead of shrinking below a usable label width, and retain a visible keyboard focus ring. A tab's close action appears on hover or keyboard focus at its trailing edge and closes that project window; when one project remains, it returns to a standalone window, and closing the last project returns to ProjectHub. The native `Window` menu exposes `Merge All Windows`, disabled when fewer than two project windows are open. Dragging a tab by 28 screen pixels or more detaches it into a standalone Workspace window without resetting project state; when only one project remains, it returns to a standalone window as well.
 
-### Windows Installer
+### Desktop Installation
 
 Windows offline distribution uses Inno Setup's standard native wizard and uninstaller, specified in `design-system/src/platforms/desktop/README.md` and implemented in `apps/desktop-avalonia/packaging/windows/SunCode.iss`. This is a platform-owned installation surface: retain Inno controls, layout, DPI, typography, focus and theme handling rather than mapping Avalonia tokens onto a custom installer. Install for the current user; desktop shortcut and post-install launch start unchecked, and silent setup never launches SunCode. Uninstall removes installer-owned integration/files while retaining user data. Application-owned component update states continue to use Settings → Updates. No new application screen or React wizard imitation is introduced.
+
+macOS and Linux distribution also uses platform-owned installation surfaces: a Finder DMG containing `SunCode.app` and an Applications link, and Debian package management or an unpacked portable Linux folder. The behavior is specified in `design-system/src/platforms/desktop/README.md`. Use native install/removal flows without an application-drawn wizard, automatic application launch, theme/token overrides or changes to each user's preferred protocol handler. Preserve user data and managed update state. Official macOS signing/notarization is opt-in at build time; native platform verification remains required before release.
 
 ### Native Window Frames
 

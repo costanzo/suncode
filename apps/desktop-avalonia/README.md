@@ -37,7 +37,7 @@ Run the Avalonia test project from its colocated `tests/` directory:
 dotnet test apps/desktop-avalonia/tests/SunCode.Desktop.Tests.csproj
 ```
 
-Create the macOS app bundle with the .NET 10 runtime included. Release publishes that specify a runtime identifier are self-contained, are not trimmed, and are not packed into a single file, so the Rust agent library and CEF stay as separate native binaries. Each Release publish clears its publish directory first, so assemblies left by an older dependency set cannot remain beside the new app. The current desktop version is 0.1.0. Give users `SunCode.app`; the files next to the bundle are the publish inputs that the bundle copies.
+Create the macOS app bundle with the .NET 10 runtime included. Release publishes with a RID are self-contained, untrimmed and keep native libraries separate. Each Release publish clears its publish directory first. Assembly metadata and the copied bundle plist follow the project version. Direct publish produces `SunCode.app`; use the packaging command below for a distributable DMG.
 
 ```sh
 dotnet publish apps/desktop-avalonia/SunCode.Desktop.csproj -c Release -r osx-arm64 --self-contained true
@@ -51,6 +51,10 @@ Implemented workflows include the project hub, independent draggable project win
 ### Windows installer
 
 Build one offline Inno Setup installer with `./scripts/package-windows.ps1` on Windows. It bundles .NET, the Rust SDK and the app-local Visual C++ CRT, registers current-user shortcuts/activation and uninstall, and preserves session data on uninstall. See the [Windows packaging guide](packaging/windows/README.md) for prerequisites, outputs, lifecycle checks and signing/update-enrollment limits.
+
+### macOS and Linux packages
+
+Run `bash scripts/package-macos.sh` on macOS for an app bundle and DMG, or `bash scripts/package-linux.sh` on GNU Linux for a Debian package and portable tar.gz. Both require matching native toolchains. macOS provides optional Developer ID signing/keychain-profile notarization; Debian packages own launcher/desktop/protocol/icon integration and removal. These new flows have only static verification in this Windows session. See the [packaging guide](packaging/README.md) for native prerequisites and the manual `Desktop macOS and Linux Packaging` workflow.
 
 ### Bundled fonts
 

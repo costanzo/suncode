@@ -32,6 +32,7 @@ Clients:
 
 - [`avalonia-desktop-phase-1/`](avalonia-desktop-phase-1/README.md): implemented .NET 10 Avalonia workflows and client boundary.
 - [`windows-installer/`](windows-installer/README.md): Inno Setup offline packaging and current-user install/uninstall; x64 build/lifecycle verified, signing and managed-update enrollment pending.
+- [`unix-desktop-packaging/`](unix-desktop-packaging/README.md): native macOS DMG and Linux Debian/portable packaging source, optional macOS signing/notarization and manual native CI; static inspection only, native execution pending.
 - [`desktop-component-updates/`](desktop-component-updates/README.md): C# coordinator for independent Desktop/SDK packages; client tested, production delivery and initial-installer integration pending.
 - [`shell-settings/`](shell-settings/README.md): independent Agent/Terminal shells, executable detection, and on-demand Windows PowerShell setup; Windows platform conformance pending.
 - [`provider-transfer-status/`](provider-transfer-status/README.md): transient provider HTTP body byte rates in the Workspace footer.

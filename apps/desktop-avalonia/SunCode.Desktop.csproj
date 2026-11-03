@@ -9,11 +9,11 @@
     <AssemblyName>SunCode</AssemblyName>
     <Product>SunCode</Product>
     <ApplicationIcon>Assets/suncode.ico</ApplicationIcon>
-    <!-- Desktop release version. The About window reads InformationalVersion; the macOS bundle version is in Info.plist. -->
+    <!-- One Desktop version for assembly metadata, native bundles and installers. -->
     <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
-    <InformationalVersion>0.1.0</InformationalVersion>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
     <AvaloniaVersion>12.1.3</AvaloniaVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
@@ -175,9 +175,11 @@
     </ItemGroup>
     <Copy SourceFiles="@(SunCodePublishedFiles)" DestinationFolder="$(SunCodeAppBundle)/Contents/MacOS/%(RecursiveDir)" />
     <Copy SourceFiles="Info.plist" DestinationFolder="$(SunCodeAppBundle)/Contents" />
+    <!-- Modify only the copied template, never the source plist. -->
+    <Exec Command="/usr/libexec/PlistBuddy -c &quot;Set :CFBundleShortVersionString $(Version)&quot; &quot;$(SunCodeAppBundle)/Contents/Info.plist&quot;" />
+    <Exec Command="/usr/libexec/PlistBuddy -c &quot;Set :CFBundleVersion $(Version)&quot; &quot;$(SunCodeAppBundle)/Contents/Info.plist&quot;" />
     <Copy SourceFiles="Assets/suncode-desktop.icns" DestinationFolder="$(SunCodeAppBundle)/Contents/Resources" />
     <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(SunCodeAppBundle)/Contents/MacOS/libsuncode_notifications.dylib&quot; &quot;Native/macOS/SunCodeNotifications.swift&quot;" />
-    <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
   </Target>
 
   <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"
@@ -201,8 +203,9 @@
   </Target>
 
   <Target Name="FinalizeMacOSAppBundleSignature"
-          AfterTargets="CreateMacOSAppBundle;DeployCefPreviewMacOS;RemoveReleasePublishSymbols"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
+          AfterTargets="Publish"
+          DependsOnTargets="CreateMacOSAppBundle;DeployCefPreviewMacOS;RemoveReleasePublishSymbols"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
   </Target>
 </Project>
