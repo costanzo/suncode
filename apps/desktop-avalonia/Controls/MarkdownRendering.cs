@@ -25,6 +25,7 @@ internal static class MarkdownRendering
         else
             MarkdownNode.Edit(nodes => nodes.Register<SourceMathInlineNode>().Register<SourceMathBlockNode>());
         MarkdownNode.Register<DesktopMermaidBlockNode>();
+        AsyncImageLoader.DefaultDecoders = [SvgImageDecoder.Shared, DefaultBitmapDecoder.Shared];
         return mathAvailable;
     }
 
