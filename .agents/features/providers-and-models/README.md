@@ -4,6 +4,8 @@
 
 The Rust agent owns the model catalog, provider routes, and wire adapters. Clients read providers and models through `list_models` and never contact a provider or open SQLite directly.
 
+Website wording must distinguish seeded catalog entries and fixture-tested adapters from authenticated provider conformance. The dated vendor references below record prior catalog research, not a fresh availability or compatibility guarantee. Recheck vendor model IDs, access plans, endpoint protocols, and live tool loops before publishing exact model counts or "works with every provider" claims. In particular, a provider's OpenAI-compatible Chat Completions endpoint does not establish Responses API support.
+
 ## Catalog and custom models
 
 - Providers and models are rows in `llm_model_provider` and `llm_model`. Each provider row names a required `adapter_type`: `openai` for OpenAI Responses-compatible endpoints, `chat_completions` for Tencent Hunyuan Chat Completions endpoints, or `anthropic` for the built-in Claude Messages route.
@@ -77,7 +79,7 @@ Every `adapter_type=openai` provider posts to `<endpoint>/responses`. This inclu
 - function tools with `strict: false`;
 - `stream: true`, `store: false`, optional `reasoning.effort`, and optional `max_output_tokens`.
 
-SunCode never sends `previous_response_id`. The local transcript and context compaction remain the only source of conversation state, and `store: false` keeps responses from being retained on the provider side. A semantic SSE parser turns text deltas, function-call argument events, terminal response events, usage, request/response IDs, and errors into provider-neutral completions. Tool results are correlated by `call_id`. OpenAI built-in tools are not exposed. The OpenAI-compatible adapter accepts SunCode's ordinary `computer_*` function tools and preserves screenshot images in multimodal function results; provider-native client toolsets remain optional.
+SunCode never sends `previous_response_id`. The local transcript and context compaction remain the source of conversation state. `store: false` requests that the provider not store the response for API retrieval; it does not establish zero retention, no provider logging, or offline inference. Those guarantees depend on each provider's policy and account settings. A semantic SSE parser turns text deltas, function-call argument events, terminal response events, usage, request/response IDs, and errors into provider-neutral completions. Tool results are correlated by `call_id`. OpenAI built-in tools are not exposed. The OpenAI-compatible adapter accepts SunCode's ordinary `computer_*` function tools and preserves screenshot images in multimodal function results; provider-native client toolsets remain optional.
 
 The `anthropic` adapter posts to `<endpoint>/messages` and supports the same ordinary `computer_*` function tools. Native client toolsets such as Computer Use remain available as an optional provider-specific optimization.
 

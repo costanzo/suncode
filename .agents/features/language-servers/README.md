@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-The Rust agent gives the model language-aware diagnostics, definitions, references, hover, and document symbols through SunCode-supported local stdio language servers. `suncode-lsp` owns framing, initialization, capability negotiation, document sync, and cancellation. Core owns the project-scoped manager and path authority. Desktop Settings exposes a built-in catalog and server-specific project configuration. The catalog entries are Eclipse JDT Language Server (`jdtls`), `vtsls`, `basedpyright`, `rust-analyzer`, and Roslyn Language Server (`roslyn-language-server`).
+The Rust agent gives the model language-aware diagnostics, definitions, references, hover, and document symbols through SunCode-supported local stdio language servers. `suncode-lsp` owns the project-scoped `LspRuntime`, tool provider, framing, initialization, capability negotiation, document sync, and cancellation. Core supplies policy and audited path authority. Desktop Settings exposes a built-in catalog and server-specific project configuration. The catalog entries are Eclipse JDT Language Server (`jdtls`), `vtsls`, `basedpyright`, `rust-analyzer`, and Roslyn Language Server (`roslyn-language-server`).
 
 ## What users can rely on
 

@@ -2,7 +2,7 @@
 
 **Status:** Partially implemented and focused-tested. Platform conformance is incomplete.
 
-Computer Use is a first-party Rust capability that observes and operates the user's primary display. It is separate from Browser Use and MCP. `suncode-computer` owns 17 provider-neutral desktop actions and one read-only accessibility observation, exposed as stable `computer_*` function tools: validation, ordered execution, coordinate transforms, zoom cropping, PNG encoding, cancellation checks, and held-input cleanup. It runs on a pinned revision of the maintained Enigo fork. Core `ComputerManager` owns enablement, policy, approvals, and runtime state.
+Computer Use is a first-party Rust capability that observes and operates the user's primary display. It is separate from Browser Use and MCP. `suncode-computer` owns 17 provider-neutral desktop actions and one read-only accessibility observation, exposed as stable `computer_*` function tools: validation, ordered execution, coordinate transforms, zoom cropping, PNG encoding, cancellation checks, and held-input cleanup. It runs on a pinned revision of the maintained Enigo fork. Its `ComputerRuntime` owns runtime state and tool-provider integration; core retains persisted enablement, policy, and approvals.
 
 ## What users can rely on
 

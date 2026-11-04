@@ -29,4 +29,4 @@ The desktop project window can show a CEF Chromium pane beside the chat. The pan
 - Preview start, refresh, and stop failures are logged and shown as presentation errors; they do not change the desktop agent connection state or disable otherwise available conversation controls.
 - Live refresh works by polling. Rust bumps `reload_generation` when a bounded scan of project file sizes and modification times changes, ignoring `.git`, `node_modules`, `bin`, `obj`, and `target`. The pane reloads when the generation changes. The CEF pane blocks popups, uses an isolated per-project request context, and offers reload and close. It depends on a locally patched CefGlue Avalonia 12 adapter.
 
-Not implemented: native HMR event transport, typed preview events (state is polled), Windows and Linux CEF packaging and smoke tests, and use of CEF as a Browser Use target.
+Not implemented: native HMR event transport, typed preview events (state is polled), and Windows and Linux CEF packaging and smoke tests. CEF already supplies the Browser Use CDP target; that connection does not make CEF part of default builds or baseline installers.

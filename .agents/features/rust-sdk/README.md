@@ -11,13 +11,13 @@ Avalonia -> sdks/csharp -> sdks/c (C ABI) -> sdks/rust -> agent core -> data / d
 CLI ------------------------------------------> sdks/rust
 ```
 
-- `agent/crates/core` owns agent execution, the typed event catalog, session event fan-out, and shutdown ordering. It does not build a `cdylib`, a `staticlib`, or SDK modules. Agent logic sits in focused modules under `core/src/agent/`. Bootstrap configuration is the `suncode-config` crate at `agent/crates/config/`.
+- `agent/crates/core` owns agent execution, event production/projection, and shutdown ordering. `agent/crates/events` owns the typed event catalog and session event hub. Core does not build a `cdylib`, a `staticlib`, or SDK modules. Agent logic sits in focused modules under `core/src/agent/`. Bootstrap configuration is the `suncode-config` crate at `agent/crates/config/`.
 - `agent/crates/data` keeps `Store` as the single public persistence entry type. `store.rs` holds connection lifecycle, schema initialization, transactions, locking, and health. Each `operations/<table>.rs` module implements that table's methods and row decoding in its own `impl Store` block. Writes that span tables live in the `projection` (event-driven) and `recovery` (startup reconciliation) orchestration modules. The data crate knows nothing about subscribers.
 - `sdks/rust` owns `AsyncAgentSdk`, the blocking adapter, the host-facing DTOs (`types.rs`), the startup options, `SessionEventStream`, and `SessionWatch`. It has no C callbacks, raw pointers, JSON envelope serialization, or worker threads.
 - `sdks/c` owns `extern "C"` exports, panic containment, callback worker threads, C strings, the established `{session_id, occurred_at, event_type, payload}` JSON envelope, and the translation of lag into `resync.required`. It never touches persistence or provider internals directly.
 - `sdks/csharp` owns P/Invoke, native library build integration, exact ABI version validation, typed DTOs, and handle lifetime for Avalonia.
 
-The native ABI is version 25. Dedicated Git methods and DTOs were removed; Source Control is desktop-owned and optional. Checkpoints, undo, and generic process policy remain Rust-owned.
+The native ABI is version 27 (`sdks/rust/src/types.rs`). This compatibility number is separate from the Desktop/SDK product release version. Dedicated Git methods and DTOs were removed; Source Control is desktop-owned and optional. Checkpoints, undo, and generic process policy remain Rust-owned.
 
 ## Async-first and blocking surfaces
 

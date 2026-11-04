@@ -2,7 +2,9 @@
 
 **Status:** Implemented and build-verified
 
-`website/` is the public, server-rendered Next.js site for `suncode.ai`. It explains the current product and links to the public GitHub repository. Its copy describes only implemented product capabilities; deferred Web, TUI, IDE, and hosted execution surfaces are not presented as available clients.
+`website/` is the public, server-rendered Next.js site for `suncode.ai`. It explains the product and links to the public GitHub repository. Deferred Web, TUI, IDE, and hosted execution surfaces are not presented as available clients. Existing marketing copy is not an authoritative feature specification; use [`WEBSITE-CLAIMS.md`](../WEBSITE-CLAIMS.md) when regenerating it.
+
+The 2026-11-04 source review found two copy problems in `website/app/page.tsx`: the hero promises that every meaningful machine action is reversible, although undo covers only checkpointed filesystem mutations; the capabilities list groups Git under Rust dispatch, although desktop Source Control runs bounded read-only system Git in C#. These remain website-content follow-ups. This consolidation changes knowledge records, not the website or its deployment.
 
 The site uses the Next.js App Router and TypeScript, includes responsive navigation, canonical/Open Graph metadata, sitemap and robots routes, and reuses the SunCode brand assets. It is separate from the design-system Web review specimen and from the deferred remote-control Web client.
 

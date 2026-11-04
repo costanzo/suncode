@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-SunCode is a general-purpose coding agent. Phase 1 embeds one Rust agent SDK inside the .NET 10 Avalonia desktop process. A native Rust CLI is approved as the next production client and will embed the async SDK facade directly. Rust owns the complete agent: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
+SunCode is a general-purpose coding agent. Phase 1 embeds one Rust agent SDK inside the .NET 10 Avalonia desktop process. The native Rust CLI implements administration and one-shot turns by embedding the async SDK facade directly; interactive chat remains deferred. Rust owns the complete agent: provider integration, agent behavior, policy, durable state, the SDK API, and machine-affecting operations.
 
 The architecture favors explicit ownership, reviewable authority, and one authoritative agent. It does not claim that a process running as the user is an OS sandbox.
 
@@ -96,11 +96,11 @@ Tools are narrow Rust modules in the `suncode-tool` package inside the agent. Th
 
 This internal boundary is for auditability and testing. It is not a child-process security boundary.
 
-### 3.5 Browser Use worker
+### 3.5 Browser Use CDP client
 
 The Browser Use boundary is a CEF Chromium instance initialized by the Avalonia client with a fixed localhost remote debugging port. Rust uses `chromiumoxide` for CDP transport and owns target discovery, request timeouts, policy, approvals, and audited tool calls. The client owns CEF startup, windows, resources, and profiles. Page content remains untrusted and cannot authorize operations.
 
-Rust owns the worker and Chromium process tree, validates the runtime handshake against the packaged manifest, serializes project operations, and fails closed on a version, target, integrity, protocol, path, or generation mismatch. This containment is an auditable ownership boundary, not an OS sandbox.
+Rust owns CDP attachment, per-project call serialization, cancellation, and tool errors; Avalonia owns CEF and its Chromium process lifetime. There is no Node/Playwright worker or Rust-launched Chromium process tree. Default builds and baseline installers exclude CEF. This is an auditable ownership boundary, not an OS sandbox; see `features/browser-use/README.md`.
 
 ## 4. Agent Lifecycle
 
@@ -118,7 +118,7 @@ Mutating calls carry idempotency keys where replay could duplicate work. Session
 
 ## 6. Provider Boundary
 
-The seeded providers are DeepSeek, Qwen, Zhipu GLM, OpenAI, Kimi, Claude, Gemini, xAI, MiniMax, Meta, Xiaomi MiMo, and Tencent Hunyuan. The seeded database catalog exposes twenty-six models: the existing twenty-five rows plus Tencent `hy4-preview`. Tencent uses the official `https://api.hunyuan.cloud.tencent.com/v1` endpoint, the `hy4-preview` wire model, and the built-in Chat Completions SSE adapter; the public model card reports a 1,048,576-token context. Users may add provider and model rows for custom OpenAI-compatible gateways. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Computer Use uses stable provider-neutral `computer_*` function tools and requires function calling, vision, and multimodal function-result support; Claude's native client toolset is an optional optimization. Providers using the OpenAI-compatible adapter use the Responses wire contract (`/responses`, typed items, and semantic SSE events), while Tencent Hunyuan uses `/chat/completions` and Chat Completions SSE. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
+The seeded providers are DeepSeek, Qwen, Zhipu GLM, OpenAI, Kimi, Claude, Gemini, xAI, MiniMax, Meta, Xiaomi MiMo, and Tencent Hunyuan. The seeded database catalog exposes twenty-six models: the existing twenty-five rows plus Tencent `hy4-preview`. Tencent uses the official `https://api.hunyuan.cloud.tencent.com/v1` endpoint, the `hy4-preview` wire model, and the built-in Chat Completions SSE adapter; the public model card reports a 1,048,576-token context. Custom persisted provider/model rows and trusted in-process Rust registrations are supported composition paths; current clients expose no catalog creation/removal API. One trusted adapter serves each provider, while each model route supplies its own vendor wire model. Computer Use uses stable provider-neutral `computer_*` function tools and requires function calling, vision, and multimodal function-result support; Claude's native client toolset is an optional optimization. Providers using the OpenAI-compatible adapter use the Responses wire contract (`/responses`, typed items, and semantic SSE events), while Tencent Hunyuan uses `/chat/completions` and Chat Completions SSE. Vendor request and streaming response shapes remain inside `suncode-llm`. Clients receive canonical messages, tool activity, usage, and redacted errors only.
 
 Provider API keys use system credential storage by default: macOS Keychain, Windows Credential Manager, or Linux Secret Service. SQLite stores only mode, UUID reference, and mask in this mode. An explicit provider-level plaintext mode stores the complete value in `llm_model_provider.api_key`; the modes are mutually exclusive and partial updates roll back. Keychain failures are surfaced as missing, locked, denied, or unavailable and never silently downgrade. Provider endpoints and required `adapter_type` values are read from `llm_model_provider`; model request codes, context lengths, auto-compaction thresholds, output limits, capability flags, and enabled/order state are read from `llm_model`. Seeded adapters are `openai`, `chat_completions`, and `anthropic`; custom providers select an adapter implemented by `suncode-llm`. Plaintext credentials never enter protocol responses, events, or logs. Desktop and persisted provider resolution ignore API-key environment variables; the CLI alone may resolve explicitly supported `SUNCODE_*` credential overrides into ephemeral in-memory configuration, never persisting or logging them. Global `verify_https_certificates` defaults to `true` and controls server certificate-chain and hostname verification for built-in provider and WebFetch HTTPS requests. Disabling it is an explicit insecure mode equivalent to `curl -k`; it does not weaken other authority or URL controls.
 
@@ -161,7 +161,7 @@ Delegated child mutations currently produce child-session checkpoint manifests. 
 
 Process execution has two explicit semantics: structured program-plus-argv execution never invokes a shell implicitly, while shell-script execution selects the documented host dialect (Windows PowerShell on Windows and POSIX `sh` on macOS/Linux). Both pass through the same policy and audited dispatcher. Shell syntax is platform-specific and is never translated between dialects.
 
-Registered project dependencies extend only read authority. Rust stores and canonicalizes their roots, exposes stable opaque IDs instead of absolute paths, and routes model `dependency:<id>/...` aliases only through bounded read, glob, and grep operations. They do not expand write, process, Git, checkpoint, undo, or project authority.
+Registered project dependencies extend only read authority. Rust stores and canonicalizes their roots, exposes stable opaque IDs instead of absolute paths, and routes model `dependency:<id>/...` aliases through bounded read, document inspection/read/search, spreadsheet ranges, glob, and grep operations. They do not expand write, process, Git, checkpoint, undo, or project authority.
 
 Startup marks non-recoverable in-memory turn execution interrupted, discovers admitted submissions and suspended approvals, and reconciles operation journal entries. Unknown completion remains visible and requires safe reconciliation.
 
@@ -184,7 +184,8 @@ agent/crates/llm/       provider-neutral LLM contracts, catalog, registry, and a
 agent/crates/tools/      `suncode-tool` package for built-in definitions and audited in-process machine operations
 agent/crates/mcp/        bounded MCP client transports and the per-project MCP runtime: reconciliation, discovery, the `ToolProvider`, and result normalization
 agent/crates/lsp/        bounded local-stdio LSP framing and the per-project language-server runtime: lifecycle, document sync, semantic requests, and the `ToolProvider`
-agent/crates/browser/    bounded Browser Use worker protocol, runtime validation, CDP client, and target lifecycle
+agent/crates/browser/    Browser Use CDP client, per-project runtime, tool provider, and target lifecycle
+agent/crates/documents/  normalized read-only PDF/Office parsers, bounded queries, and parse cache
 agent/crates/computer/   Computer Use actions, serialized desktop execution, and the runtime and `ToolProvider` for `computer_*` tools
 agent/crates/remote/     outbound Desktop remote-control transport and encryption
 agent/crates/secrets/    operating-system credential-store boundary

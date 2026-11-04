@@ -2,7 +2,7 @@
 
 **Status:** Implemented and focused-tested
 
-The Rust agent supports Model Context Protocol tools from local stdio servers and remote Streamable HTTP servers. `suncode-mcp` is the protocol adapter, built on `rmcp`. Core owns the project-scoped runtime manager, the tool catalog, and policy. Desktop Settings has a first-level MCP servers page and a separate native create/edit window.
+The Rust agent supports Model Context Protocol tools from local stdio servers and remote Streamable HTTP servers. `suncode-mcp` owns the `rmcp` protocol adapter, project runtime, tool discovery, and tool provider; core owns policy and routes calls through that provider. Desktop Settings has a first-level MCP servers page and a separate native create/edit window.
 
 ## What users can rely on
 

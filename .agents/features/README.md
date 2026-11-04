@@ -1,6 +1,8 @@
 # Features
 
-This directory describes stable capabilities that are actually implemented. Known verification gaps remain explicit in the owning feature note. Delivery plans and progress notes are not retained here; current behavior is supported by code, focused tests, specifications, and contracts.
+This directory describes current capabilities, including partial implementations and release verification gaps. A feature record is not a promise that every platform or distribution is ready. Delivery plans and progress notes are not retained here; current behavior is supported by code, focused tests, specifications, and contracts.
+
+For official website content, start with [`WEBSITE-CLAIMS.md`](WEBSITE-CLAIMS.md), then read the owning feature's scope and limitations. It separates implementation evidence from release availability and records the claims audit. Do not turn an internal status of "implemented" into "generally available".
 
 Keep each feature note short and factual:
 
@@ -17,13 +19,14 @@ Agent and SDK:
 - [`agent-phase-1/`](agent-phase-1/README.md): embedded Rust agent loop, providers, policy, approvals, recovery, and SDK behavior.
 - [`rust-sdk/`](rust-sdk/README.md): async-first Rust facade, blocking adapter, typed event streams, atomic session watch, explicit shutdown, and host capability ceilings.
 - [`rust-core-phase-1/`](rust-core-phase-1/README.md): audited filesystem, search, process, artifact, checkpoint, and WebFetch operations.
+- [`office-document-read/`](office-document-read/README.md): bounded PDF, Word, presentation, and spreadsheet extraction; legacy Office fixtures remain incomplete.
 - [`persistence-phase-1/`](persistence-phase-1/README.md): current SQLite ownership, normalized storage model, and native SDK boundary.
 - [`providers-and-models/`](providers-and-models/README.md): provider catalog, custom models, endpoint settings, and the OpenAI Responses wire format.
 - [`context-compaction/`](context-compaction/README.md): automatic model-assisted context compaction and overflow recovery.
 - [`built-in-subagents/`](built-in-subagents/README.md): fixed specialist catalog, restricted delegation, linked child sessions, and desktop inspection.
 - [`mcp-servers/`](mcp-servers/README.md): local and remote MCP servers with background project loading.
-- [`language-servers/`](language-servers/README.md): local stdio language server definitions and runtime.
-- [`browser-use/`](browser-use/README.md): Rust CDP Browser Use client and embedded CEF preview.
+- [`language-servers/`](language-servers/README.md): five built-in language-server catalog entries with project configuration and read-only semantic tools; servers are not bundled.
+- [`browser-use/`](browser-use/README.md): optional Rust CDP Browser Use and partial CEF preview; CEF is excluded from default builds and baseline installers.
 - [`computer-use/`](computer-use/README.md): first-party Computer Use and accessibility observation; cross-platform conformance is incomplete.
 - [`network/`](network/README.md): HTTPS certificate verification, proxy settings, and the development proxy tool.
 - [`diagnostic-logging/`](diagnostic-logging/README.md): persisted, rotating, redacted diagnostics.
@@ -31,10 +34,11 @@ Agent and SDK:
 Clients:
 
 - [`avalonia-desktop-phase-1/`](avalonia-desktop-phase-1/README.md): implemented .NET 10 Avalonia workflows and client boundary.
+- [`markdown-rendering/`](markdown-rendering/README.md): native Markdown math and Mermaid diagrams, with explicit syntax and platform fallbacks.
 - [`windows-installer/`](windows-installer/README.md): Inno Setup offline packaging and current-user install/uninstall; x64 build/lifecycle verified, signing and managed-update enrollment pending.
-- [`unix-desktop-packaging/`](unix-desktop-packaging/README.md): native macOS DMG and Linux Debian/portable packaging source, optional macOS signing/notarization and manual native CI; static inspection only, native execution pending.
+- [`unix-desktop-packaging/`](unix-desktop-packaging/README.md): macOS DMG and Linux Debian/portable packaging source; partial user-reported publish results, native reruns and installed/signing verification pending.
 - [`desktop-component-updates/`](desktop-component-updates/README.md): C# coordinator for independent Desktop/SDK packages; client tested, production delivery and initial-installer integration pending.
-- [`shell-settings/`](shell-settings/README.md): independent Agent/Terminal shells, executable detection, and on-demand Windows PowerShell setup; Windows platform conformance pending.
+- [`shell-settings/`](shell-settings/README.md): independent Agent/Terminal shells and on-demand PowerShell setup; Windows 10 ConPTY verified, installation and broader platform conformance pending.
 - [`provider-transfer-status/`](provider-transfer-status/README.md): transient provider HTTP body byte rates in the Workspace footer.
 - [`session-attention-notifications/`](session-attention-notifications/README.md): background system notifications and activation.
 - [`cli-foundation/`](cli-foundation/README.md), [`cli-run/`](cli-run/README.md), [`cli-session-resume/`](cli-session-resume/README.md), [`cli-session-administration/`](cli-session-administration/README.md): native Rust CLI.
@@ -70,4 +74,5 @@ Completed dated requirements have been summarized into these current feature rec
 | Computer accessibility tree (2026-10-23) | [`computer-use`](computer-use/README.md); Windows/Linux conformance remains open |
 | Native desktop menus, Dock menu, and Windows Jump List (2026-10-23) | [`avalonia-desktop-phase-1`](avalonia-desktop-phase-1/README.md); installed shell click-through remains open |
 | Independent shells and on-demand PowerShell setup (2026-10-31) | [`shell-settings`](shell-settings/README.md); Windows conformance remains open |
+| Office document reader migration (2026-10-31) | [`office-document-read`](office-document-read/README.md); legacy binary fixtures and malformed/encrypted-file conformance remain open |
 | Avalonia Desktop/SDK update client (2026-11-01) | [`desktop-component-updates`](desktop-component-updates/README.md); publication, installer integration, and installed platform conformance remain open |

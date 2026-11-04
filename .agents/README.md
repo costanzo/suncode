@@ -12,6 +12,8 @@ This directory is the source of truth for project context used by contributors a
 6. `DECISIONS.md` — durable architectural decisions and the constraints they explain.
 7. `requirements/` — template and policy for active delivery work; completed packages are removed after closeout.
 
+For official website content, use [`features/WEBSITE-CLAIMS.md`](features/WEBSITE-CLAIMS.md) as the claim-to-feature map, including release availability and verification limits.
+
 ## Directory ownership
 
 | Path | Purpose |

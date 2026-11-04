@@ -8,7 +8,7 @@ The Rust agent owns all network policy for HTTP requests it makes itself. The se
 
 - `verify_https_certificates` (default `true`): `false` accepts invalid certificate chains and hostnames on later requests, equivalent to `curl -k`. URL validation, redirect limits, approval, auditing, and redaction still apply.
 - `use_system_certificates` (default `true`) and an optional PEM or DER `certificate_path`: when verification is on, clients trust the system roots, add the custom root when one is configured, and use only the custom file when system roots are off. An unreadable or invalid certificate file fails the next request with a stable error.
-- Built-in OpenAI-compatible and Anthropic providers, WebFetch, and remote Streamable HTTP MCP clients apply these settings without a restart. Browser Use Chromium keeps normal certificate verification and ignores the insecure toggle.
+- Built-in provider adapters, WebFetch, and remote Streamable HTTP MCP clients apply these settings without an application restart. The Remote Server transport also uses the shared trust/proxy configuration when constructing its HTTP clients. Browser Use Chromium keeps normal certificate verification and ignores the insecure toggle. Desktop component updates use their separate strict trust policy.
 
 ## Proxy settings
 
@@ -18,7 +18,7 @@ The Rust agent owns all network policy for HTTP requests it makes itself. The se
 - Bypass rules accept hostnames, domain suffixes, IP addresses, CIDR ranges, and `*`. An invalid rule blocks the save and is named in the error. Localhost, IPv4 loopback, and IPv6 loopback always bypass the proxy.
 - Saved custom values are kept when switching to another mode. Omitting the password keeps the stored one. Clearing it removes it. An empty stored password counts as unconfigured.
 - Reads never return `proxy_password`; they return `proxy_password_configured` instead. Proxy credentials and auth headers stay out of DTOs, events, diagnostics, and logs. The proxy password is stored as plaintext in SQLite; provider API keys use their separate system-store/plaintext policy.
-- Requests already in flight are not changed. Later provider and WebFetch requests use the new live snapshot. Active remote MCP connections reconcile and reconnect, and a reconnect failure shows up as that server's `failed` state. A Browser Use worker reads the current mode, including custom credentials and bypass rules, the next time it starts.
+- Requests already in flight are not changed. Later provider and WebFetch requests use the new live snapshot. Active remote MCP connections reconcile and reconnect, and a reconnect failure shows up as that server's `failed` state. Remote Server HTTP clients capture configuration when the connection worker starts. CEF is host-owned and uses its default network configuration; it does not inherit SunCode proxy settings.
 - Child processes (bash, MCP stdio, language servers) receive only the six standard proxy environment variables already present on the host. HTTP made by local MCP processes and by trusted in-process provider implementations is not controlled. PAC/WPAD, SOCKS, and NTLM/Kerberos authentication are not supported.
 
 ## Developer proxy tool
