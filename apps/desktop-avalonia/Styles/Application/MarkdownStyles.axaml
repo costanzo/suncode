@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
+        xmlns:ratex="clr-namespace:RaTeX.Avalonia;assembly=RaTeX.Avalonia"
         xmlns:diagram="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia.Mermaid">
   <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
   <Style Selector="md|MarkdownRenderer">
@@ -360,6 +361,10 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="12,8" />
     <Setter Property="Margin" Value="0,8" />
+  </Style>
+  <Style Selector="ratex|FormulaControl.MathBlock">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,12" />
   </Style>
   <Style Selector="md|MarkdownTextBlock.MathBlock">
     <Setter Property="FontSize" Value="18" />
