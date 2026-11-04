@@ -458,6 +458,8 @@ Assistant messages are rendered as Markdown and use the same semantic content to
 
 ### Component Coverage
 
+Mermaid review must include a Gantt chart with date ticks, section labels, task bars, dependency-based scheduling, and a milestone, alongside the existing source disclosure. The desktop renders sanitized SVG through the existing Skia control, resolves generated CSS variables and sRGB color mixes to concrete theme values, and rebuilds on theme changes. Normal schedule bars use neutral content tokens; actual critical states may use the danger token. Rendering failures retain readable diagnostics and copyable source.
+
 The review pages are required to show, at minimum:
 
 - color tokens for surfaces, text, action, borders, and semantic states

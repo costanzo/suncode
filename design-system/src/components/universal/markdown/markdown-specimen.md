@@ -213,6 +213,16 @@ flowchart LR
   B --> C[Review changes]
 ```
 
+```mermaid
+gantt
+  title Release plan
+  dateFormat YYYY-MM-DD
+  section Build
+  Design :done, design, 2026-11-01, 2d
+  Implement :active, build, after design, 3d
+  Release :milestone, after build, 0d
+```
+
 Unsupported diagram source remains inspectable and copyable:
 
 ```mermaid

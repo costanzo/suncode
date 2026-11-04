@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261103-markdown-mermaid-svg
+
+- Date: 2026-11-03
+- Status: Accepted
+- Context: LiveMarkdown 2.5.1's native Mermaid presenter depends on Mermaider 0.8 internals and implements a limited set of graph types. It rejects valid Gantt headers. Upgrading Mermaider alone breaks those private API calls, including the removed `StrictModeOptions` type.
+- Decision: Keep LiveMarkdown's Markdown parsing and pan/zoom control, use Mermaider 0.15.1's public sanitized SVG API for all diagrams, and display the result through the desktop's existing Skia SVG control. Materialize the generated theme expressions for that renderer and preserve copyable source, streaming behavior and unscaled error diagnostics.
+- Consequences: Diagram coverage follows the pinned public renderer instead of a second hand-maintained native implementation. No browser/JavaScript runtime or new agent authority is introduced. Existing graph types, Gantt syntax, theme expressions, resource disposal and source access require focused regression coverage; complete Mermaid.js parity is not claimed.
+- Details: `.agents/features/markdown-rendering/README.md`, `DESIGN.md`
+
 ## ADR-20261103-unix-desktop-packaging
 
 - Date: 2026-11-03

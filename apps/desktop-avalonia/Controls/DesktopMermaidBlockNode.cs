@@ -9,7 +9,7 @@ namespace SunCode.Desktop.Controls;
 /// <summary>Keeps diagram source selectable and copyable, including unsupported diagrams.</summary>
 internal sealed class DesktopMermaidBlockNode : BlockNode<MermaidCodeBlock>
 {
-    private readonly MermaidBlockNode _node = new();
+    private readonly MermaidDiagramView _presenter = new();
     private readonly CodeBlock _source = new() { AutoSyntaxHighlight = false, Classes = { "MermaidSource" } };
     private readonly Expander _sourceExpander;
     private readonly Control _diagram;
@@ -18,7 +18,7 @@ internal sealed class DesktopMermaidBlockNode : BlockNode<MermaidCodeBlock>
 
     public DesktopMermaidBlockNode()
     {
-        _diagram = _node.Control;
+        _diagram = _presenter;
         _sourceExpander = new Expander
         {
             Classes = { "MermaidSource" },
@@ -34,12 +34,12 @@ internal sealed class DesktopMermaidBlockNode : BlockNode<MermaidCodeBlock>
     protected override bool UpdateCore(DocumentNode documentNode, MermaidCodeBlock mermaid,
         in ObservableStringBuilderChangedEventArgs change, CancellationToken cancellationToken)
     {
-        var result = _node.Update(documentNode, mermaid, change, cancellationToken) != false;
+        if (!mermaid.IsOpen) _presenter.Text = mermaid.Lines.ToString();
         _source.Code = mermaid.Lines.ToString();
         if (_wasOpen != mermaid.IsOpen)
             _sourceExpander.IsExpanded = mermaid.IsOpen;
         _wasOpen = mermaid.IsOpen;
         _diagram.IsVisible = !mermaid.IsOpen;
-        return result;
+        return true;
     }
 }

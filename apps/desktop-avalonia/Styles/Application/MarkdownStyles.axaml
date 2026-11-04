@@ -3,7 +3,6 @@
         xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
         xmlns:diagram="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia.Mermaid">
   <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
-  <StyleInclude Source="avares://LiveMarkdown.Avalonia.Mermaid/Styles.axaml" />
   <Style Selector="md|MarkdownRenderer">
     <Setter Property="MaxWidth" Value="Infinity" />
     <!-- Headings -->
@@ -369,22 +368,13 @@
   <Style Selector="md|MarkdownTextBlock.Math.Error, md|MarkdownTextBlock.MathBlock.Error">
     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
   </Style>
-  <Style Selector="diagram|MermaidPresenter">
-    <Setter Property="FontFamily" Value="{DynamicResource SansFontFamily}" />
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-    <Setter Property="SecondaryForeground" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="LineStroke" Value="{DynamicResource BorderStrongBrush}" />
-    <Setter Property="ThickLineStroke" Value="{DynamicResource BorderStrongBrush}" />
-    <Setter Property="DottedLineStroke" Value="{DynamicResource BorderStrongBrush}" />
-    <Setter Property="NodeStroke" Value="{DynamicResource BorderStrongBrush}" />
-    <Setter Property="GroupStroke" Value="{DynamicResource BorderStrongBrush}" />
-    <Setter Property="EdgeLabelStroke" Value="{DynamicResource BorderBrush}" />
-    <Setter Property="NodeFill" Value="{DynamicResource FieldBrush}" />
-    <Setter Property="GroupFill" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="GroupHeaderFill" Value="{DynamicResource FieldBrush}" />
-    <Setter Property="EdgeLabelBackground" Value="{DynamicResource SurfaceBrush}" />
+  <Style Selector="md|MarkdownTextBlock.MermaidError">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="diagram|PanAndZoom.MermaidBlock">
+    <Setter Property="FitToViewport" Value="True" />
+    <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="MaxHeight" Value="480" />
     <Setter Property="Margin" Value="0,12" />
   </Style>
@@ -411,7 +401,7 @@
               <Path x:Name="SourceChevron" Width="8" Height="8" Stretch="Uniform"
                     VerticalAlignment="Center" Fill="{DynamicResource TextMutedBrush}"
                     Data="M 0,0 L 6,4 L 0,8 Z" />
-              <ContentPresenter Content="{TemplateBinding Header}" />
+              <ContentPresenter VerticalContentAlignment="Center" Content="{TemplateBinding Header}" />
             </StackPanel>
           </ToggleButton>
           <ContentPresenter IsVisible="{TemplateBinding IsExpanded}" Content="{TemplateBinding Content}"

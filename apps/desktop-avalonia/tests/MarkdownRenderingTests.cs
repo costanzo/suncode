@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
-using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -46,15 +45,17 @@ public sealed class MarkdownRenderingTests(AvaloniaUiFixture ui)
     [InlineData("classDiagram\n Animal <|-- Duck")]
     [InlineData("stateDiagram-v2\n [*] --> Ready\n Ready --> [*]")]
     [InlineData("erDiagram\n CUSTOMER ||--o{ ORDER : places")]
+    [InlineData("gantt\n title Release plan\n dateFormat YYYY-MM-DD\n section Build\n Design :done, design, 2026-11-01, 2d\n Implement :active, build, after design, 3d\n Release :milestone, release, after build, 0d")]
     public Task CommonDiagramsKeepCopyableSource(string diagram) => ui.Run(async () =>
     {
         using var surface = new Surface();
         await surface.Set($"```mermaid\n{diagram}\n```");
-        var presenter = Assert.Single(surface.Descendants<MermaidPresenter>());
+        var presenter = Assert.Single(surface.Descendants<MermaidDiagramView>());
         Assert.Equal(diagram, presenter.Text);
+        Assert.Null(presenter.Error);
         Assert.True(presenter.Bounds.Width > 0);
         Assert.True(presenter.Bounds.Height > 0);
-        Assert.Single(presenter.GetLogicalChildren().OfType<MermaidRenderer>());
+        Assert.NotNull(Assert.Single(surface.Descendants<Avalonia.Svg.Skia.Svg>()).SvgSource?.Picture);
         var disclosure = Assert.Single(surface.Descendants<Expander>());
         Assert.False(disclosure.IsExpanded);
         disclosure.IsExpanded = true;
@@ -72,24 +73,55 @@ public sealed class MarkdownRenderingTests(AvaloniaUiFixture ui)
         const string open = "```mermaid\nflowchart LR\n A --> B";
         await surface.Set(open);
         Assert.True(Assert.Single(surface.Descendants<Expander>()).IsExpanded);
-        Assert.DoesNotContain(surface.Descendants<MermaidPresenter>(), presenter => presenter.IsEffectivelyVisible);
+        Assert.DoesNotContain(surface.Descendants<MermaidDiagramView>(), presenter => presenter.IsEffectivelyVisible);
         await surface.Set(open + "\n```");
         Assert.False(Assert.Single(surface.Descendants<Expander>()).IsExpanded);
-        Assert.True(Assert.Single(surface.Descendants<MermaidPresenter>()).IsEffectivelyVisible);
+        Assert.True(Assert.Single(surface.Descendants<MermaidDiagramView>()).IsEffectivelyVisible);
         await surface.Set("```mermaid\nunsupportedDiagram\n A --> B\n```");
         var disclosure = Assert.Single(surface.Descendants<Expander>());
         disclosure.IsExpanded = true;
         surface.Window.UpdateLayout();
         Assert.Contains("unsupportedDiagram", Assert.Single(surface.Descendants<CodeBlock>()).Code);
-        Assert.Empty(Assert.Single(surface.Descendants<MermaidPresenter>()).GetLogicalChildren().OfType<MermaidRenderer>());
+        Assert.NotNull(Assert.Single(surface.Descendants<MermaidDiagramView>()).Error);
         await surface.Set("```mermaid\nunsupportedDiagram\n A --> B\n```\n\nTail");
         Assert.True(Assert.Single(surface.Descendants<Expander>()).IsExpanded);
         await surface.Set("Replacement $x^2$.");
-        Assert.Empty(surface.Descendants<MermaidPresenter>());
+        Assert.Empty(surface.Descendants<MermaidDiagramView>());
         Assert.Single(surface.Descendants<FormulaControl>());
         await surface.Set(null);
         Assert.Empty(surface.Descendants<FormulaControl>());
-        Assert.Empty(surface.Descendants<MermaidPresenter>());
+        Assert.Empty(surface.Descendants<MermaidDiagramView>());
+    });
+
+    [Fact]
+    public Task GanttStreamsAndRebuildsForThemeAndReattachment() => ui.Run(async () =>
+    {
+        using var surface = new Surface(width: 320);
+        const string diagram = "gantt\n title 发布计划\n dateFormat YYYY-MM-DD\n excludes weekends\n section 开发\n 设计 :done, a, 2026-11-01, 2d\n 实现 :active, b, after a, 3d\n 发布 :milestone, after b, 0d";
+        await surface.Set($"```mermaid\n{diagram}");
+        Assert.True(Assert.Single(surface.Descendants<Expander>()).IsExpanded);
+        await surface.Set($"```mermaid\n{diagram}\n```");
+        var view = Assert.Single(surface.Descendants<MermaidDiagramView>());
+        Assert.Null(view.Error);
+        Assert.Contains("发布计划", view.RenderedSvg);
+        Assert.DoesNotContain("color-mix(", view.RenderedSvg);
+        Assert.DoesNotContain("var(", view.RenderedSvg);
+        var light = view.RenderedSvg;
+        surface.Window.RequestedThemeVariant = ThemeVariant.Dark;
+        surface.Window.UpdateLayout();
+        Assert.NotEqual(light, view.RenderedSvg);
+        Assert.True(Assert.Single(surface.Descendants<PanAndZoom>()).Bounds.Width <= 320);
+        surface.Window.Content = null;
+        surface.Window.Content = surface.Text;
+        surface.Window.UpdateLayout();
+        Assert.NotNull(view.RenderedSvg);
+        await surface.Set("```mermaid\ngantt\n dateFormat YYYY-MM-DD\n Broken :a, 9999-12-31, 2d\n```");
+        Assert.NotNull(Assert.Single(surface.Descendants<MermaidDiagramView>()).Error);
+        Assert.Single(surface.Descendants<Expander>()).IsExpanded = true;
+        surface.Window.UpdateLayout();
+        Assert.Contains("9999-12-31", Assert.Single(surface.Descendants<CodeBlock>()).Code);
+        await surface.Set($"```mermaid\n{diagram}\n```");
+        Assert.Null(Assert.Single(surface.Descendants<MermaidDiagramView>()).Error);
     });
 
     [Fact]

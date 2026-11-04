@@ -3,6 +3,8 @@ import { Button } from "../button/index.js";
 
 const diagramSource =
   "flowchart LR\n  A[User submission] --> B[Agent turn]\n  B --> C[Review changes]";
+const ganttSource =
+  "gantt\n  title Release plan\n  dateFormat YYYY-MM-DD\n  section Build\n  Design :done, design, 2026-11-01, 2d\n  Implement :active, build, after design, 3d\n  Release :milestone, after build, 0d";
 
 // Semantic HTML/MathML and SVG are review specimens, not a Markdown parser.
 export function TechnicalMarkdownSpecimen({ CodeBlock }) {
@@ -10,7 +12,12 @@ export function TechnicalMarkdownSpecimen({ CodeBlock }) {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [drag, setDrag] = useState(null);
-  const source = state === "error" ? "unsupportedDiagram\n  A --> B" : diagramSource;
+  const source =
+    state === "error"
+      ? "unsupportedDiagram\n  A --> B"
+      : state === "gantt"
+        ? ganttSource
+        : diagramSource;
 
   return (
     <section className="markdown-technical">
@@ -103,7 +110,7 @@ export function TechnicalMarkdownSpecimen({ CodeBlock }) {
 
       <h2>Mermaid</h2>
       <div className="markdown-diagram-states" role="group" aria-label="Diagram state">
-        {["complete", "streaming", "error"].map((value) => (
+        {["complete", "gantt", "streaming", "error"].map((value) => (
           <Button
             key={value}
             size="sm"
@@ -112,9 +119,11 @@ export function TechnicalMarkdownSpecimen({ CodeBlock }) {
           >
             {value === "complete"
               ? "Complete"
-              : value === "streaming"
-                ? "Streaming"
-                : "Unsupported"}
+              : value === "gantt"
+                ? "Gantt"
+                : value === "streaming"
+                  ? "Streaming"
+                  : "Unsupported"}
           </Button>
         ))}
       </div>
@@ -138,6 +147,93 @@ export function TechnicalMarkdownSpecimen({ CodeBlock }) {
         >
           {state === "error" ? (
             <p role="status">This diagram type is not supported. The source is available below.</p>
+          ) : state === "gantt" ? (
+            <svg
+              viewBox="0 0 680 260"
+              role="img"
+              aria-label="Release plan: design November 1 to 3, implement November 3 to 6, release November 6"
+              style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+            >
+              <text x="16" y="28" className="markdown-gantt-title">
+                Release plan
+              </text>
+              <rect className="markdown-gantt-done" x="426" y="17" width="10" height="10" rx="3" />
+              <text x="443" y="26">
+                Done
+              </text>
+              <rect
+                className="markdown-gantt-active"
+                x="492"
+                y="17"
+                width="10"
+                height="10"
+                rx="3"
+              />
+              <text x="509" y="26">
+                Active
+              </text>
+              <rect
+                className="markdown-gantt-milestone"
+                x="572"
+                y="17"
+                width="10"
+                height="10"
+                rx="3"
+              />
+              <text x="589" y="26">
+                Planned
+              </text>
+              <rect
+                className="markdown-gantt-panel"
+                x="8"
+                y="50"
+                width="664"
+                height="180"
+                rx="10"
+              />
+              <path
+                className="markdown-diagram-edge"
+                d="M160 60V230M260 60V230M360 60V230M460 60V230M560 60V230M650 60V230"
+              />
+              {[
+                [160, "Nov 1"],
+                [360, "Nov 3"],
+                [650, "Nov 6"],
+              ].map(([x, label]) => (
+                <text key={label} x={x} y="250" textAnchor="middle">
+                  {label}
+                </text>
+              ))}
+              <text x="16" y="90">
+                Build
+              </text>
+              <text x="16" y="125">
+                Design
+              </text>
+              <rect
+                className="markdown-gantt-done"
+                x="160"
+                y="108"
+                width="200"
+                height="24"
+                rx="4"
+              />
+              <text x="16" y="169">
+                Implement
+              </text>
+              <rect
+                className="markdown-gantt-active"
+                x="360"
+                y="152"
+                width="290"
+                height="24"
+                rx="4"
+              />
+              <text x="16" y="213">
+                Release
+              </text>
+              <path className="markdown-gantt-milestone" d="M650 198l8 8-8 8-8-8Z" />
+            </svg>
           ) : (
             <svg
               viewBox="0 0 680 140"

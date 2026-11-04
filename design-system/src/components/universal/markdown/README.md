@@ -1,5 +1,7 @@
 # Markdown
 
+The diagram selector includes a Gantt fixture with sections, date ticks, dependent tasks and a milestone. Desktop chart support comes from Mermaider's public SVG API; SVG theme expressions are materialized for Skia rather than relying on a browser CSS engine.
+
 `TechnicalMarkdownSpecimen.jsx` adds semantic MathML formula specimens and an SVG Mermaid review specimen with complete, streaming, and unsupported states. The source disclosure supports keyboard access and code copy. Diagram drag/wheel behavior models the native viewport; these fixtures do not parse or validate Mermaid or LaTeX. `markdown-specimen.md` contains the matching original sources. Display math scrolls horizontally; diagrams fit their container and are capped at 480px. Native formula loading and actual diagram syntax are verified in desktop integration tests.
 
 `MarkdownSpecimen.jsx` is a static semantic-HTML specimen of the expected post-render Markdown surface. It intentionally has no Markdown parser dependency. `markdown-specimen.md` mirrors the rendered specimen and supplies the original Markdown for the document-level copy action. The code-block examples cover JavaScript, Python, Bash, HTML, CSS, JSON, Java, Go, and Rust using `token-*` spans to model the classes a future syntax highlighter should emit. The document and each fenced code specimen include accessible copy actions with clipboard fallbacks and explicit success or failure feedback. `Markdown.css` owns every Markdown-specific visual rule; global review styles must not define `.markdown*` selectors.

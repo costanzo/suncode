@@ -61,6 +61,30 @@
   fill: none;
 }
 
+.markdown-diagram-viewport .markdown-gantt-title {
+  font-weight: 700;
+}
+
+.markdown-diagram-viewport .markdown-gantt-active {
+  fill: var(--accent);
+  stroke: var(--accent-border);
+}
+
+.markdown-diagram-viewport .markdown-gantt-panel {
+  fill: color-mix(in srgb, var(--text) 4%, var(--surface));
+  stroke: none;
+}
+
+.markdown-diagram-viewport .markdown-gantt-done {
+  fill: color-mix(in srgb, var(--accent) 24%, var(--surface));
+  stroke: var(--accent);
+}
+
+.markdown-diagram-viewport .markdown-gantt-milestone {
+  fill: var(--accent);
+  stroke: none;
+}
+
 .markdown-diagram-source {
   margin-block: var(--space-3);
 }
