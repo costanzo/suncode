@@ -412,7 +412,7 @@
       "status": "tooling",
       "description": "Explore SunCode's workflows and complete feature guide, and find the open-source implementation.",
       "details": [
-        "Server-rendered product pages with responsive navigation and searchable capability descriptions.",
+        "Server-rendered product pages with light/dark themes, responsive navigation, and searchable capability descriptions.",
         "Hosts public update metadata with offline publication tooling."
       ],
       "note": "This is a product information website, separate from the deferred Web agent client. Signed metadata is not proof of usable package downloads."

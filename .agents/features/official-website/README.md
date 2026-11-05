@@ -10,7 +10,9 @@ The overview now demonstrates project inspection, scoped approval, and checkpoin
 
 The site uses the Next.js App Router and TypeScript, includes shared responsive navigation, canonical/Open Graph metadata, sitemap and robots routes, and reuses the SunCode brand assets. Self-hosted Noto Sans and JetBrains Mono carry the graphite/silver visual system. Root `DESIGN.md` and `design-system/` → Projects → Official website specify desktop/mobile composition, menu dismissal, focus, filtering, disclosure, reduced motion, and empty states. It is separate from the Web remote-control specimen and the deferred Web client.
 
-Build and verify from `website/` with `pnpm build`, `pnpm typecheck`, `pnpm test:features`, and `pnpm test:updates`. `website/README.md` documents content maintenance and browser checks. Local implementation and validation do not establish a production deployment.
+The header offers light/dark switching on desktop and mobile. Without a saved choice, the site follows system appearance; manual choices persist in localStorage and synchronize across tabs. A head bootstrap applies the choice before first paint. Both page content and the workbench use theme-specific tokens, including logos, actions, code, and availability colors; storage failure preserves switching for the visit.
+
+Build and verify from `website/` with `pnpm build`, `pnpm typecheck`, `pnpm test:features`, `pnpm test:theme`, and `pnpm test:updates`. `website/README.md` documents content maintenance and browser checks. Local implementation and validation do not establish a production deployment.
 
 The 2026-11-05 update passed the Next.js production build/type check, all 19 feature-coverage and update tests, the design-system build, focused specimen formatting, and diff checks. Browser review covered desktop and 390px mobile layouts, workflow switching, combined search/availability filters, empty recovery, scope disclosure, mobile menu Escape behavior, and the matching light/dark catalog specimen. The observed mobile guide overflow and unqualified homepage mobile claim were corrected and passed a separate source/screenshot review.
 

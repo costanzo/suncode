@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { githubUrl } from "../../lib/features";
+import { BrandMark } from "./BrandMark";
 
 export function SiteFooter() {
   return (
     <footer className="site-footer shell">
       <div>
         <Link className="brand" href="/">
-          <img src="/suncode-mark-24-dark.svg" width="26" height="26" alt="" />
+          <BrandMark size={26} />
           <span>SunCode</span>
         </Link>
         <p>Your project. A clear view of the work.</p>

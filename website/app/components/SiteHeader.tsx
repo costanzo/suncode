@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { githubUrl } from "../../lib/features";
+import { ThemeToggle } from "./ThemeToggle";
+import { BrandMark } from "./BrandMark";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -46,7 +48,7 @@ export function SiteHeader() {
           aria-label="SunCode home"
           onClick={() => setOpen(false)}
         >
-          <img src="/suncode-mark-24-dark.svg" width="28" height="28" alt="" />
+          <BrandMark size={28} />
           <span>SunCode</span>
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
@@ -63,11 +65,15 @@ export function SiteHeader() {
         <a
           className="header-source"
           href={githubUrl}
+          aria-label="View SunCode on GitHub"
+          title="View SunCode on GitHub"
           target="_blank"
           rel="noreferrer"
         >
-          GitHub <ArrowUpRight size={15} aria-hidden="true" />
+          <span className="header-source-label">GitHub</span>{" "}
+          <ArrowUpRight size={15} aria-hidden="true" />
         </a>
+        <ThemeToggle />
         <div className="mobile-nav" ref={container}>
           <button
             ref={trigger}

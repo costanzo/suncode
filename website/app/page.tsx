@@ -10,6 +10,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { WorkbenchDemo } from "./components/WorkbenchDemo";
+import { BrandMark } from "./components/BrandMark";
 import { githubUrl, sourceUrl } from "../lib/features";
 
 export default function Home() {
@@ -217,12 +218,7 @@ export default function Home() {
       </section>
       <section className="open-section shell">
         <div className="open-symbol" aria-hidden="true">
-          <img
-            src="/suncode-mark-40-dark.svg"
-            width="112"
-            height="112"
-            alt=""
-          />
+          <BrandMark size={112} />
         </div>
         <div>
           <h2>

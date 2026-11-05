@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BrandMark } from "./BrandMark";
 import {
   ArrowDown,
   ArrowUp,
@@ -120,12 +121,7 @@ export function WorkbenchDemo() {
               Handle temporary provider failures and add focused tests.
             </div>
             <div className="demo-assistant">
-              <img
-                src="/suncode-mark-16-dark.svg"
-                width="22"
-                height="22"
-                alt="SunCode"
-              />
+              <BrandMark size={22} label="SunCode" />
               <div>
                 <p>
                   I found the request boundary. I’ll add a bounded retry before

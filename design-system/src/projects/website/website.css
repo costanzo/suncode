@@ -18,7 +18,7 @@
   --accent-ink: var(--website-accent-ink);
   --success: var(--website-success);
   --warning: var(--website-warning);
-  color-scheme: dark;
+  color-scheme: var(--website-color-scheme);
   color: var(--text);
   background: var(--canvas);
   border: 1px solid var(--border-strong);
@@ -45,6 +45,18 @@
   gap: var(--space-4);
   padding: var(--space-5) var(--space-8);
   border-bottom: 1px solid var(--border);
+}
+.website-specimen-nav .website-specimen-theme {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  background: var(--surface);
 }
 .website-specimen-nav strong {
   display: flex;

@@ -35,6 +35,13 @@
   }
   .header-source {
     margin-left: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    gap: 0;
+  }
+  .header-source-label {
+    display: none;
   }
   .hero-bottom {
     align-items: flex-start;
@@ -82,9 +89,8 @@
     gap: 36px;
     grid-template-columns: auto 1fr;
   }
-  .open-symbol img {
-    width: 72px;
-    height: 72px;
+  .open-symbol {
+    --mark-size: 72px;
   }
   .catalog-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -131,7 +137,10 @@
     display: none;
   }
   .header-inner {
-    justify-content: space-between;
+    gap: 12px;
+  }
+  .header-inner > .brand {
+    margin-right: auto;
   }
   .brand {
     font-size: 18px;
@@ -361,9 +370,8 @@
   .open-symbol {
     justify-content: flex-start;
   }
-  .open-symbol img {
-    width: 54px;
-    height: 54px;
+  .open-symbol {
+    --mark-size: 54px;
   }
   .open-section p {
     font-size: 13px;

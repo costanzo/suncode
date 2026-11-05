@@ -18,7 +18,7 @@ The guide is server-rendered before client hydration; search and availability fi
 
 ## Design and assets
 
-Root `DESIGN.md` and the design browser's `/projects/website` route own appearance and interaction. The site preserves the graphite/silver identity and stays dark. Shared navigation, feature rows, workbench examples, native disclosures, empty recovery, mobile layouts, and reduced-motion behavior are specified there.
+Root `DESIGN.md` and the design browser's `/projects/website` route own appearance and interaction. Light paper/slate and dark graphite/silver themes apply to the complete site and illustrative workbench. A header toggle remains visible on mobile, defaults to the system preference, and persists manual choices in localStorage. The head bootstrap applies the choice before first paint; blocked storage still allows switching for the visit. Shared navigation, feature rows, workbench examples, native disclosures, empty recovery, mobile layouts, and reduced-motion behavior are specified there.
 
 Fonts under `public/fonts/` are self-hosted copies of the repository's Noto Sans Regular (400), SemiBold (600), Bold (700), and JetBrains Mono Regular (400) assets. Their SIL Open Font Licenses are included. JetBrains Mono is reserved for code. Logos reuse the approved optical SunCode marks. The three workbench stages are user-controlled pressed-state buttons, and the labeled illustrative session never executes operations.
 
@@ -30,9 +30,10 @@ pnpm dev
 pnpm build
 pnpm typecheck
 pnpm test:features
+pnpm test:theme
 pnpm test:updates
 ```
 
-The feature tests verify complete one-to-one coverage and valid groups, availability, behavior, and scope. The update tests protect catalog serving and publication behavior. Check the home and features routes at desktop and mobile widths, including workflow switching, search/filter combinations, empty recovery, scope disclosure, navigation dismissal, focus, and horizontal overflow. Build the design-system specimen as part of visual changes.
+The feature tests verify complete one-to-one coverage and valid groups, availability, behavior, and scope. Theme tests cover first-paint system preference, saved-choice precedence, invalid values, and blocked storage. The update tests protect catalog serving and publication behavior. Check the home and features routes at desktop and mobile widths in both themes, including persistence across navigation/reload, workflow switching, search/filter combinations, empty recovery, scope disclosure, navigation dismissal, focus, and horizontal overflow. Build the design-system specimen as part of visual changes.
 
 Production deployment uses the existing website infrastructure and is separate from local implementation and validation.

@@ -1,4 +1,6 @@
-:root {
+:root,
+[data-website-theme="dark"] {
+  --website-color-scheme: dark;
   --website-canvas: #0d0f12;
   --website-surface: #121519;
   --website-surface-raised: #181c21;
@@ -20,4 +22,21 @@
   --website-guide-width: 240px;
   --website-guide-gap: 72px;
   --website-search-height: 48px;
+}
+
+[data-theme="light"],
+[data-website-theme="light"] {
+  --website-color-scheme: light;
+  --website-canvas: #f3f5f7;
+  --website-surface: #ffffff;
+  --website-surface-raised: #f8fafc;
+  --website-text: #17202a;
+  --website-text-secondary: #44515e;
+  --website-text-muted: #65717d;
+  --website-border: #d5dde4;
+  --website-border-strong: #bac6d0;
+  --website-accent: #2c3742;
+  --website-accent-ink: #ffffff;
+  --website-success: #4f6d82;
+  --website-warning: #895f1e;
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BrandMark } from "../../shared/BrandMark.jsx";
+import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
 import "./website.css";
 
@@ -32,6 +33,7 @@ const samples = [
 
 export function WebsiteProjectPage() {
   const [narrow, setNarrow] = useState(false);
+  const [theme, setTheme] = useState("light");
   const [query, setQuery] = useState("");
   const [availability, setAvailability] = useState("All capabilities");
   const [step, setStep] = useState(0);
@@ -51,7 +53,7 @@ export function WebsiteProjectPage() {
       />
       <Section
         title="Composition and navigation"
-        description="Graphite and silver remain fixed on the public site in either catalog theme. The site presents an illustrative workflow, not a live agent."
+        description="Light paper/slate and dark graphite/silver themes share the same composition. The header theme control switches both specimens. Production follows the system until a manual choice is saved."
       >
         <label className="website-review-toggle">
           <input
@@ -61,12 +63,25 @@ export function WebsiteProjectPage() {
           />{" "}
           Constrained layout
         </label>
-        <div className={`website-specimen ${narrow ? "website-specimen-narrow" : ""}`}>
+        <div
+          className={`website-specimen ${narrow ? "website-specimen-narrow" : ""}`}
+          data-website-theme={theme}
+        >
           <header className="website-specimen-nav">
             <strong>
               <BrandMark size={24} /> SunCode
             </strong>
             {!narrow && <span>Overview　 Features　 How it works</span>}
+            <button
+              className="website-specimen-theme"
+              type="button"
+              aria-label={
+                theme === "light" ? "Switch specimen to dark mode" : "Switch specimen to light mode"
+              }
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            >
+              <Icon name={theme === "light" ? "moon" : "sun"} />
+            </button>
             {narrow && (
               <button type="button" aria-expanded={menu} onClick={() => setMenu(!menu)}>
                 {menu ? "Close menu" : "Open menu"}
@@ -129,7 +144,10 @@ export function WebsiteProjectPage() {
         title="Feature guide and availability"
         description="Search, result counts, empty recovery, status labels, and keyboard-operable scope disclosure. Production includes all 31 source feature records in seven groups."
       >
-        <div className={`website-specimen ${narrow ? "website-specimen-narrow" : ""}`}>
+        <div
+          className={`website-specimen ${narrow ? "website-specimen-narrow" : ""}`}
+          data-website-theme={theme}
+        >
           <div className="website-specimen-guide">
             <label htmlFor="website-specimen-search">Search features</label>
             <input
