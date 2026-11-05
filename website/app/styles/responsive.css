@@ -1,0 +1,468 @@
+@media (max-width: 1100px) {
+  .workbench-body {
+    grid-template-columns: 175px minmax(0, 1fr);
+  }
+  .demo-review {
+    display: none;
+  }
+  .story-row {
+    gap: 32px;
+  }
+  .catalog-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 40px;
+  }
+  .footer-note {
+    display: none;
+  }
+  .context-fragment > div {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+@media (max-width: 800px) {
+  :root {
+    --header-height: 68px;
+  }
+  .desktop-nav {
+    gap: 22px;
+  }
+  .desktop-nav a {
+    padding-block: 22px;
+  }
+  .header-inner {
+    gap: 22px;
+  }
+  .header-source {
+    margin-left: 0;
+  }
+  .hero-bottom {
+    align-items: flex-start;
+    gap: 28px;
+  }
+  .hero-bottom > p {
+    font-size: 15px;
+  }
+  .hero-actions .button {
+    padding-inline: 16px;
+    font-size: 12px;
+  }
+  .home-intro {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .home-intro p {
+    max-width: 65ch;
+  }
+  .story-row {
+    grid-template-columns: 0.8fr 1.2fr;
+  }
+  .story-fragment {
+    grid-column: 2;
+  }
+  .context-fragment > div {
+    flex-direction: row;
+  }
+  .section-heading {
+    align-items: flex-start;
+  }
+  .workflow-steps {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px 0;
+  }
+  .workflow-steps li:nth-child(3) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .workflow-steps li::before {
+    margin-bottom: 22px;
+  }
+  .open-section {
+    padding: 40px;
+    gap: 36px;
+    grid-template-columns: auto 1fr;
+  }
+  .open-symbol img {
+    width: 72px;
+    height: 72px;
+  }
+  .catalog-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+  }
+  .catalog-index {
+    min-width: 0;
+    position: static;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .catalog-index nav {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 4px 3px 12px;
+  }
+  .catalog-index nav > p,
+  .catalog-index-note,
+  .catalog-index > .text-link {
+    display: none;
+  }
+  .catalog-index nav a {
+    flex-shrink: 0;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+  .catalog-index nav a > span {
+    display: none;
+  }
+  .catalog-filter label {
+    display: none;
+  }
+  .catalog-toolbar {
+    gap: 14px;
+  }
+}
+@media (max-width: 600px) {
+  .desktop-nav,
+  .header-source {
+    display: none;
+  }
+  .header-inner {
+    justify-content: space-between;
+  }
+  .brand {
+    font-size: 18px;
+  }
+  .mobile-nav {
+    display: block;
+  }
+  .mobile-menu {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 0;
+    right: 0;
+    display: grid;
+    padding: 12px var(--page-gutter) 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .mobile-menu a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 48px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .mobile-menu a[aria-current="page"] {
+    color: var(--text);
+  }
+  .mobile-menu a:last-child {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .home-hero {
+    padding-top: 52px;
+  }
+  .home-hero h1 {
+    font-size: clamp(34px, 8.5vw, 49px);
+    line-height: 1.16;
+  }
+  .hero-bottom {
+    display: block;
+    margin-top: 25px;
+  }
+  .hero-bottom > p {
+    max-width: 45ch;
+  }
+  .hero-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 25px;
+  }
+  .hero-actions .button {
+    font-size: 12px;
+  }
+  .demo-section {
+    margin-top: 40px;
+  }
+  .demo-tabs {
+    gap: 17px;
+    overflow-x: auto;
+    padding: 3px;
+    margin-inline: -3px;
+  }
+  .demo-tabs button {
+    font-size: 10px;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+  .step-mark {
+    width: 14px;
+    height: 14px;
+  }
+  .workbench-titlebar {
+    gap: 12px;
+    height: 36px;
+    padding-inline: 12px;
+  }
+  .demo-project {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .demo-project > span {
+    display: none;
+  }
+  .window-dots {
+    gap: 4px;
+  }
+  .window-dots i {
+    width: 5px;
+    height: 5px;
+  }
+  .illustration-label {
+    font-size: 8px;
+  }
+  .workbench-body {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 440px;
+  }
+  .demo-sidebar {
+    display: none;
+  }
+  .demo-conversation {
+    padding: 20px 14px 14px;
+  }
+  .demo-conversation-heading {
+    padding-bottom: 20px;
+  }
+  .demo-conversation-heading h3 {
+    font-size: 11px;
+  }
+  .demo-user {
+    font-size: 10px;
+    max-width: 92%;
+  }
+  .demo-assistant {
+    gap: 10px;
+    font-size: 10px;
+  }
+  .demo-stage {
+    margin-left: 0;
+  }
+  .demo-stage pre {
+    font-size: 8px;
+  }
+  .demo-approval {
+    padding: 13px;
+  }
+  .demo-approval-title > span {
+    display: none;
+  }
+  .demo-decision {
+    gap: 8px;
+    font-size: 8px;
+  }
+  .demo-checkpoint > span {
+    display: none;
+  }
+  .workbench-status > span:nth-child(2) {
+    display: none;
+  }
+  .demo-caption {
+    display: block;
+    padding-block: 17px;
+  }
+  .demo-caption p {
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+  .principles {
+    gap: 14px;
+    flex-direction: column;
+    padding-block: 23px;
+    margin-top: 18px;
+  }
+  .principles p {
+    font-size: 12px;
+  }
+  .home-intro {
+    padding-bottom: 36px;
+    gap: 22px;
+  }
+  .home-intro h2,
+  .section-heading h2,
+  .open-section h2 {
+    font-size: 30px;
+  }
+  .story-row {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-block: 34px;
+  }
+  .story-title {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .story-title svg {
+    margin: 0;
+    width: 22px;
+  }
+  .story-title h3 {
+    font-size: 24px;
+  }
+  .story-title br {
+    display: none;
+  }
+  .story-row > div > p {
+    font-size: 13px;
+  }
+  .story-fragment {
+    grid-column: 1;
+  }
+  .story-row .text-link {
+    margin-top: 16px;
+  }
+  .section-heading {
+    display: block;
+  }
+  .section-heading p {
+    margin-top: 22px;
+    font-size: 13px;
+    max-width: 40ch;
+  }
+  .workflow-steps {
+    margin-top: 32px;
+  }
+  .workflow-steps li {
+    padding-right: 18px;
+  }
+  .workflow-steps li + li {
+    padding-left: 18px;
+  }
+  .workflow-steps h3 {
+    font-size: 14px;
+  }
+  .workflow-steps p {
+    font-size: 12px;
+  }
+  .open-section {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 30px 24px;
+  }
+  .open-symbol {
+    justify-content: flex-start;
+  }
+  .open-symbol img {
+    width: 54px;
+    height: 54px;
+  }
+  .open-section p {
+    font-size: 13px;
+  }
+  .open-actions {
+    gap: 20px;
+  }
+  .site-footer {
+    padding-block: 34px;
+    gap: 28px;
+  }
+  .site-footer nav {
+    margin-left: 0;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+  .site-footer nav a {
+    font-size: 12px;
+  }
+  .features-heading {
+    padding-top: 50px;
+    padding-bottom: 30px;
+  }
+  .features-heading h1 {
+    font-size: clamp(32px, 8vw, 42px);
+    line-height: 1.2;
+  }
+  .features-heading p {
+    font-size: 14px;
+    margin-top: 22px;
+  }
+  .catalog-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding-block: 20px;
+  }
+  .catalog-filter {
+    width: 100%;
+  }
+  .catalog-filter label {
+    display: block;
+  }
+  .catalog-filter select {
+    flex: 1;
+    max-width: none;
+    min-width: 0;
+  }
+  .catalog-search input {
+    font-size: 12px;
+  }
+  .catalog-layout {
+    padding-top: 20px;
+    gap: 22px;
+  }
+  .catalog-result {
+    margin-bottom: 27px;
+    font-size: 10px;
+  }
+  .feature-group {
+    margin-bottom: 56px;
+  }
+  .feature-group > header h2 {
+    font-size: 24px;
+  }
+  .feature-group > header p {
+    font-size: 12px;
+  }
+  .feature-entry {
+    padding-block: 24px;
+  }
+  .feature-entry-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .feature-entry h3 {
+    font-size: 17px;
+  }
+  .feature-description {
+    font-size: 13px;
+  }
+  .feature-entry ul {
+    gap: 10px;
+  }
+  .feature-limits > div {
+    padding-inline: 14px;
+  }
+  .catalog-empty {
+    padding: 45px 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

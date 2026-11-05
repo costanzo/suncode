@@ -439,6 +439,13 @@ export const primaryModules = [
         icon: "activity",
         keywords: "local api proxy requests responses headers sse stream inspector developer tool",
       },
+      {
+        path: "/projects/website",
+        label: "Official website",
+        icon: "platform",
+        keywords:
+          "suncode.ai marketing overview features catalog search availability public website",
+      },
     ],
   },
   {

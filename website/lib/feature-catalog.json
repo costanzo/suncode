@@ -1,0 +1,421 @@
+{
+  "reviewedAt": "2026-11-05",
+  "groups": [
+    {
+      "id": "agent",
+      "title": "An agent that stays with the work",
+      "shortTitle": "Agent workflow",
+      "description": "From the first question to the next change, keep context, decisions, and activity together."
+    },
+    {
+      "id": "desktop",
+      "title": "A clear view of your project",
+      "shortTitle": "Desktop experience",
+      "description": "A native desktop built around conversation, inspection, and the moments that need your attention."
+    },
+    {
+      "id": "integrations",
+      "title": "Bring the right context and tools",
+      "shortTitle": "Tools & integrations",
+      "description": "Connect model providers, project knowledge, and external tools without losing the thread."
+    },
+    {
+      "id": "automation",
+      "title": "Take the same agent into your workflow",
+      "shortTitle": "CLI & SDK",
+      "description": "Use native commands for one-shot work or embed the Rust agent in your own host."
+    },
+    {
+      "id": "control",
+      "title": "Reach beyond the project files",
+      "shortTitle": "Browser & remote control",
+      "description": "Optional browser, computer, and mobile capabilities, with their current availability made explicit."
+    },
+    {
+      "id": "distribution",
+      "title": "Installation and maintenance",
+      "shortTitle": "Distribution",
+      "description": "Packaging and update infrastructure are implemented, with release verification still in progress."
+    },
+    {
+      "id": "engineering",
+      "title": "Built in the open",
+      "shortTitle": "Engineering tools",
+      "description": "The supporting tools and public surfaces behind SunCode. These are separate from the agent's runtime."
+    }
+  ],
+  "features": [
+    {
+      "id": "agent-phase-1",
+      "group": "agent",
+      "title": "Project-aware conversations",
+      "status": "implemented",
+      "description": "Open a project and work through persistent sessions with streamed responses, visible tool activity, and cancellation.",
+      "details": [
+        "Queue follow-up messages or steer the next model request while work continues.",
+        "Use project instructions, local Skills, structured questions, todos, and model-supported image attachments."
+      ],
+      "note": "Queued follow-ups stay in memory until admitted to conversation history. Model requests send selected context to your configured provider."
+    },
+    {
+      "id": "context-compaction",
+      "group": "agent",
+      "title": "Long-session context",
+      "status": "implemented",
+      "description": "Continue longer conversations with automatic, model-assisted context compaction and context-overflow recovery.",
+      "details": [
+        "Preserves complete tool-call groups and a recent conversation tail.",
+        "Keeps a structured summary of decisions, pending requests, and verification state."
+      ],
+      "note": "Compaction is a bounded summary; it does not promise unlimited or lossless memory."
+    },
+    {
+      "id": "built-in-subagents",
+      "group": "agent",
+      "title": "Six specialist agents",
+      "status": "implemented",
+      "description": "Let the primary agent delegate focused work to Architect, UI/UX, Product, Software Engineering, QA, and SRE specialists.",
+      "details": [
+        "Inspect linked child sessions and resolve their operation approvals.",
+        "Each role has a restricted tool set and uses the same Rust policy and audit paths."
+      ],
+      "note": "Roles are fixed. Specialists cannot delegate again, use MCP, or ask questions. Child checkpoints remain separate from parent-turn undo."
+    },
+    {
+      "id": "rust-core-phase-1",
+      "group": "agent",
+      "title": "Scoped actions and file undo",
+      "status": "implemented",
+      "description": "Search, read, and edit project files, run commands, and retrieve web text through audited Rust operations.",
+      "details": [
+        "Approve sensitive operations with their scope visible; inspect tool results and artifacts.",
+        "Restore checkpointed file mutations with checks for conflicting changes."
+      ],
+      "note": "Shell, Terminal, MCP, browser, and computer effects are outside filesystem undo. Policy and the dispatcher are not an OS sandbox."
+    },
+    {
+      "id": "avalonia-desktop-phase-1",
+      "group": "desktop",
+      "title": "Native desktop workbench",
+      "status": "implemented",
+      "description": "Move between projects, conversations, read-only files, tool activity, approvals, and checkpoint review in a .NET 10 Avalonia interface.",
+      "details": [
+        "Restore project windows, pin and archive sessions, and inspect read-only system Git status and diffs.",
+        "Choose light or dark appearance and English or Simplified Chinese."
+      ],
+      "note": "The file viewer is read-only. The changed-file panel currently combines paths across the session; Git review shows the current repository, not a historical per-turn diff."
+    },
+    {
+      "id": "markdown-rendering",
+      "group": "desktop",
+      "title": "Markdown, math, and diagrams",
+      "status": "implemented",
+      "description": "Read formatted responses with mathematical formulas, Mermaid diagrams, code blocks, and copyable source.",
+      "details": [
+        "Diagrams adapt to the application theme and offer pan, zoom, and source disclosure.",
+        "Incomplete or unsupported syntax retains a readable source fallback."
+      ],
+      "note": "Windows ARM64 math falls back to source. Installed macOS/Linux native rendering still needs release verification; full TeX or Mermaid.js parity is not promised."
+    },
+    {
+      "id": "shell-settings",
+      "group": "desktop",
+      "title": "Independent shells and terminal tabs",
+      "status": "implemented",
+      "description": "Choose Agent and interactive Terminal shells independently, with local terminal tabs that start in your project.",
+      "details": [
+        "Detect custom shell paths and reuse an existing PowerShell 7 installation.",
+        "Windows can explicitly download and verify a pinned PowerShell runtime when needed."
+      ],
+      "note": "Terminal sessions use your normal user authority and are outside Agent approvals and undo. Official PowerShell setup and broader platform conformance remain under verification."
+    },
+    {
+      "id": "provider-transfer-status",
+      "group": "desktop",
+      "title": "Provider transfer activity",
+      "status": "implemented",
+      "description": "See current provider upload and download rates in the desktop footer, with active model and byte totals in the tooltip.",
+      "details": [
+        "Rates update during model exchanges and clear when sessions change.",
+        "Transient traffic samples stay out of persisted provider traces."
+      ],
+      "note": "Rates measure provider HTTP body bytes, not device bandwidth or network-protocol overhead."
+    },
+    {
+      "id": "session-attention-notifications",
+      "group": "desktop",
+      "title": "Attention when you need it",
+      "status": "preview",
+      "description": "Receive desktop notifications when background work completes, fails, or needs an approval or answer.",
+      "details": [
+        "Notification text omits prompts, responses, paths, and tool data.",
+        "Activation returns to the relevant session or child approval."
+      ],
+      "note": "Installed notification display and click behavior still need verification on macOS, Windows, GNOME, and KDE. Mobile push is not implemented."
+    },
+    {
+      "id": "diagnostic-logging",
+      "group": "desktop",
+      "title": "Redacted diagnostics",
+      "status": "implemented",
+      "description": "Inspect separate rotating agent and desktop logs, with configurable detail, location, size, and retention.",
+      "details": [
+        "Failures include safe operation and session correlation where available.",
+        "Credentials, prompts, model output, file contents, and screenshot bytes are excluded from diagnostic logs."
+      ],
+      "note": "Diagnostic logs are separate from local conversation history and provider-trace inspection."
+    },
+    {
+      "id": "providers-and-models",
+      "group": "integrations",
+      "title": "Model and provider choice",
+      "status": "implemented",
+      "description": "Choose from the seeded provider catalog, manage provider credentials, and configure existing provider endpoints.",
+      "details": [
+        "Select model-advertised capabilities and reasoning options.",
+        "Provider keys default to the operating-system credential store, with an explicit plaintext option."
+      ],
+      "note": "Capabilities and access depend on the model and provider account. Catalog entries are not a guarantee of live compatibility; arbitrary provider/model creation is not available in the client."
+    },
+    {
+      "id": "mcp-servers",
+      "group": "integrations",
+      "title": "MCP tool connections",
+      "status": "implemented",
+      "description": "Connect local stdio and remote Streamable HTTP MCP servers, and manage them from desktop Settings.",
+      "details": [
+        "Load project connections in the background while built-in tools remain usable.",
+        "Edit, enable, retry, or remove servers without restarting a conversation."
+      ],
+      "note": "Tools only: MCP prompts, resources, and OAuth are not implemented. Local servers run with user authority; their side effects are outside undo."
+    },
+    {
+      "id": "language-servers",
+      "group": "integrations",
+      "title": "Language-aware project context",
+      "status": "implemented",
+      "description": "Give the agent diagnostics, definitions, references, hover information, and symbols from project-scoped language servers.",
+      "details": [
+        "Configure jdtls, vtsls, basedpyright, rust-analyzer, and Roslyn integrations.",
+        "Keep server processes and document state separate for each project."
+      ],
+      "note": "Install the servers and language toolchains locally. The current catalog is fixed and supports read-only queries, not completion, formatting, or code actions."
+    },
+    {
+      "id": "office-document-read",
+      "group": "integrations",
+      "title": "PDF and Office document context",
+      "status": "implemented",
+      "description": "Inspect, read, and search PDF, Word, PowerPoint, Excel, and OpenDocument Spreadsheet content with bounded extraction tools.",
+      "details": [
+        "Read pages, slides, Word blocks, and typed spreadsheet cell ranges.",
+        "Use extracted text and available formulas as context without opening an Office application."
+      ],
+      "note": "DOCX, PPTX, XLSX, ODS, and targeted PDF cases have fixtures. Legacy DOC/PPT/XLS adapters need representative binary verification. No OCR, document editing, or formula recalculation."
+    },
+    {
+      "id": "network",
+      "group": "integrations",
+      "title": "Network configuration",
+      "status": "implemented",
+      "description": "Configure certificate trust and no-proxy, system-proxy, or custom HTTP/HTTPS proxy modes.",
+      "details": [
+        "Add custom trust roots and proxy bypass rules.",
+        "Built-in providers, web retrieval, remote MCP, and relay transport use the shared network configuration."
+      ],
+      "note": "Coverage varies by client: CEF uses host networking, component updates retain strict trust, and external processes control their own traffic. A separate developer proxy can inspect API exchanges."
+    },
+    {
+      "id": "cli-foundation",
+      "group": "automation",
+      "title": "Native command-line tools",
+      "status": "implemented",
+      "description": "Use the Rust CLI to inspect runtime health, list models, manage credentials, and read configuration.",
+      "details": [
+        "Choose readable text or versioned JSONL output.",
+        "Use isolated data paths and explicit host configuration for scripts."
+      ],
+      "note": "The CLI and desktop cannot simultaneously own the same data directory. Interactive chat and approval/question prompts are not implemented."
+    },
+    {
+      "id": "cli-run",
+      "group": "automation",
+      "title": "One-shot agent runs",
+      "status": "implemented",
+      "description": "Submit one project turn from a command-line prompt or stdin, and consume final text or streamed JSONL events.",
+      "details": [
+        "Uses the same embedded Rust agent, policy, and tool boundary.",
+        "Supports model overrides and interrupt-driven cancellation."
+      ],
+      "note": "A turn waiting for an approval or question exits with status 4. Browser Use and Computer Use are disabled in the CLI."
+    },
+    {
+      "id": "cli-session-resume",
+      "group": "automation",
+      "title": "Continue a saved session",
+      "status": "implemented",
+      "description": "Submit one new turn to a saved primary session while reusing its durable conversation context.",
+      "details": [
+        "Reopens an archived session when appropriate.",
+        "Shares event streaming, cancellation, and lag recovery with one-shot runs."
+      ],
+      "note": "Pending approvals and questions must be resolved elsewhere; resume fails closed rather than bypassing them."
+    },
+    {
+      "id": "cli-session-administration",
+      "group": "automation",
+      "title": "Session administration",
+      "status": "implemented",
+      "description": "List a project's primary sessions, including archived records, or archive a session through native commands.",
+      "details": [
+        "Returns stable session identities and SDK-projected state.",
+        "Uses typed SDK lifecycle methods for ownership and state validation."
+      ],
+      "note": "This provides list/archive operations, not an interactive session browser or full terminal UI."
+    },
+    {
+      "id": "rust-sdk",
+      "group": "automation",
+      "title": "An embeddable Rust SDK",
+      "status": "implemented",
+      "description": "Embed the agent through an async-first Rust facade or an explicit blocking adapter, with C and C# bindings used by the desktop.",
+      "details": [
+        "Receive typed event streams and atomic session snapshots with subscriptions.",
+        "Restrict host capabilities and explicitly shut down runtime-owned resources."
+      ],
+      "note": "Python and TypeScript bindings are placeholders. No remote agent service or published package availability is implied."
+    },
+    {
+      "id": "persistence-phase-1",
+      "group": "automation",
+      "title": "Local session persistence",
+      "status": "implemented",
+      "description": "Keep conversations, settings, approvals, checkpoints, and recovery state in Rust-owned local SQLite storage.",
+      "details": [
+        "Recover interrupted work without blindly replaying operations.",
+        "Clients use the SDK instead of accessing the database directly."
+      ],
+      "note": "Local state does not mean offline inference. Selected context still reaches configured model providers, and some explicitly configured secrets can be stored as plaintext."
+    },
+    {
+      "id": "browser-use",
+      "group": "control",
+      "title": "Browser Use and local preview",
+      "status": "preview",
+      "description": "Use optional CEF-enabled desktop builds to navigate and interact with web pages or preview a local development server.",
+      "details": [
+        "Browser actions use Rust-owned CDP tools and project-isolated profiles.",
+        "Each Browser Use call requires interactive approval, including under Full Control."
+      ],
+      "note": "CEF is excluded from default builds and baseline installers. Preview is partial; screenshot images do not reach the model, and Windows/Linux packaging checks remain open."
+    },
+    {
+      "id": "computer-use",
+      "group": "control",
+      "title": "Computer Use",
+      "status": "preview",
+      "description": "An optional Rust capability observes the primary display and provides approved desktop input, screenshot, and accessibility tools.",
+      "details": [
+        "Exclusive control, user takeover, held-input cleanup, and emergency stop.",
+        "Provider-neutral tools for models supporting vision and multimodal tool results."
+      ],
+      "note": "Partial implementation, off by default. Approval-continuation semantics and platform conformance remain incomplete. Wayland, multi-display control, and secure desktops are not supported."
+    },
+    {
+      "id": "remote-control",
+      "group": "control",
+      "title": "Paired remote control",
+      "status": "preview",
+      "description": "Connect a desktop to a relay through an outbound connection so a paired companion can drive its sessions.",
+      "details": [
+        "Forward scoped messages, cancellation, approvals, and answers through local Rust authority.",
+        "Optional AES-256-GCM payload encryption is enabled by default; routing metadata remains visible to the relay."
+      ],
+      "note": "Cross-component conformance and desktop token refresh remain open. Relay state is in memory, so a server restart requires re-pairing."
+    },
+    {
+      "id": "mobile-client",
+      "group": "control",
+      "title": "A mobile companion",
+      "status": "preview",
+      "description": "Pair an Android or iOS companion to browse projects, follow a session, send text, and respond to approvals and questions.",
+      "details": [
+        "QR pairing, platform credential storage, offline cache, and reconnecting live updates.",
+        "English and Simplified Chinese layouts for phone and tablet."
+      ],
+      "note": "Android has focused tests; iOS compiles but device behavior and native scanners need verification. Desktop and relay must be available. No image sending, background delivery, or push notifications."
+    },
+    {
+      "id": "windows-installer",
+      "group": "distribution",
+      "title": "Windows offline installation",
+      "status": "release",
+      "description": "Build a current-user offline installer bundling the desktop, .NET runtime, and matching Rust SDK.",
+      "details": [
+        "Standard shortcuts, activation, uninstall, and same-version repair.",
+        "Uninstall preserves application data and unrelated files."
+      ],
+      "note": "x64 build and isolated lifecycle checks pass. Signing, clean-machine checks, ARM64, and managed-update enrollment remain unverified. CEF and CLI are excluded."
+    },
+    {
+      "id": "unix-desktop-packaging",
+      "group": "distribution",
+      "title": "macOS and Linux packaging",
+      "status": "release",
+      "description": "Build a macOS app/DMG or Linux Debian and portable archives from native packaging scripts.",
+      "details": [
+        "macOS supports optional Developer ID signing and notarization.",
+        "Linux supports desktop integration through Debian or an unregistered portable launcher."
+      ],
+      "note": "Native reruns, installed behavior, and release signing remain under verification. Packaging source does not establish downloadable signed releases. CEF and CLI are excluded."
+    },
+    {
+      "id": "desktop-component-updates",
+      "group": "distribution",
+      "title": "Independent component updates",
+      "status": "release",
+      "description": "Check signed metadata and plan compatible desktop and SDK updates independently, with staged verification and explicit restart.",
+      "details": [
+        "Update checking and SDK repair remain accessible when agent startup fails.",
+        "Verify archive identities, compatibility, and durable paired activation before changing the selected runtime."
+      ],
+      "note": "Catalog checking is enabled, but current catalog archive values are samples. Real packages, signed platform identities, initial installation receipts, and installed update checks remain pending."
+    },
+    {
+      "id": "design-system",
+      "group": "engineering",
+      "title": "An executable design system",
+      "status": "tooling",
+      "description": "Explore shared tokens, components, interaction states, and client specimens in a React/Vite review browser.",
+      "details": [
+        "Review visual behavior and constrained layouts before production UI changes.",
+        "Keep native clients aligned with the written design authority."
+      ],
+      "note": "Review tooling only. Web and TUI specimens do not mean those clients are implemented."
+    },
+    {
+      "id": "harbor-benchmark-adapter",
+      "group": "engineering",
+      "title": "Harbor benchmark adapter",
+      "status": "tooling",
+      "description": "Run a supplied native CLI binary in Harbor / Terminal-Bench tasks and convert traces to ATIF format.",
+      "details": [
+        "Retains JSONL and stderr artifacts for inspection.",
+        "Uses the ordinary CLI policy and tool boundary."
+      ],
+      "note": "Separate benchmark tooling; it does not provision the CLI or establish a benchmark score, ranking, or performance claim."
+    },
+    {
+      "id": "official-website",
+      "group": "engineering",
+      "title": "The public product website",
+      "status": "tooling",
+      "description": "Explore SunCode's workflows and complete feature guide, and find the open-source implementation.",
+      "details": [
+        "Server-rendered product pages with responsive navigation and searchable capability descriptions.",
+        "Hosts public update metadata with offline publication tooling."
+      ],
+      "note": "This is a product information website, separate from the deferred Web agent client. Signed metadata is not proof of usable package downloads."
+    }
+  ]
+}

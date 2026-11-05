@@ -1,0 +1,23 @@
+:root {
+  --website-canvas: #0d0f12;
+  --website-surface: #121519;
+  --website-surface-raised: #181c21;
+  --website-text: #edf0f3;
+  --website-text-secondary: #a7afb9;
+  --website-text-muted: #7f8994;
+  --website-border: #292f36;
+  --website-border-strong: #46505b;
+  --website-accent: #d9e0e6;
+  --website-accent-ink: #101317;
+  --website-success: #9fb3c3;
+  --website-warning: #d5ad6f;
+  --website-width: 1200px;
+  --website-header-height: 80px;
+  --website-mobile-header-height: 68px;
+  --website-display-max: 84px;
+  --website-display-tracking: -0.04em;
+  --website-section-space: 144px;
+  --website-guide-width: 240px;
+  --website-guide-gap: 72px;
+  --website-search-height: 48px;
+}

@@ -105,3 +105,4 @@ temp/
 # Cargo.lock, pnpm-lock.yaml, generated/
 
 .agents/skills
+/.impeccable/review/

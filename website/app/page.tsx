@@ -1,100 +1,263 @@
-import { ArrowUpRight, Check, ChevronRight, Circle, GitBranch, LockKeyhole, Undo2 } from "lucide-react";
-import { MobileNav } from "./components/MobileNav";
-
-const githubUrl = "https://github.com/costanzo/suncode";
-
-const capabilities = [
-  {
-    label: "Understand",
-    title: "A project-aware starting point",
-    copy: "Open a local project, give the agent the context it needs, and follow the work from a real session instead of a detached prompt.",
-    icon: <Circle size={17} strokeWidth={1.7} />,
-  },
-  {
-    label: "Act",
-    title: "Machine access with a visible boundary",
-    copy: "Filesystem, search, process, Git, web, MCP, and language-server work goes through Rust-owned policy and an audited dispatcher.",
-    icon: <LockKeyhole size={17} strokeWidth={1.7} />,
-  },
-  {
-    label: "Review",
-    title: "A trail you can inspect and undo",
-    copy: "Watch tool activity as it streams, approve sensitive operations with scope, review touched files, and restore checkpointed changes when needed.",
-    icon: <Undo2 size={17} strokeWidth={1.7} />,
-  },
-];
-
-const workflow = [
-  ["01", "Open a project", "Point SunCode at the repository you are working in."],
-  ["02", "Give it a turn", "Describe the change and keep relevant files in view."],
-  ["03", "Stay in the loop", "Read ordered conversation and tool activity as it happens."],
-  ["04", "Decide with context", "Allow, deny, inspect, or undo with the affected scope visible."],
-];
-
-function ProductConsole() {
-  return (
-    <div className="console" aria-label="Illustrative SunCode session interface">
-      <div className="console-topbar">
-        <div className="traffic-lights" aria-hidden="true"><span /><span /><span /></div>
-        <div className="console-project"><span className="status-dot" /> sun-code <span className="console-path">/ agent / core</span></div>
-        <span className="console-state">LOCAL SESSION</span>
-      </div>
-      <div className="console-body">
-        <aside className="console-sidebar">
-          <p className="console-label">SESSIONS</p>
-          <div className="session active"><span className="session-pulse" /> Refactor context builder <small>now</small></div>
-          <div className="session"><span /> Provider transfer status <small>yesterday</small></div>
-          <div className="session"><span /> Add approval scope <small>Mon</small></div>
-          <div className="sidebar-rule" />
-          <p className="console-label">PROJECT</p>
-          <div className="file-row"><GitBranch size={13} /> main</div>
-          <div className="file-row muted"><ChevronRight size={11} /> agent/crates/core</div>
-          <div className="file-row muted"><ChevronRight size={11} /> contracts/agent-sdk</div>
-        </aside>
-        <main className="console-main">
-          <div className="console-heading"><div><span className="eyebrow">TURN 08</span><h3>Refactor context builder</h3></div><span className="live-badge"><span className="status-dot" /> RUNNING</span></div>
-          <div className="message user-message"><span className="avatar user-avatar">you</span><p>Make context assembly easier to test, then show me the touched files.</p></div>
-          <div className="message agent-message"><span className="avatar agent-avatar"><img src="/suncode-mark-16-dark.svg" width="16" height="16" alt="SunCode" /></span><div><p>I&apos;ll inspect the current assembly path and its focused tests before changing anything.</p><div className="tool-line"><Check size={13} /> searched 14 files <span>· 1.2s</span></div></div></div>
-          <div className="approval-row"><div className="approval-icon"><LockKeyhole size={14} /></div><div><strong>Approval needed</strong><p>Run focused Rust tests in <code>agent/crates/core</code></p></div><button type="button">Review scope <ChevronRight size={14} /></button></div>
-          <div className="console-footer"><span><span className="status-dot" /> waiting for your decision</span><span className="mono">checkpoint: ready</span></div>
-        </main>
-      </div>
-    </div>
-  );
-}
+import Link from "next/link";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Code2,
+  GitBranch,
+  Layers3,
+  LockKeyhole,
+  Terminal,
+} from "lucide-react";
+import { WorkbenchDemo } from "./components/WorkbenchDemo";
+import { githubUrl, sourceUrl } from "../lib/features";
 
 export default function Home() {
   return (
-    <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="SunCode home"><img src="/suncode-mark-24-dark.svg" alt="" /><span>SunCode</span></a>
-        <nav className="desktop-nav" aria-label="Primary navigation"><a href="#why">Why SunCode</a><a href="#capabilities">Capabilities</a><a href="#workflow">Workflow</a></nav>
-        <a className="header-cta" href={githubUrl} target="_blank" rel="noreferrer">View on GitHub <ArrowUpRight size={15} /></a>
-        <MobileNav />
-      </header>
-
-      <section className="hero section-shell" id="top">
-        <div className="hero-copy">
-          <p className="kicker"><span className="kicker-line" /> local-first coding agent</p>
-          <h1>SunCode makes agentic coding <em>reviewable.</em></h1>
-          <p className="hero-lede">Understand, change, review, and maintain software projects while every meaningful machine action stays visible, scoped, and reversible.</p>
-          <div className="hero-actions"><a className="button button-primary" href={githubUrl} target="_blank" rel="noreferrer">Explore the source <ArrowUpRight size={16} /></a><a className="text-link" href="#workflow">See how it works <ChevronRight size={15} /></a></div>
-          <div className="hero-note"><span className="status-dot" /> Rust core <span className="note-divider" /> .NET 10 desktop <span className="note-divider" /> open source</div>
+    <main id="main-content">
+      <section className="home-hero shell">
+        <h1>
+          Let the agent work.
+          <br />
+          <span>Keep the work in view.</span>
+        </h1>
+        <div className="hero-bottom">
+          <p>
+            A coding agent for understanding, changing, and reviewing your
+            projects. Native desktop. Visible actions. Decisions that stay
+            yours.
+          </p>
+          <div className="hero-actions">
+            <Link className="button button-primary" href="/features">
+              Explore every feature <ArrowRight size={17} />
+            </Link>
+            <a
+              className="text-link"
+              href={githubUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View on GitHub <ArrowUpRight size={16} />
+            </a>
+          </div>
         </div>
-        <ProductConsole />
+        <WorkbenchDemo />
       </section>
-
-      <section className="signal-strip" aria-label="Product principles"><div><span className="strip-value">01</span><span>one embedded agent core</span></div><div><span className="strip-value">02</span><span>approval-aware operations</span></div><div><span className="strip-value">03</span><span>turn-level filesystem undo</span></div></section>
-
-      <section className="intro section-shell" id="why"><div className="section-marker">/ why suncode</div><div className="intro-content"><h2>A coding agent with a clear chain of custody.</h2><div className="intro-copy"><p>SunCode is built for developers who want the speed of delegation without handing their project to a black box.</p><p>The Rust agent owns the session, providers, policy, persistence, credentials, and machine operations. The desktop client gives you the surface to understand what happened and decide what happens next.</p></div></div></section>
-
-      <section className="capabilities section-shell" id="capabilities"><div className="section-marker">/ what it does</div><div className="capability-list">{capabilities.map((item) => <article className="capability-row" key={item.label}><div className="capability-label">{item.icon}<span>{item.label}</span></div><h3>{item.title}</h3><p>{item.copy}</p><ChevronRight className="row-arrow" size={18} /></article>)}</div></section>
-
-      <section className="workflow section-shell" id="workflow"><div className="section-marker">/ the working loop</div><div className="workflow-heading"><h2>From instruction to inspected change.</h2><p>The product stays close to the work: sessions, turns, activity, decisions, and recovery live in one local flow.</p></div><div className="workflow-list">{workflow.map(([number, title, copy]) => <div className="workflow-item" key={number}><span className="workflow-number">{number}</span><div><h3>{title}</h3><p>{copy}</p></div></div>)}</div></section>
-
-      <section className="open-source section-shell"><div className="open-source-mark"><img src="/suncode-mark-40-dark.svg" alt="" /></div><div><p className="kicker"><span className="kicker-line" /> build in the open</p><h2>See the system behind the surface.</h2><p>SunCode is being developed in public, with the agent core, contracts, clients, and design decisions in one repository.</p><a className="button button-primary" href={githubUrl} target="_blank" rel="noreferrer">Visit GitHub <ArrowUpRight size={16} /></a></div></section>
-
-      <footer className="site-footer section-shell"><a className="brand" href="#top"><img src="/suncode-mark-24-dark.svg" alt="" /><span>SunCode</span></a><p>Local-first coding work, with a trail you can trust.</p><div className="footer-links"><a href={githubUrl} target="_blank" rel="noreferrer">GitHub <ArrowUpRight size={14} /></a><a href="#top">Back to top <ChevronRight size={14} /></a></div></footer>
+      <section className="principles shell" aria-label="Product principles">
+        <p>
+          <Code2 size={19} /> One embedded Rust agent
+        </p>
+        <p>
+          <LockKeyhole size={19} /> Scoped approvals
+        </p>
+        <p>
+          <GitBranch size={19} /> Checkpointed file undo
+        </p>
+      </section>
+      <section className="home-intro shell" id="why">
+        <h2>
+          More than an answer.
+          <br />
+          <span>A way to move the project forward.</span>
+        </h2>
+        <p>
+          From finding the right file to making and checking a change, SunCode
+          keeps the conversation close to the tools. Follow the activity,
+          inspect the scope, and decide what happens next.
+        </p>
+      </section>
+      <section
+        className="capability-stories shell"
+        aria-label="Core capabilities"
+      >
+        <article className="story-row">
+          <div className="story-title">
+            <Layers3 size={24} />
+            <h3>
+              Context that
+              <br />
+              stays connected.
+            </h3>
+          </div>
+          <div>
+            <p>
+              Work in project sessions with repository guidance, local Skills,
+              image attachments, and automatic context compaction. Bring in
+              language-server insights and document content when the work needs
+              them.
+            </p>
+            <Link className="text-link" href="/features#integrations">
+              Explore tools & integrations <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="story-fragment context-fragment">
+            <div>
+              <FileLabel name="AGENTS.md" />
+              <span>Project guidance</span>
+            </div>
+            <div>
+              <FileLabel name="design.docx" />
+              <span>Document context</span>
+            </div>
+            <div>
+              <FileLabel name="definition" />
+              <span>Language server</span>
+            </div>
+          </div>
+        </article>
+        <article className="story-row">
+          <div className="story-title">
+            <LockKeyhole size={24} />
+            <h3>
+              Authority you
+              <br />
+              can inspect.
+            </h3>
+          </div>
+          <div>
+            <p>
+              Tool activity is visible as work happens. Review sensitive actions
+              before they run, inspect touched files, and restore checkpointed
+              file edits with conflict checks.
+            </p>
+            <Link className="text-link" href="/features#rust-core-phase-1">
+              See approvals & undo <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="story-fragment authority-fragment">
+            <LockKeyhole size={18} />
+            <strong>An explicit decision.</strong>
+            <p>
+              Action, scope, and outcome
+              <br />
+              in the same view.
+            </p>
+            <span>
+              <Check size={14} /> Your approval comes first
+            </span>
+          </div>
+        </article>
+        <article className="story-row">
+          <div className="story-title">
+            <Terminal size={24} />
+            <h3>
+              Your workflow.
+              <br />
+              The same core.
+            </h3>
+          </div>
+          <div>
+            <p>
+              Use the native desktop, run one-shot turns from the CLI, or embed
+              the Rust SDK. The{" "}
+              <Link href="/features#mobile-client">
+                preview mobile companion
+              </Link>{" "}
+              can follow sessions and answer requests while your desktop and
+              relay remain online.
+            </p>
+            <Link className="text-link" href="/features#automation">
+              Explore CLI & SDK <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="story-fragment terminal-fragment">
+            <div>
+              <span />
+              <span />
+              <span />
+            </div>
+            <code>
+              <span>$</span> suncode run .<br />
+              &nbsp; --prompt &quot;Review this change&quot;
+            </code>
+            <small>One project. One turn. Typed events.</small>
+          </div>
+        </article>
+      </section>
+      <section className="workflow-section shell" id="workflow">
+        <div className="section-heading">
+          <h2>
+            From a request
+            <br />
+            to a reviewed change.
+          </h2>
+          <p>
+            A clear working loop, with room for your judgment at every step.
+          </p>
+        </div>
+        <ol className="workflow-steps">
+          {[
+            [
+              "Open your project",
+              "Start a session against the directory you want to work in.",
+            ],
+            [
+              "Give the direction",
+              "Describe the outcome. Add context, answer questions, or queue a follow-up.",
+            ],
+            [
+              "Follow and decide",
+              "Inspect tool activity and approve sensitive operations with scope in view.",
+            ],
+            [
+              "Review the result",
+              "Inspect files and current Git diffs. Restore checkpointed file changes if needed.",
+            ],
+          ].map(([title, description]) => (
+            <li key={title}>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="workflow-boundary">
+          File undo applies to checkpointed mutations. Shell commands and
+          external tool effects have separate boundaries.
+        </p>
+      </section>
+      <section className="open-section shell">
+        <div className="open-symbol" aria-hidden="true">
+          <img
+            src="/suncode-mark-40-dark.svg"
+            width="112"
+            height="112"
+            alt=""
+          />
+        </div>
+        <div>
+          <h2>
+            See what’s possible.
+            <br />
+            <span>See how it’s built.</span>
+          </h2>
+          <p>
+            The complete feature guide covers the desktop, agent, integrations,
+            CLI, SDK, and preview capabilities—with their current limits.
+          </p>
+          <div className="open-actions">
+            <Link className="button button-primary" href="/features">
+              Browse all features <ArrowRight size={17} />
+            </Link>
+            <a
+              className="text-link"
+              href={sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Explore the source <ArrowUpRight size={16} />
+            </a>
+          </div>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function FileLabel({ name }: { name: string }) {
+  return (
+    <code>
+      <Code2 size={13} />
+      {name}
+    </code>
   );
 }

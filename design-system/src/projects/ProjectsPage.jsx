@@ -41,6 +41,14 @@ export function ProjectsPage() {
             status="Review reference"
             tone="implemented"
           />
+          <ModuleLink
+            to="/projects/website"
+            icon="platform"
+            title="Official website"
+            description="Public product overview and complete searchable feature guide."
+            status="Review reference"
+            tone="implemented"
+          />
         </div>
       </Section>
     </>

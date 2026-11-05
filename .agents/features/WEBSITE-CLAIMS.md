@@ -55,7 +55,7 @@ The [design system](design-system/README.md), [Harbor adapter](harbor-benchmark-
 | Provider copy treated `store: false` as a provider retention guarantee. | Replaced with the actual request behavior and provider-policy limit. Authenticated compatibility of seeded Responses routes remains unverified; exact model/vendor marketing requires fresh verification. |
 | Remote notes claimed immutable system TLS defaults and referred to a Web client. | Corrected to shared configured trust and the receiving client. Remote control verification gaps remain open. |
 | Desktop changed-file notes said per-turn paths were unused. | Source consumes and merges them; corrected the diagnosis while retaining the unresolved session-versus-turn presentation discrepancy. |
-| Existing website hero promises every meaningful action is reversible; its capability copy groups desktop Git under Rust dispatch. | Still open in `website/app/page.tsx`. Replace the hero with checkpoint-scoped undo language and describe desktop Source Control separately when generating the website. No website code or deployment was changed in this review. |
+| Existing website hero promises every meaningful action is reversible; its capability copy groups desktop Git under Rust dispatch. | Resolved in the 2026-11-05 website update: copy limits undo to checkpointed mutations, and Git review is separate. The `/features` catalog maps all 31 records with scope and availability. This source change does not establish deployment. |
 
 ## Source checks and verification
 

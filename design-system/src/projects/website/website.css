@@ -1,0 +1,209 @@
+.website-review-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+}
+.website-specimen {
+  --canvas: var(--website-canvas);
+  --surface: var(--website-surface);
+  --surface-raised: var(--website-surface-raised);
+  --text: var(--website-text);
+  --text-secondary: var(--website-text-secondary);
+  --text-muted: var(--website-text-muted);
+  --border: var(--website-border);
+  --border-strong: var(--website-border-strong);
+  --accent: var(--website-accent);
+  --accent-ink: var(--website-accent-ink);
+  --success: var(--website-success);
+  --warning: var(--website-warning);
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--canvas);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 100%;
+}
+.website-specimen-narrow {
+  width: 390px;
+}
+.website-specimen button,
+.website-specimen a,
+.website-specimen input {
+  font: inherit;
+}
+.website-specimen :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: var(--space-1);
+}
+.website-specimen-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+.website-specimen-nav strong {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.website-specimen-nav > span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.website-specimen-nav button,
+.website-specimen-empty button {
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+}
+.website-specimen-menu {
+  padding: var(--space-4) var(--space-8);
+  display: grid;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.website-specimen-home,
+.website-specimen-guide {
+  padding: var(--space-10) var(--space-8);
+}
+.website-specimen-home h2 {
+  font-size: clamp(30px, 4vw, 54px);
+  line-height: 1.15;
+  letter-spacing: var(--website-display-tracking);
+  margin: 0 0 var(--space-6);
+}
+.website-specimen-home h2 span {
+  color: var(--text-muted);
+}
+.website-specimen-home p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.website-specimen-cta {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-4);
+  font-size: 12px;
+}
+.website-specimen-tabs {
+  display: flex;
+  gap: var(--space-4);
+  overflow: auto;
+  margin-top: var(--space-10);
+  padding-block: var(--space-2);
+}
+.website-specimen-tabs button {
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.website-specimen-tabs button[aria-pressed="true"] {
+  color: var(--text);
+}
+.website-specimen-demo {
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-height: 180px;
+}
+.website-specimen-demo > span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.website-specimen-demo h3 {
+  font-size: 18px;
+  margin-top: var(--space-6);
+}
+.website-specimen-guide > label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.website-specimen-guide input,
+.website-specimen-guide select {
+  width: 100%;
+  min-height: var(--website-search-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-4);
+  color: var(--text);
+  background: var(--surface);
+  font-size: 13px;
+}
+.website-specimen-guide > select {
+  margin-bottom: var(--space-2);
+}
+.website-specimen-guide > input {
+  margin-bottom: var(--space-4);
+}
+.website-specimen-result {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: var(--space-6) 0;
+}
+.website-specimen-guide article {
+  border-top: 1px solid var(--border);
+  padding-block: var(--space-6);
+}
+.website-specimen-guide article > div {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.website-specimen-guide article h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.website-specimen-guide article > div > span {
+  font-size: 10px;
+  color: var(--success);
+}
+.website-specimen-guide span[data-availability="Preview"],
+.website-specimen-guide span[data-availability="Release verification"] {
+  color: var(--warning);
+}
+.website-specimen-guide span[data-availability="Developer tooling"] {
+  color: var(--text-muted);
+}
+.website-specimen-guide article p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: var(--space-3);
+}
+.website-specimen-guide summary {
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: var(--space-4);
+}
+.website-specimen-empty {
+  text-align: center;
+  padding-block: var(--space-10);
+}
+.website-specimen-empty p {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.website-specimen-narrow .website-specimen-home h2 {
+  font-size: 32px;
+}

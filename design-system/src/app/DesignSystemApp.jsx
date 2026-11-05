@@ -57,6 +57,7 @@ import {
   MobileShellPage,
 } from "../projects/mobile/index.jsx";
 import { ProxyToolPage } from "../projects/proxy-tool/index.jsx";
+import { WebsiteProjectPage } from "../projects/website/index.jsx";
 import {
   WebPairingPage,
   WebProjectPage,
@@ -142,6 +143,7 @@ const routes = {
   "/projects/mobile": MobileProjectPage,
   "/projects/proxy-tool": ProxyToolPage,
   "/projects/web": WebProjectPage,
+  "/projects/website": WebsiteProjectPage,
   "/projects/web/shell": WebShellPage,
   "/projects/web/pairing": WebPairingPage,
   "/projects/web/session": WebSessionPage,
