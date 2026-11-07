@@ -376,7 +376,7 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
     assert_eq!(AgentSdk::version().version, suncode_core::version());
     assert!(sdk.health().unwrap().ok);
     assert_eq!(sdk.list_credentials().unwrap().credentials.len(), 12);
-    assert_eq!(sdk.list_models().unwrap().models.len(), 26);
+    assert_eq!(sdk.list_models().unwrap().models.len(), 27);
     for id in [
         "grok-4.7",
         "grok-4.6",
@@ -389,6 +389,7 @@ fn named_sdk_methods_serve_project_session_and_model_dtos() {
         assert_eq!(route.wire_model, id);
     }
     for (id, provider) in [
+        ("glm-5.3-flash", "zhipu"),
         ("MiniMax-M3.1-Flash-Preview", "minimax"),
         ("MiniMax-M3", "minimax"),
         ("muse-wonder-1.0", "meta"),

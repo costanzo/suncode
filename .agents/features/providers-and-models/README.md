@@ -12,6 +12,12 @@ Website wording must distinguish seeded catalog entries and fixture-tested adapt
 - Model rows carry request identifiers, context and auto-compaction limits, an optional output limit, capability flags (streaming, tool use, vision, structured output, cancellation, reasoning effort, Computer Use), and the advertised `reasoning_efforts` list.
 - Custom providers come from two sources: persisted rows using a built-in adapter, or trusted `Arc<dyn LlmProvider>` implementations registered in-process by a Rust host. The registry registers a provider and its models atomically and rejects duplicate model identifiers. Dynamic plugins and third-party adapter loading are not supported. There is no SDK method to add, remove, enable, or reorder providers or models.
 
+## Zhipu GLM 5.3 Flash catalog
+
+The `glm-5.3-flash` model and request ID is listed as **GLM 5.3 Flash** under Zhipu GLM. The catalog configures 1,000,000 context tokens, the existing 16,384-token auto-compaction margin, 128,000 maximum output tokens, image input, streaming, function calling, structured output, client-side cancellation, and reasoning efforts `low`, `high`, and `max`. Its text parameters follow GLM 5.3, and thinking is always enabled. These capabilities were checked on 2026-11-07. [Official model documentation](https://docs.bigmodel.cn/cn/guide/models/vlm/glm-5.3-flash)
+
+Startup seeds the entry into existing databases. The model uses the existing Zhipu endpoint, credentials, and Responses adapter. Focused tests cover catalog metadata, idempotent insertion on reopen, and SDK routing. Authenticated provider calls and screenshot-bearing function results remain unverified, so Computer Use is unadvertised.
+
 ## Gemini Flash catalog
 
 The latest stable Flash entry is `gemini-3.8-flash`, verified against Google's [model page](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) on 2026-10-12. It accepts up to 1,048,576 input tokens and 65,536 output tokens, supports vision, function calling, structured output, and reasoning levels `low`, `medium`, and `high`. `minimal` is unsupported. The previous-generation `gemini-3.6-flash` remains selectable.

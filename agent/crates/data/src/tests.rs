@@ -426,7 +426,7 @@ fn child_sessions_are_linked_hidden_from_primary_lists_and_interrupted_on_recove
 fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
     let store = Store::open_memory().unwrap();
     let models = store.llm_models(false).unwrap();
-    assert_eq!(models.len(), 26);
+    assert_eq!(models.len(), 27);
     let model = |id: &str| {
         models
             .iter()
@@ -452,13 +452,25 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
         assert!(!qwen.supports_reasoning_effort);
         assert!(!qwen.supports_computer_use);
     }
-    for id in ["glm-5.2", "glm-5.3"] {
+    for id in ["glm-5.2", "glm-5.3", "glm-5.3-flash"] {
         let glm = model(id);
         assert_eq!(glm.context_tokens, 1_000_000);
         assert_eq!(glm.max_output_tokens, Some(128_000));
         assert!(glm.supports_reasoning_effort);
     }
     assert_eq!(model("glm-5.3").reasoning_efforts, ["low", "high", "max"]);
+    let glm_flash = model("glm-5.3-flash");
+    assert_eq!(glm_flash.provider_id, "zhipu");
+    assert_eq!(glm_flash.display_name, "GLM 5.3 Flash");
+    assert_eq!(glm_flash.request_model, "glm-5.3-flash");
+    assert_eq!(glm_flash.auto_compact_tokens, 983_616);
+    assert!(glm_flash.supports_streaming);
+    assert!(glm_flash.supports_tool_use);
+    assert!(glm_flash.supports_vision);
+    assert!(glm_flash.supports_structured_output);
+    assert!(glm_flash.supports_cancellation);
+    assert_eq!(glm_flash.reasoning_efforts, ["low", "high", "max"]);
+    assert!(!glm_flash.supports_computer_use);
     for id in ["gpt-5.6-sol", "gpt-5.5"] {
         let openai = model(id);
         assert_eq!(openai.context_tokens, 1_048_576);
@@ -640,6 +652,7 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
         let mut connection = store.connection.lock().unwrap();
         connection.batch_execute(
             "DELETE FROM llm_model WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
+             DELETE FROM llm_model WHERE model_id='glm-5.3-flash';
              DELETE FROM llm_model_provider WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
              UPDATE llm_model_provider SET endpoint='https://gateway.example.test/v1' WHERE provider_id='openai';",
         ).unwrap();
@@ -666,7 +679,15 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
             Some("test-existing-key")
         );
         let models = store.llm_models(true).unwrap();
-        assert_eq!(models.len(), 26);
+        assert_eq!(models.len(), 27);
+        assert_eq!(
+            models
+                .iter()
+                .filter(|item| item.provider_id == "zhipu")
+                .map(|item| item.model_id.as_str())
+                .collect::<Vec<_>>(),
+            ["glm-5.2", "glm-5.3", "glm-5.3-flash"]
+        );
         for (provider, ids) in [
             ("minimax", ["MiniMax-M3.1-Flash-Preview", "MiniMax-M3"]),
             ("meta", ["muse-wonder-1.0", "muse-spark-1.3"]),

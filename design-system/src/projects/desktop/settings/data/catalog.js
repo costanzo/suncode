@@ -21,7 +21,7 @@ export const providerCatalog = {
     placeholder: "Paste Zhipu API key",
     keyPreview: "",
     storageMode: "keychain",
-    models: ["glm-5.2", "glm-5.3"],
+    models: ["glm-5.2", "glm-5.3", "glm-5.3-flash"],
   },
   openai: {
     label: "OpenAI",
