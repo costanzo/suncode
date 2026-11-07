@@ -29,9 +29,6 @@ public enum EventType {
     QUESTION_REJECTED("question.rejected"),
     TODO_UPDATED("todo.updated"),
     CHECKPOINT_CAPTURED("checkpoint.captured"),
-    CHECKPOINT_ITEM_RESTORED("checkpoint.item_restored"),
-    CHECKPOINT_RESTORE_FAILED("checkpoint.restore_failed"),
-    CHECKPOINT_RESTORED("checkpoint.restored"),
     MOBILE_PAIRING_EXCHANGE_SUCCEEDED("mobile.pairings.exchange.succeeded"),
     MOBILE_AUTH_LOGOUT("mobile.auth.logout");
 

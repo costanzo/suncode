@@ -18,13 +18,17 @@ import java.util.List;
 public class EventPayload {
     private String activeTurnId;
     private List<List<String>> answers;
+    private Long additions;
     private String approvalId;
     private Object arguments;
+    private String baselineSha256;
+    private Boolean binary;
     private String callId;
-    private String checkpointId;
     private String chunkBase64;
     private String code;
+    private String currentSha256;
     private String decision;
+    private Long deletions;
     private Long downloadedBytes;
     private Long droppedMessages;
     private EventProviderError error;
@@ -32,7 +36,6 @@ public class EventPayload {
     private String finishReason;
     private Long iteration;
     private Long iterations;
-    private String manifestId;
     private EventMessage message;
     private String messageId;
     private String modelId;
@@ -52,7 +55,6 @@ public class EventPayload {
     private String queuedIdempotencyKey;
     private String reason;
     private String requestId;
-    private Long restoredItems;
     private Object result;
     private Long retainedCharacters;
     private Long retainedTokens;
