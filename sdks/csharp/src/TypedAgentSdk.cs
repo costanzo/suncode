@@ -353,14 +353,8 @@ public sealed partial class AgentSdk
     public Task<ProviderExchangeDetails> GetProviderExchangeAsync(string sessionId, string exchangeId) =>
         Typed<ProviderExchangeDetails>(RawProviderExchangeAsync(sessionId, exchangeId));
 
-    public Task<CheckpointsResult> GetCheckpointsAsync(string sessionId) =>
-        Typed<CheckpointsResult>(RawListCheckpointsAsync(sessionId));
-
-    public Task<CheckpointDetails> GetCheckpointManifestAsync(string manifestId) =>
-        Typed<CheckpointDetails>(RawCheckpointManifestAsync(manifestId));
-
-    public Task<RestoreOutcome> RestoreCheckpointAsync(string manifestId, string sessionId) =>
-        Typed<RestoreOutcome>(RawRestoreCheckpointAsync(manifestId, sessionId));
+    public Task<TurnDiff> GetTurnDiffAsync(string sessionId, string turnId) =>
+        Typed<TurnDiff>(RawTurnDiffAsync(sessionId, turnId));
 
     public Task<TurnResponse> SubmitTurnAsync(SubmitTurnRequest request) =>
         Typed<TurnResponse>(

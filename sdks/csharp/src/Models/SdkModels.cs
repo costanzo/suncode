@@ -686,7 +686,14 @@ public sealed record SessionConversationTurn(
     [property: JsonPropertyName("messages")] IReadOnlyList<SessionCallMessage> Messages,
     [property: JsonPropertyName("toolUses")] IReadOnlyList<SessionCallToolUse> ToolUses,
     [property: JsonPropertyName("todos")] IReadOnlyList<SessionTurnTodo> Todos,
-    [property: JsonPropertyName("changedPaths")] IReadOnlyList<string>? ChangedPaths = null);
+    [property: JsonPropertyName("changes")] IReadOnlyList<TurnFileChange>? Changes = null);
+
+public sealed record TurnFileChange(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("additions")] string Additions,
+    [property: JsonPropertyName("deletions")] string Deletions,
+    [property: JsonPropertyName("binary")] bool Binary);
 
 public sealed record QuestionOption(
     [property: JsonPropertyName("label")] string Label,
@@ -794,41 +801,31 @@ public sealed record ProviderExchangeDetails(
     IReadOnlyList<SessionCallMessage> Messages,
     [property: JsonPropertyName("toolUses")] IReadOnlyList<SessionCallToolUse> ToolUses);
 
-public sealed record CheckpointManifest(
-    [property: JsonPropertyName("manifestId")] string ManifestId,
+public sealed record TurnDiff(
     [property: JsonPropertyName("sessionId")] string SessionId,
-    [property: JsonPropertyName("turnId")] string? TurnId,
-    string Status,
-    [property: JsonPropertyName("createdAt")] string CreatedAt,
-    [property: JsonPropertyName("updatedAt")] string UpdatedAt,
-    [property: JsonPropertyName("expiresAt")] string ExpiresAt,
-    [property: JsonPropertyName("restoredAt")] string? RestoredAt);
+    [property: JsonPropertyName("turnId")] string TurnId,
+    [property: JsonPropertyName("files")] IReadOnlyList<TurnFileDiff> Files);
 
-public sealed record CheckpointItem(
-    [property: JsonPropertyName("checkpointId")] string CheckpointId,
-    [property: JsonPropertyName("manifestId")] string? ManifestId,
-    [property: JsonPropertyName("sessionId")] string SessionId,
-    [property: JsonPropertyName("turnId")] string? TurnId,
-    [property: JsonPropertyName("toolCallId")] string? ToolCallId,
-    [property: JsonPropertyName("relativePath")] string? RelativePath,
-    string Status,
-    [property: JsonPropertyName("createdAt")] string CreatedAt,
-    [property: JsonPropertyName("restoredAt")] string? RestoredAt,
-    [property: JsonPropertyName("invalidatedAt")] string? InvalidatedAt,
-    long? Ordinal);
+public sealed record TurnFileDiff(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("additions")] string Additions,
+    [property: JsonPropertyName("deletions")] string Deletions,
+    [property: JsonPropertyName("binary")] bool Binary,
+    [property: JsonPropertyName("hunks")] IReadOnlyList<TurnDiffHunk> Hunks);
 
-public sealed record CheckpointsResult(
-    [property: JsonPropertyName("session_id")] string SessionId,
-    IReadOnlyList<CheckpointManifest> Checkpoints);
+public sealed record TurnDiffHunk(
+    [property: JsonPropertyName("oldStart")] int oldStart,
+    [property: JsonPropertyName("oldLines")] int oldLines,
+    [property: JsonPropertyName("newStart")] int newStart,
+    [property: JsonPropertyName("newLines")] int newLines,
+    [property: JsonPropertyName("lines")] IReadOnlyList<TurnDiffLine> Lines);
 
-public sealed record CheckpointDetails(
-    CheckpointManifest Manifest,
-    IReadOnlyList<CheckpointItem> Items);
-
-public sealed record RestoreOutcome(
-    [property: JsonPropertyName("manifest_id")] string ManifestId,
-    string Status,
-    [property: JsonPropertyName("restored_items")] int RestoredItems);
+public sealed record TurnDiffLine(
+    [property: JsonPropertyName("kind")] string Kind,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("oldLine")] int? OldLine,
+    [property: JsonPropertyName("newLine")] int? NewLine);
 
 public sealed record TurnResponse(
     string Status,
@@ -976,9 +973,12 @@ public sealed record AgentEventPayload(
     IReadOnlyList<QuestionPrompt>? Questions = null,
     IReadOnlyList<IReadOnlyList<string>>? Answers = null,
     IReadOnlyList<AgentTodoEventItem>? Todos = null,
-    [property: JsonPropertyName("manifest_id")] string? ManifestId = null,
-    [property: JsonPropertyName("checkpoint_id")] string? CheckpointId = null,
     string? Path = null,
+    [property: JsonPropertyName("baseline_sha256")] string? BaselineSha256 = null,
+    [property: JsonPropertyName("current_sha256")] string? CurrentSha256 = null,
+    ulong? Additions = null,
+    ulong? Deletions = null,
+    bool? Binary = null,
     [property: JsonPropertyName("retry_attempt")] uint? RetryAttempt = null,
     [property: JsonPropertyName("max_retries")] uint? MaxRetries = null,
     [property: JsonPropertyName("delay_ms")] ulong? DelayMs = null,

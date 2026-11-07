@@ -1,14 +1,14 @@
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::sync::Arc;
 use std::{
     ffi::{CStr, CString},
     os::raw::{c_char, c_void},
-    panic::{AssertUnwindSafe, catch_unwind},
+    panic::{catch_unwind, AssertUnwindSafe},
     ptr,
     sync::{
-        Mutex,
         atomic::{AtomicBool, Ordering},
+        Mutex,
     },
     thread::JoinHandle,
 };
@@ -1073,21 +1073,11 @@ ffi_one_string!(
     delete_session,
     "session_id"
 );
-ffi_one_string!(
-    suncode_agent_sdk_list_checkpoints,
-    list_checkpoints,
-    "session_id"
-);
 ffi_one_string!(suncode_agent_sdk_session_usage, session_usage, "session_id");
 ffi_one_string!(
     suncode_agent_sdk_list_provider_exchanges,
     list_provider_exchanges,
     "session_id"
-);
-ffi_one_string!(
-    suncode_agent_sdk_checkpoint_manifest,
-    checkpoint_manifest,
-    "manifest_id"
 );
 ffi_one_string!(suncode_agent_sdk_get_approval, get_approval, "approval_id");
 
@@ -1212,15 +1202,15 @@ pub unsafe extern "C" fn suncode_agent_sdk_provider_exchange(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn suncode_agent_sdk_restore_checkpoint(
+pub unsafe extern "C" fn suncode_agent_sdk_turn_diff(
     handle: *mut SunCodeAgentHandle,
-    manifest_id: *const c_char,
     session_id: *const c_char,
+    turn_id: *const c_char,
 ) -> *mut c_char {
     ffi_call(handle, |sdk| {
-        sdk.restore_checkpoint(
-            &c_string(manifest_id, "manifest_id")?,
+        sdk.turn_diff(
             &c_string(session_id, "session_id")?,
+            &c_string(turn_id, "turn_id")?,
         )
     })
 }

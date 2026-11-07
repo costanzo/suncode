@@ -19,7 +19,7 @@ public sealed partial class AgentSdk : IDisposable
     private static readonly NativeMethods.BrowserHostCallback BrowserHostCallbackBridge = OnBrowserHostRequested;
     private sealed record SettingEnvelope(JsonElement Value);
 
-    private const uint AbiVersion = 27;
+    private const uint AbiVersion = 28;
     private static readonly object SharedHandleLock = new();
     private static IntPtr _sharedHandle;
     private static int _sharedHandleReferences;
@@ -351,17 +351,10 @@ public sealed partial class AgentSdk : IDisposable
     private Task<JsonElement> RawProviderExchangeAsync(string sessionId, string exchangeId) => WithUtf8Async(
         [sessionId, exchangeId],
         values => NativeMethods.suncode_agent_sdk_provider_exchange(_handle, values[0], values[1]));
-
-    private Task<JsonElement> RawListCheckpointsAsync(string sessionId) => WithUtf8Async(
-        [sessionId], values => NativeMethods.suncode_agent_sdk_list_checkpoints(_handle, values[0]));
-
-    private Task<JsonElement> RawCheckpointManifestAsync(string manifestId) => WithUtf8Async(
-        [manifestId],
-        values => NativeMethods.suncode_agent_sdk_checkpoint_manifest(_handle, values[0]));
-
-    private Task<JsonElement> RawRestoreCheckpointAsync(string manifestId, string sessionId) => WithUtf8Async(
-        [manifestId, sessionId],
-        values => NativeMethods.suncode_agent_sdk_restore_checkpoint(_handle, values[0], values[1]));
+    
+    private Task<JsonElement> RawTurnDiffAsync(string sessionId, string turnId) => WithUtf8Async(
+        [sessionId, turnId],
+        values => NativeMethods.suncode_agent_sdk_turn_diff(_handle, values[0], values[1]));
 
     private Task<JsonElement> RawSubmitTurnAsync(SubmitTurnRequest request) => WithNullableUtf8Async(
         [request.SessionId, request.Input, request.IdempotencyKey, request.Model, request.ReasoningEffort],
