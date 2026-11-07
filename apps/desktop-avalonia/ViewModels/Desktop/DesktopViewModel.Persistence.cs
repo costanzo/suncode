@@ -240,25 +240,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
             && setting.Value.GetBoolean();
     }
 
-    private async Task LoadCheckpointsAsync(string? requestedSessionId = null, long? loadVersion = null)
-    {
-        if (_sdk is null || SelectedSession is null) return;
-        var sessionId = requestedSessionId ?? SelectedSession.SessionId;
-        var result = await _sdk.GetCheckpointsAsync(sessionId);
-        if (!IsSessionContextCurrent(sessionId, loadVersion)) return;
-        var checkpoints = result.Checkpoints.Select(item =>
-        {
-            return new SunCode.Desktop.Models.CheckpointItem(
-                item.ManifestId,
-                item.TurnId ?? string.Empty,
-                item.Status,
-                Array.Empty<string>());
-        });
-        Checkpoints.ReplaceAll(checkpoints);
-        OnPropertyChanged(nameof(HasCheckpoints));
-        NotifyReviewPresentationChanged();
-    }
-
     internal static SessionSnapshotProjection ProjectSnapshot(SessionSnapshot snapshot) =>
         SessionSnapshotProjector.ProjectSnapshot(snapshot);
     internal static string FormatDuration(string startedAt, string completedAt, string state = "") =>
@@ -298,6 +279,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                     if (!existingById.TryGetValue(message.MessageId, out var existing)) return false;
                     existing.Text = message.Text;
                     existing.CanBeFinalAssistant = message.CanBeFinalAssistant;
+                    existing.SetTurnChangeCounts(message.AddedFileCount, message.EditedFileCount, message.DeletedFileCount);
                     existing.Streaming = false;
                     return false;
                 })
@@ -311,10 +293,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ToolActivity.ReplaceAll(projection.ToolActivityTurns);
         SyncActiveToolRow();
         Activities.ReplaceAll(projection.Activities);
-        ChangedPaths.ReplaceAll(projection.ChangedPaths);
-        OnPropertyChanged(nameof(HasChangedPaths));
-        OnPropertyChanged(nameof(TurnChangeSummary));
-        OnPropertyChanged(nameof(CanViewReviewChanges));
+        SetTurnChanges(projection.TurnChangesTurnId, projection.TurnChanges);
         NotifyReviewPresentationChanged();
         CurrentTodos.ReplaceAll(projection.CurrentTodos);
         PendingApproval = projection.PendingApproval;
@@ -370,6 +349,14 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ToolActivityVisible = true;
         GitVisible = false;
         ProviderTraceVisible = false;
+    }
+
+    /// <summary>Opens the turn diff drawer on one turn, optionally focused on one file.</summary>
+    public Task OpenTurnDiffAsync(string turnId, string? path = null)
+    {
+        if (SelectedSession is not { } session || turnId.Length == 0) return Task.CompletedTask;
+        Layout.OpenBottomDrawer(WorkspaceBottomDrawer.TurnDiff);
+        return TurnDiff.LoadAsync(session.SessionId, turnId, path);
     }
 
     private ToolActivityTurnItem EnsureToolActivityTurn(string turnId, string preview = "") =>

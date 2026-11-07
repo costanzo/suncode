@@ -26,9 +26,7 @@ public static class AgentEventTypes
     public const string QuestionReplied = "question.replied";
     public const string QuestionRejected = "question.rejected";
 
-    public const string CheckpointPrefix = "checkpoint.";
     public const string CheckpointCaptured = "checkpoint.captured";
-    public const string CheckpointRestoreFailed = "checkpoint.restore_failed";
 
     public const string ProviderExchangePrefix = "provider.exchange.";
     public const string ProviderExchangeStarted = "provider.exchange.started";
@@ -46,8 +44,6 @@ public static class AgentEventTypes
 
     public static bool IsPrompt(string type) =>
         type is ApprovalRequested or ApprovalResolved or QuestionAsked or QuestionReplied or QuestionRejected;
-
-    public static bool IsCheckpoint(string type) => type.StartsWith(CheckpointPrefix, StringComparison.Ordinal);
 
     public static bool IsProviderExchange(string type) =>
         type.StartsWith(ProviderExchangePrefix, StringComparison.Ordinal);

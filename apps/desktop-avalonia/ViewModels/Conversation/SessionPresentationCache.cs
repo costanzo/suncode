@@ -11,7 +11,8 @@ internal sealed class SessionPresentationState : IDisposable
     internal required string? SelectedToolTurnId { get; init; }
     internal required string? SelectedToolCallId { get; init; }
     internal required IReadOnlyList<ActivityItem> Activities { get; init; }
-    internal required IReadOnlyList<string> ChangedPaths { get; init; }
+    internal required string TurnChangesTurnId { get; init; }
+    internal required IReadOnlyList<TurnChangeItem> TurnChanges { get; init; }
     internal required IReadOnlyList<TodoItem> CurrentTodos { get; init; }
     internal required string ActiveTurnId { get; init; }
     internal required string ActiveTurnState { get; init; }

@@ -311,10 +311,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 return;
             }
             await LoadQueuedInputsAsync(sessionId, loadVersion);
-            await LoadCheckpointsAsync(sessionId, loadVersion);
             if (!IsCurrentSessionLoad(sessionId, loadVersion))
             {
-                LogSession(operationId, sessionId, $"checkpoints.discard reason=stale current={DescribeSessionContext()}");
+                LogSession(operationId, sessionId, $"queued_inputs.discard reason=stale current={DescribeSessionContext()}");
                 return;
             }
             await ProviderTrace.RefreshAsync(sessionId, loadVersion);
@@ -704,17 +703,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 JsonSerializer.SerializeToElement(false)));
             if (SelectedSession?.SessionId == sessionId) FullControlEnabled = false;
         }, "Full Control turned off");
-    }
-
-    public async Task RestoreCheckpointAsync(SunCode.Desktop.Models.CheckpointItem checkpoint)
-    {
-        if (!EnsureSdk() || SelectedSession is null || !checkpoint.CanReview) return;
-        await RunAsync(async () =>
-        {
-            await _sdk!.RestoreCheckpointAsync(checkpoint.ManifestId, SelectedSession.SessionId);
-            await LoadCheckpointsAsync();
-            await Git.RefreshAsync();
-        }, "Turn changes restored");
     }
 
     public async Task RefreshDiagnosticsAsync()

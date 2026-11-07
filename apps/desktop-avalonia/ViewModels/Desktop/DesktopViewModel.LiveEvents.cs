@@ -62,7 +62,7 @@ public sealed partial class DesktopViewModel
         else if (type == AgentEventTypes.ContextCompacted) ApplyCompactionEvent(type, payload, text);
         else if (!providerExchange) AddActivity(type, text, payload.State ?? string.Empty, payload.Operation ?? string.Empty);
 
-        var pathAdded = TrackChangedPath(payload.Path ?? string.Empty);
+        var fileChanged = type == AgentEventTypes.CheckpointCaptured && ApplyTurnChangeEvent(payload);
         if (AgentEventTypes.IsPrompt(type)) ApplyPromptEvent(type, payload, live);
         if (type == AgentEventTypes.TurnState) ApplyTurnStateEvent(payload, value.OccurredAt);
         if (type == AgentEventTypes.TurnState && payload.State is "completed" or "failed" or "cancelled" or "interrupted")
@@ -72,7 +72,7 @@ public sealed partial class DesktopViewModel
         if (type == AgentEventTypes.MessageUser && !string.IsNullOrWhiteSpace(payload.QueuedId))
             RunInBackground(() => LoadQueuedInputsAsync(), "queue.steering_consumed");
 
-        if (live) ScheduleLiveRefreshes(type, payload, pathAdded);
+        if (live) ScheduleLiveRefreshes(type, payload, fileChanged);
     }
 
     private void ApplyMessageEvent(string type, AgentEventPayload payload, string text)
@@ -279,16 +279,44 @@ public sealed partial class DesktopViewModel
         OnPropertyChanged(nameof(HasActivities));
         OnPropertyChanged(nameof(LatestActivityText));
     }
-
-    private bool TrackChangedPath(string path)
+    
+    /// <summary>
+    /// Upserts one file's net change from <c>checkpoint.captured</c>. The payload
+    /// carries the turn baseline and latest version, so a path whose content is
+    /// back at its baseline, or that was created and then deleted in the same
+    /// turn, drop out. A new turn replaces the sidebar changes.
+    /// </summary>
+    private bool ApplyTurnChangeEvent(AgentEventPayload payload)
     {
-        if (path.Length == 0 || ChangedPaths.Contains(path)) return false;
-        ChangedPaths.Add(path);
-        OnPropertyChanged(nameof(HasChangedPaths));
-        OnPropertyChanged(nameof(TurnChangeSummary));
-        OnPropertyChanged(nameof(CanViewReviewChanges));
+        var turnId = payload.TurnId ?? string.Empty;
+        var path = payload.Path ?? string.Empty;
+        if (turnId.Length == 0 || path.Length == 0) return false;
+        var changes = turnId == TurnChangesTurnId ? TurnChanges.ToList() : [];
+        var index = changes.FindIndex(change => change.Path == path);
+        var unchanged = payload.BaselineSha256 == payload.CurrentSha256;
+        var change = new TurnChangeItem(
+            path,
+            payload.BaselineSha256 is null ? "added" : payload.CurrentSha256 is null ? "deleted" : "modified",
+            payload.Additions ?? 0,
+            payload.Deletions ?? 0,
+            payload.Binary ?? false);
+        if (unchanged)
+        {
+            if (index >= 0) changes.RemoveAt(index);
+        }
+        else if (index >= 0) changes[index] = change;
+        else changes.Add(change);
+        SetTurnChanges(turnId, changes);
+        ApplyTurnChangesToFinalAssistant(turnId);
         NotifyReviewPresentationChanged();
         return true;
+    }
+    
+    private void ApplyTurnChangesToFinalAssistant(string turnId)
+    {
+        if (turnId.Length == 0 || turnId != TurnChangesTurnId) return;
+        var finalAssistant = Messages.LastOrDefault(item => item.TurnId == turnId && item.IsFinalAssistant);
+        finalAssistant?.SetTurnChanges(TurnChanges);
     }
 
     private void ApplyPromptEvent(string type, AgentEventPayload payload, bool live)
@@ -325,6 +353,7 @@ public sealed partial class DesktopViewModel
             CurrentTodos.Clear();
             OnPropertyChanged(nameof(HasCurrentTodos));
             OnPropertyChanged(nameof(IsReviewTodosVisible));
+            if (turnId.Length > 0 && turnId != TurnChangesTurnId) SetTurnChanges(turnId, []);
         }
         ActiveTurnId = terminal ? string.Empty : turnId;
         ActiveTurnState = state;
@@ -345,6 +374,7 @@ public sealed partial class DesktopViewModel
                 finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
                 finalAssistant.IsFinalAssistant = true;
                 finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
+                ApplyTurnChangesToFinalAssistant(turnId);
             }
         }
         SyncActiveToolRow();
@@ -352,17 +382,17 @@ public sealed partial class DesktopViewModel
     }
 
     /// <summary>Schedules the background reloads a live event implies, after all state is applied.</summary>
-    private void ScheduleLiveRefreshes(string type, AgentEventPayload payload, bool pathAdded)
+    private void ScheduleLiveRefreshes(string type, AgentEventPayload payload, bool fileChanged)
     {
-        var checkpoint = AgentEventTypes.IsCheckpoint(type);
         if (type == AgentEventTypes.TurnState) SyncSelectedSessionAgentStateFromReview();
-        if (checkpoint) RunInBackground(() => LoadCheckpointsAsync(), "checkpoints.load");
         if (AgentEventTypes.IsProviderExchange(type) && ProviderTraceVisible) RunInBackground(ProviderTrace.RefreshAsync, "provider_trace.refresh");
         if (type == AgentEventTypes.ToolResult
             || (type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
             RunInBackground(LoadChildSessionsAsync, "child_sessions.load");
-        if (Git.IsAvailable && (checkpoint || pathAdded || type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
+        if (Git.IsAvailable && (fileChanged || type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
             RunInBackground(Git.RefreshAsync, "git.refresh");
+        if (fileChanged && Layout.TurnDiffVisible && TurnDiff.TurnId == payload.TurnId && SelectedSession is { } session)
+            RunInBackground(() => TurnDiff.LoadAsync(session.SessionId, TurnDiff.TurnId), "turn_diff.refresh");
     }
 
     private static string EventText(string type, AgentEventPayload payload)
@@ -378,8 +408,7 @@ public sealed partial class DesktopViewModel
             AgentEventTypes.QuestionRejected => "Question skipped",
             AgentEventTypes.TodoUpdated => "Todo list updated",
             AgentEventTypes.ContextCompacted => $"Context compacted · retained {payload.RetainedTokens} tokens",
-            AgentEventTypes.CheckpointCaptured => $"Checkpoint captured for {payload.Path}",
-            AgentEventTypes.CheckpointRestoreFailed => "Undo stopped because a file changed outside SunCode",
+            AgentEventTypes.CheckpointCaptured => $"Changed {payload.Path}",
             AgentEventTypes.TurnState => $"Turn {payload.State}",
             AgentEventTypes.AssistantDelta => payload.Text ?? string.Empty,
             AgentEventTypes.ToolOutput => $"Command output · {payload.Stream}",

@@ -263,6 +263,7 @@
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveProviderTraceVisible}" />
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveToolActivityVisible}" />
             <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveTerminalVisible}" />
+            <Border Grid.Row="1" Classes="resize-handle horizontal" Tag="BottomDrawer" IsVisible="{Binding Layout.EffectiveTurnDiffVisible}" />
 
             <Grid Grid.Row="2">
               <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveGitVisible}">
@@ -276,6 +277,9 @@
               </Border>
               <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveTerminalVisible}">
                 <terminal:TerminalPanel x:Name="TerminalPanel" VerticalAlignment="Stretch" />
+              </Border>
+              <Border Classes="card" Height="{Binding Layout.EffectiveBottomDrawerHeight}" ClipToBounds="True" IsVisible="{Binding Layout.EffectiveTurnDiffVisible}">
+                <review:TurnDiffViewer VerticalAlignment="Stretch" />
               </Border>
             </Grid>
           </Grid>

@@ -170,8 +170,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ToolActivity.ReplaceAll([]);
         _appliedMessageIds.Clear();
         Activities.Clear();
-        ChangedPaths.Clear();
-        Checkpoints.Clear();
+        SetTurnChanges(string.Empty, []);
+        TurnDiff.Clear();
+        Layout.TurnDiffVisible = false;
         Git.ClearDiffLines();
         DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
@@ -189,10 +190,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         ProviderTraffic.Clear();
         if (clearSelection) SelectedSession = null;
         OnPropertyChanged(nameof(HasActivities));
-        OnPropertyChanged(nameof(HasCheckpoints));
-        OnPropertyChanged(nameof(HasChangedPaths));
-        OnPropertyChanged(nameof(TurnChangeSummary));
-        OnPropertyChanged(nameof(CanViewReviewChanges));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(HasChildSessions));
         NotifyReviewPresentationChanged();

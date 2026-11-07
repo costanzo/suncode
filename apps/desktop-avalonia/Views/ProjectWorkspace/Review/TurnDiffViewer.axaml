@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:SunCode.Desktop.Models"
+             xmlns:vm="using:SunCode.Desktop.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.TurnDiffViewer"
+             x:DataType="vm:DesktopViewModel"
+             MinHeight="180">
+  <UserControl.Styles>
+    <Style Selector="ListBox.diff-lines ListBoxItem">
+      <Setter Property="Height" Value="22" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ListBox.diff-lines ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.turn-files">
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.turn-files ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ListBox.turn-files ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource GitAccentSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource GitAccentBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <!-- Net diff of one turn: each file's first-touch baseline against its latest content. -->
+  <Border Background="Transparent" BorderThickness="0" ClipToBounds="True" CornerRadius="10">
+    <Grid RowDefinitions="36,1,*">
+      <Grid Grid.Row="0" Margin="12,0,8,0" ColumnDefinitions="Auto,8,Auto,8,Auto,*,26">
+        <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/files.svg" Css="{DynamicResource GitAccentSvgCss}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Text="{DynamicResource LocTurnChanges}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="4" Text="{Binding TurnDiff.FileCountText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+        <Button Grid.Column="6" Classes="icon" Width="26" Height="26" Padding="6" Click="CloseTurnDiff" ToolTip.Tip="{DynamicResource LocCloseTurnChanges}" AutomationProperties.Name="{DynamicResource LocCloseTurnChanges}">
+          <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+      <Border Grid.Row="1" Background="{DynamicResource GitAccentSurfaceBrush}"/>
+      <Grid Grid.Row="2">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{DynamicResource Layout.GitFileListWidth}" />
+          <ColumnDefinition Width="1" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <ListBox Grid.Column="0" Classes="turn-files" ItemsSource="{Binding TurnDiff.Files}" SelectedItem="{Binding TurnDiff.SelectedFile}" Background="{DynamicResource GitSidebarBrush}" BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="models:TurnChangeItem">
+              <Grid Height="28" ColumnDefinitions="18,8,*,Auto" Margin="0,0,8,0" ToolTip.Tip="{Binding Path}">
+                <Grid>
+                  <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsAdded}" />
+                  <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsModified}" />
+                  <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsDeleted}" />
+                </Grid>
+                <TextBlock Grid.Column="2" Text="{Binding Path}" Classes="mono" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center">
+                  <Run Text="{Binding AdditionsText}" /> <Run Text=" " /> <Run Text="{Binding DeletionsText}" />
+                </TextBlock>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
+        <Grid Grid.Column="2" Background="{DynamicResource GitWorkspaceBrush}" RowDefinitions="30,1,*">
+          <Grid Grid.Row="0" Margin="10,0" ColumnDefinitions="*,Auto,10,Auto">
+            <TextBlock Text="{Binding TurnDiff.SelectedPath}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="1" Text="{Binding TurnDiff.SelectedAdditionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding TurnDiff.ShowDiffStats}" />
+            <TextBlock Grid.Column="3" Text="{Binding TurnDiff.SelectedDeletionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" IsVisible="{Binding TurnDiff.ShowDiffStats}" />
+          </Grid>
+          <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
+          <Grid Grid.Row="2">
+            <ListBox ItemsSource="{Binding TurnDiff.DiffLines}" Classes="mono diff-lines" FontSize="11" Background="Transparent" BorderThickness="0" Padding="0" IsVisible="{Binding TurnDiff.HasDiffLines}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:DiffLineItem">
+                  <Grid ColumnDefinitions="34,34,1,*">
+                    <Border Grid.ColumnSpan="4" Background="{DynamicResource SuccessSurfaceBrush}" IsVisible="{Binding IsAddition}" />
+                    <Border Grid.ColumnSpan="4" Background="{DynamicResource DangerSurfaceBrush}" IsVisible="{Binding IsDeletion}" />
+                    <Border Grid.ColumnSpan="4" Background="{DynamicResource GitAccentSurfaceBrush}" IsVisible="{Binding IsHunk}" />
+                    <TextBlock Text="{Binding OldLine}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding NewLine}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Border Grid.Column="2" Background="{DynamicResource BorderBrush}" />
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitSuccessBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsAddition}" />
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitDangerBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsDeletion}" />
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource GitAccentBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsHunk}" />
+                    <TextBlock Grid.Column="3" Text="{Binding DisplayText}" Classes="mono" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="10,0,16,0" VerticalAlignment="Center" TextWrapping="NoWrap" IsVisible="{Binding IsContext}" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Width="420" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding TurnDiff.ShowDiffEmpty}">
+              <ProgressBar Width="120" Height="3" IsIndeterminate="True" IsVisible="{Binding TurnDiff.IsLoading}" />
+              <TextBlock Text="{Binding TurnDiff.EmptyMessage}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

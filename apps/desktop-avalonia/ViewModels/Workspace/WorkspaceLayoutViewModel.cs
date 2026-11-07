@@ -10,7 +10,8 @@ public enum WorkspaceBottomDrawer
     Git,
     ProviderTrace,
     ToolActivity,
-    Terminal
+    Terminal,
+    TurnDiff
 }
 
 public enum WorkspaceResizeTarget
@@ -56,6 +57,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     private bool _providerTraceVisible;
     private bool _toolActivityVisible;
     private bool _terminalVisible;
+    private bool _turnDiffVisible;
     private double _layoutWidth = 1440;
     private double _layoutHeight = 900;
     private double _navigationPaneWidth = DefaultNavigationPaneWidth;
@@ -81,10 +83,12 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     public bool ProviderTraceVisible { get => _providerTraceVisible; set { if (SetProperty(ref _providerTraceVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveProviderTraceVisible)); RegionStateChanged?.Invoke(); } } }
     public bool ToolActivityVisible { get => _toolActivityVisible; set { if (SetProperty(ref _toolActivityVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveToolActivityVisible)); RegionStateChanged?.Invoke(); } } }
     public bool TerminalVisible { get => _terminalVisible; set { if (SetProperty(ref _terminalVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveTerminalVisible)); RegionStateChanged?.Invoke(); } } }
+    // The turn diff drawer shows one chosen turn, so ti is not restored with the project layout.
+    public bool TurnDiffVisible { get => _turnDiffVisible; set { if (SetProperty(ref _turnDiffVisible, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveTurnDiffVisible));}}}
     public double NavigationPaneWidth { get => _navigationPaneWidth; set { if (SetProperty(ref _navigationPaneWidth, value)) { NotifyNavigationLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
     public double ReviewPaneWidth { get => _reviewPaneWidth; set { if (SetProperty(ref _reviewPaneWidth, value)) { NotifyReviewLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
     public double PreviewPaneWidth { get => _previewPaneWidth; set { if (SetProperty(ref _previewPaneWidth, value)) { NotifyPreviewLayoutChanged(); PanelGeometryChanged?.Invoke(); } } }
-    public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); OnPropertyChanged(nameof(EffectiveProviderTraceVisible)); OnPropertyChanged(nameof(EffectiveToolActivityVisible)); OnPropertyChanged(nameof(EffectiveTerminalVisible)); PanelGeometryChanged?.Invoke(); } } }
+    public double BottomDrawerHeight { get => _bottomDrawerHeight; set { if (SetProperty(ref _bottomDrawerHeight, value)) { NotifyDrawerLayoutChanged(nameof(EffectiveGitVisible)); OnPropertyChanged(nameof(EffectiveProviderTraceVisible)); OnPropertyChanged(nameof(EffectiveToolActivityVisible)); OnPropertyChanged(nameof(EffectiveTerminalVisible)); OnPropertyChanged(nameof(EffectiveTurnDiffVisible)); PanelGeometryChanged?.Invoke(); } } }
     public bool ArchivedDrawerOpen { get => _archivedDrawerOpen; set => SetProperty(ref _archivedDrawerOpen, value); }
     public double ArchivedDrawerHeight { get => _archivedDrawerHeight; private set => SetProperty(ref _archivedDrawerHeight, value); }
     internal void UpdateArchivedDrawerHeight(double sidebarHeight) => ArchivedDrawerHeight = Math.Max(180, sidebarHeight / 2d);
@@ -113,6 +117,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     public bool EffectiveProviderTraceVisible => ProviderTraceVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     public bool EffectiveToolActivityVisible => ToolActivityVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     public bool EffectiveTerminalVisible => TerminalVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
+    public bool EffectiveTurnDiffVisible => TurnDiffVisible && _layoutWidth > CompactWorkspaceBreakpoint && CanShowBottomDrawer;
     private bool CanShowBottomDrawer => BottomDrawerHeight >= MinimumBottomDrawerHeight;
     // The tallest drawer that still leaves the title bar, gap, minimum
     // workspace, and footer on screen.
@@ -138,7 +143,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     private double PreviewRowWidth => _layoutWidth - 2 * WorkspaceGutterWidth.Value - NavigationWidth.Value - NavigationGap.Value - 4;
     private double MaxPreviewPanelWidth => Math.Max(MinimumPreviewPanelWidth, PreviewRowWidth - MinimumPreviewConversationWidth);
     private double EffectivePreviewPanelWidth => Math.Min(MaxPreviewPanelWidth, PreviewPaneWidth);
-    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible || EffectiveTerminalVisible ? new GridLength(4) : new GridLength(0);
+    public GridLength BottomDrawerGap => EffectiveGitVisible || EffectiveProviderTraceVisible || EffectiveToolActivityVisible || EffectiveTerminalVisible || EffectiveTurnDiffVisible ? new GridLength(4) : new GridLength(0);
     public GridLength GitFileListWidth => new(Math.Min(260, Math.Max(230, (_layoutWidth - 80) * 0.24)));
 
     public void UpdateLayoutSize(double width, double height)
@@ -245,14 +250,24 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
     internal bool ToggleBottomDrawer(WorkspaceBottomDrawer drawer)
     {
         var open = !IsBottomDrawerVisible(drawer);
-        SetBottomDrawerVisible(drawer, open);
-        if (!open) return false;
+        if (!open)
+        {
+            SetBottomDrawerVisible(drawer, false);
+            return false;
+        }
+        OpenBottomDrawer(drawer);
+        return true;
+    }
+
+    /// <summary>Opens one bottom drawer and closes the others.</summary>
+    internal void OpenBottomDrawer(WorkspaceBottomDrawer drawer)
+    {
+        SetBottomDrawerVisible(drawer, true);
         if (BottomDrawerHeight < MinimumBottomDrawerHeight) BottomDrawerHeight = DefaultBottomDrawerHeight;
         foreach (var other in Enum.GetValues<WorkspaceBottomDrawer>())
         {
             if (other != drawer) SetBottomDrawerVisible(other, false);
         }
-        return true;
     }
 
     internal void CloseBottomDrawers()
@@ -261,6 +276,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         ProviderTraceVisible = false;
         ToolActivityVisible = false;
         TerminalVisible = false;
+        TurnDiffVisible = false;
     }
 
     internal bool IsBottomDrawerVisible(WorkspaceBottomDrawer drawer) => drawer switch
@@ -268,6 +284,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         WorkspaceBottomDrawer.Git => GitVisible,
         WorkspaceBottomDrawer.ProviderTrace => ProviderTraceVisible,
         WorkspaceBottomDrawer.ToolActivity => ToolActivityVisible,
+        WorkspaceBottomDrawer.TurnDiff => TurnDiffVisible,
         _ => TerminalVisible
     };
 
@@ -278,6 +295,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
             case WorkspaceBottomDrawer.Git: GitVisible = visible; break;
             case WorkspaceBottomDrawer.ProviderTrace: ProviderTraceVisible = visible; break;
             case WorkspaceBottomDrawer.ToolActivity: ToolActivityVisible = visible; break;
+            case WorkspaceBottomDrawer.TurnDiff: TurnDiffVisible = visible; break;
             default: TerminalVisible = visible; break;
         }
     }
@@ -378,6 +396,7 @@ public sealed class WorkspaceLayoutViewModel : ObservableObject
         OnPropertyChanged(nameof(EffectiveProviderTraceVisible));
         OnPropertyChanged(nameof(EffectiveToolActivityVisible));
         OnPropertyChanged(nameof(EffectiveTerminalVisible));
+        OnPropertyChanged(nameof(EffectiveTurnDiffVisible));
         OnPropertyChanged(nameof(EffectiveBottomDrawerHeight));
         OnPropertyChanged(nameof(BottomDrawerGap));
         OnPropertyChanged(nameof(WorkspaceGuttersVisible));

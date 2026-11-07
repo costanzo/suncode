@@ -20,6 +20,7 @@ public sealed partial class DesktopViewModel
         Network = new NetworkSettingsViewModel(this);
         Remote = new RemoteServerViewModel(this);
         Git = new GitReviewViewModel(this, gitService);
+        TurnDiff = new TurnDiffViewModel(this);
         ProviderTrace = new ProviderTraceViewModel(this);
         Editor = new EditorViewModel(this);
         Explorer = new ExplorerViewModel(this);
@@ -31,7 +32,6 @@ public sealed partial class DesktopViewModel
         {
             if (args.PropertyName != nameof(Git.IsAvailable)) return;
             if (!Git.IsAvailable) Layout.GitVisible = false;
-            OnPropertyChanged(nameof(CanViewReviewChanges));
         };
         Layout.RegionStateChanged += SaveRegionState;
         Layout.PanelGeometryChanged += SavePanelGeometry;

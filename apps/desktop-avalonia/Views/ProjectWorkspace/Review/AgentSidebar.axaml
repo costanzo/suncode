@@ -55,6 +55,31 @@
     <Style Selector="TextBlock.context-usage-percent.danger">
       <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
     </Style>
+    <!-- Turn change rows highlight only the path on hover, without a row fill. -->
+    <Style Selector="Button.turn-change-row">
+      <Setter Property="MinHeight" Value="24"/>
+      <Setter Property="Padding" Value="0,3"/>
+      <Setter Property="CornerRadius" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.turn-change-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.turn-change-path">
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="Button.turn-change-row:pointerover TextBlock.turn-change-path">
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+    </Style>
+    <Style Selector="ContentPresenter:nth-last-child(1) > Button.turn-change-row">
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
   </UserControl.Styles>
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
@@ -188,25 +213,52 @@
             </Grid>
           </StackPanel>
         </Border>
-        <Button Classes="raised" Padding="11" HorizontalContentAlignment="Stretch" Click="ViewTurnChanges" AutomationProperties.Name="{DynamicResource LocViewTurnChanges}" IsVisible="{Binding CanViewReviewChanges}">
-          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
-            <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Spacing="2">
-              <TextBlock Text="{DynamicResource LocTurnChanges}" FontSize="12" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding TurnChangeSummary}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
-            </StackPanel>
-            <svg:Svg Grid.Column="2" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource IconSvgCss}" VerticalAlignment="Center" />
-          </Grid>
-        </Button>
-        <StackPanel Spacing="7" IsVisible="{Binding HasChangedPaths}">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="section-label" Text="{DynamicResource LocTouchedFiles}" />
-            <TextBlock Grid.Column="1" Text="{Binding ChangedPaths.Count}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
-          </Grid>
-          <ItemsControl ItemsSource="{Binding ChangedPaths}">
-            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Classes="mono" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" Margin="2,3" /></DataTemplate></ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
+        <!-- Net file changes of the latest turn; rows open the turn diff drawer. -->
+        <Border Classes="raised" CornerRadius="6" IsVisible="{Binding IsReviewChangesVisible}">
+          <StackPanel>
+            <Button Classes="quiet" MinHeight="40" Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" Click="ToggleTurnChanges" AutomationProperties.Name="{DynamicResource LocTurnChanges}">
+              <WrapPanel ItemSpacing="10" LineSpacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                  <TextBlock Text="{DynamicResource LocChangesCaps}" Classes="mono" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  <TextBlock Text="{Binding TurnChangeFileCountText}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Classes="mono" FontSize="9" Foreground="{DynamicResource SuccessBrush}">
+                    <Run Text="{Binding TurnChangeAddedCount}" /><Run Text=" "/><Run Text="{DynamicResource LocAdded}"/>
+                  </TextBlock>
+                  <TextBlock Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}">
+                    <Run Text="{Binding TurnChangeEditedCount}" /><Run Text=" "/><Run Text="{DynamicResource LocEdited}"/>
+                  </TextBlock>
+                  <TextBlock Classes="mono" FontSize="9" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding HasTurnChangeDeletions}">
+                    <Run Text="{Binding TurnChangeDeletedCount}" /><Run Text=" "/><Run Text="{DynamicResource LocDeleted}"/>
+                  </TextBlock>
+                  <TextBlock Text="{DynamicResource LocLiveCaps}" Classes="mono" FontSize="9" Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding IsReviewRunning}"/>
+                </StackPanel>
+              </WrapPanel>
+            </Button>
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Margin="10,0,10,8" IsVisible="{Binding TurnChangesExpanded}">
+              <ScrollViewer MaxHeight="164" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding TurnChanges}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:TurnChangeItem">
+                      <Button Classes="turn-change-row" Click="OpenTurnChange" ToolTip.Tip="{Binding Path}" AutomationProperties.Name="{Binding Path}">
+                        <Grid ColumnDefinitions="14,*,Auto" ColumnSpacing="6">
+                          <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource GitSuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsAdded}" />
+                          <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsModified}" />
+                          <TextBlock Text="{Binding StatusLetter}" Classes="mono" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource GitDangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsDeleted}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Path}" Classes="mono turn-change-path" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Classes="mono" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center">
+                            <Run Text="{Binding AdditionsText}" /> <Run Text=" " /> <Run Text="{Binding DeletionsText}" />
+                          </TextBlock>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+          </StackPanel>
+        </Border>
         <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewRunning}">
           <StackPanel Spacing="7">
             <Grid ColumnDefinitions="7,7,*,Auto">
@@ -217,7 +269,7 @@
             </Grid>
             <TextBlock Text="{Binding LastTurnId, StringFormat=Turn  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding SelectedModelName, StringFormat=Model  {0}}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Text="{Binding LatestActivityText}" FontSize="9" Classes="mono" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsTurnActive}" />
+            <TextBlock Text="{Binding LatestActivityText}" FontSize="9" Classes="mono" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsReviewRunning}" />
           </StackPanel>
         </Border>
         <Border Padding="11" CornerRadius="6" Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" IsVisible="{Binding HasFailedTurn}">
@@ -249,25 +301,6 @@
             </ItemsControl>
           </StackPanel>
         </Border>
-        <ItemsControl ItemsSource="{Binding Checkpoints}" IsVisible="{Binding IsReviewCheckpointVisible}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="models:CheckpointItem">
-              <Border Classes="raised" Padding="11" Margin="0,0,0,8" CornerRadius="6">
-                <StackPanel Spacing="9">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{DynamicResource LocCheckpoint}" Classes="section-label" />
-                    <TextBlock Grid.Column="1" Text="{Binding FileCount}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
-                  </Grid>
-                  <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" />
-                  <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="8">
-                    <TextBlock Classes="mono" Text="{Binding PathsText}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" MaxLines="2" />
-                  </Border>
-                  <Button Classes="compact" Content="{DynamicResource LocUndo}" HorizontalAlignment="Stretch" Click="RestoreCheckpoint" IsEnabled="{Binding CanReview}" />
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
       </StackPanel>
     </ScrollViewer>
   </Border>

@@ -31,8 +31,6 @@
   <x:String x:Key="LocMenuRestoreSession">Restore Archived Session…</x:String>
   <x:String x:Key="LocMenuDeleteSession">Delete Archived Session Permanently…</x:String>
   <x:String x:Key="LocMenuRetryLastTurn">Retry Last Turn</x:String>
-  <x:String x:Key="LocMenuUndoAgentChanges">Undo Agent Changes…</x:String>
-  <x:String x:Key="LocMenuNoRestorableChanges">No Restorable Changes</x:String>
   <x:String x:Key="LocMenuStopTurn">Stop Current Turn</x:String>
   <x:String x:Key="LocMenuModel">Model</x:String>
   <x:String x:Key="LocMenuReasoningEffort">Reasoning Effort</x:String>
@@ -142,8 +140,8 @@
   <x:String x:Key="LocActions">ACTIONS</x:String>
   <x:String x:Key="LocNoMcpServers">No MCP servers configured</x:String>
   <x:String x:Key="LocAddMcpServerHint">Add a local process or remote endpoint to make its tools available.</x:String>
-  <x:String x:Key="LocMcpUndoBoundary">MCP tools run outside SunCode's undo boundary</x:String>
-  <x:String x:Key="LocMcpUndoHint">Tool calls still require policy approval, but changes made by an MCP server may not be reversible by SunCode.</x:String>
+  <x:String x:Key="LocMcpChangeBoundary">MCP tool changes are not tracked in turn changes</x:String>
+  <x:String x:Key="LocMcpChangeHint">Tool calls still require policy approval, but changes made by an MCP server do not appear in turn diffs.</x:String>
   <x:String x:Key="LocOn">On</x:String>
   <x:String x:Key="LocOff">Off</x:String>
   <x:String x:Key="LocConfigureModelTurnDefaults">Configure model and turn defaults.</x:String>
@@ -222,7 +220,7 @@
   <x:String x:Key="LocCertificateVerificationOff">Certificate verification is off</x:String>
   <x:String x:Key="LocCertificateVerificationWarning">SunCode will accept invalid certificates and hostnames, similar to curl -k. This can expose provider credentials and fetched content to man-in-the-middle attacks.</x:String>
   <x:String x:Key="LocSaveHttpsSetting">Save HTTPS setting</x:String>
-  <x:String x:Key="LocComputerUseHint">Provide SunCode desktop tools to models that support function calling and vision. Screenshots may be sent to the selected provider, and changes in other applications are outside filesystem undo.</x:String>
+  <x:String x:Key="LocComputerUseHint">Provide SunCode desktop tools to models that support function calling and vision. Screenshots may be sent to the selected provider, and changes in other applications are not tracked in turn changes.</x:String>
   <x:String x:Key="LocAvailability">AVAILABILITY</x:String>
   <x:String x:Key="LocEnableComputerUse">Enable Computer Use</x:String>
   <x:String x:Key="LocEnableComputerUseHint">Makes SunCode's provider-neutral desktop tools available when the selected model supports function calling and vision.</x:String>
@@ -263,8 +261,8 @@
   <x:String x:Key="LocTemporaryScreenshotsHint">Screenshot bytes are retained only for the active turn.</x:String>
   <x:String x:Key="LocClearTemporaryScreenshots">Clear temporary screenshots</x:String>
   <x:String x:Key="LocComputerUseWarningTitle">Computer Use controls the real desktop, not a sandbox</x:String>
-  <x:String x:Key="LocComputerUseWarning">On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications cannot be undone by SunCode.</x:String>
-  <x:String x:Key="LocBrowserUseHint">Use embedded CEF Chromium through CDP for dynamic web inspection and interaction. Chromium starts on the first browser action. Website changes and browser data are outside filesystem undo.</x:String>
+  <x:String x:Key="LocComputerUseWarning">On-screen content is untrusted and cannot grant authority. Secure desktops and locked sessions are unavailable, and actions in external applications are not tracked by SunCode.</x:String>
+  <x:String x:Key="LocBrowserUseHint">Use embedded CEF Chromium through CDP for dynamic web inspection and interaction. Chromium starts on the first browser action. Website changes and browser data are not tracked in turn changes.</x:String>
   <x:String x:Key="LocEnableBrowserUse">Enable Browser Use</x:String>
   <x:String x:Key="LocEnableBrowserUseHint">Makes browser tools available. Chromium starts only when the agent needs a browser.</x:String>
   <x:String x:Key="LocDisabled">Disabled</x:String>
@@ -440,8 +438,6 @@
   <x:String x:Key="LocShowChildSessions">Show or hide child sessions</x:String>
   <x:String x:Key="LocCreate">Create</x:String>
   <x:String x:Key="LocSessionName">Session name</x:String>
-  <x:String x:Key="LocUndoChanges">Undo changes</x:String>
-  <x:String x:Key="LocExternalSideEffects">External side effects cannot be reversed.</x:String>
   <x:String x:Key="LocDeleteDependency">Delete dependency</x:String>
   <x:String x:Key="LocClose">Close</x:String>
   <x:String x:Key="LocCopyMessage">Copy message</x:String>
@@ -458,7 +454,13 @@
   <x:String x:Key="LocSkip">Skip</x:String>
   <x:String x:Key="LocViewTurnChanges">View changes from this turn</x:String>
   <x:String x:Key="LocTurnChanges">Turn changes</x:String>
-  <x:String x:Key="LocTouchedFiles">TOUCHED FILES</x:String>
+  <x:String x:Key="LocChanges">Changes</x:String>
+  <x:String x:Key="LocChangesCaps">CHANGES</x:String>
+  <x:String x:Key="LocAdded">added</x:String>
+  <x:String x:Key="LocEdited">edited</x:String>
+  <x:String x:Key="LocDeleted">deleted</x:String>
+  <x:String x:Key="LocLiveCaps">LIVE</x:String>
+  <x:String x:Key="LocCloseTurnChanges">Close turn changes</x:String>
   <x:String x:Key="LocAgentLoop">Agent loop</x:String>
   <x:String x:Key="LocRunning">Running</x:String>
   <x:String x:Key="LocReady">Ready</x:String>
@@ -471,8 +473,6 @@
   <x:String x:Key="LocTurn">Turn</x:String>
   <x:String x:Key="LocRetryTurn">Retry turn</x:String>
   <x:String x:Key="LocTodo">TODO</x:String>
-  <x:String x:Key="LocCheckpoint">CHECKPOINT</x:String>
-  <x:String x:Key="LocUndo">Undo</x:String>
   <x:String x:Key="LocInput">Input</x:String>
   <x:String x:Key="LocOutput">Output</x:String>
   <x:String x:Key="LocCached">Cached</x:String>
@@ -616,7 +616,7 @@
   <x:String x:Key="LocCurrentProject">Current project</x:String>
   <x:String x:Key="LocAvailableForProject">Available for this project</x:String>
   <x:String x:Key="LocConfigure">Configure</x:String>
-  <x:String x:Key="LocLspAuthorityHint">Language-server processes run locally with your user permissions. Their caches and toolchain effects are outside filesystem undo.</x:String>
+  <x:String x:Key="LocLspAuthorityHint">Language-server processes run locally with your user permissions. Their caches and toolchain effects are not tracked in turn changes.</x:String>
   <x:String x:Key="LocProjectJavaAnalysis">Project configuration for Java semantic analysis.</x:String>
   <x:String x:Key="LocProjectAvailabilityCaps">PROJECT AVAILABILITY</x:String>
   <x:String x:Key="LocEnableForProject">Enable for this project</x:String>
@@ -764,7 +764,7 @@
   <x:String x:Key="LocAnalyzerDiagnosticsHint">Controls background diagnostics from project analyzers and analyzer packages.</x:String>
   <x:String x:Key="LocOpenFiles">Open files</x:String>
   <x:String x:Key="LocFullSolution">Full solution</x:String>
-  <x:String x:Key="LocRoslynAuthorityHint">Project restore and source generators run with your user permissions. Their network, package-cache, and generated-code effects are outside filesystem undo.</x:String>
+  <x:String x:Key="LocRoslynAuthorityHint">Project restore and source generators run with your user permissions. Their network, package-cache, and generated-code effects are not tracked in turn changes.</x:String>
   <x:String x:Key="LocRoslynProjectLimitInvalid">Maximum projects must be between 1 and 5000.</x:String>
   <x:String x:Key="LocRoslynSolutionInvalid">Choose a .sln or .slnx file inside the current project.</x:String>
   <x:String x:Key="LocRoslynSolutionOutsideProject">The custom solution must be inside the current project.</x:String>

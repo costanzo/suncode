@@ -691,8 +691,8 @@ public sealed record SessionConversationTurn(
 public sealed record TurnFileChange(
     [property: JsonPropertyName("path")] string Path,
     [property: JsonPropertyName("status")] string Status,
-    [property: JsonPropertyName("additions")] string Additions,
-    [property: JsonPropertyName("deletions")] string Deletions,
+    [property: JsonPropertyName("additions")] ulong Additions,
+    [property: JsonPropertyName("deletions")] ulong Deletions,
     [property: JsonPropertyName("binary")] bool Binary);
 
 public sealed record QuestionOption(
@@ -809,16 +809,16 @@ public sealed record TurnDiff(
 public sealed record TurnFileDiff(
     [property: JsonPropertyName("path")] string Path,
     [property: JsonPropertyName("status")] string Status,
-    [property: JsonPropertyName("additions")] string Additions,
-    [property: JsonPropertyName("deletions")] string Deletions,
+    [property: JsonPropertyName("additions")] ulong Additions,
+    [property: JsonPropertyName("deletions")] ulong Deletions,
     [property: JsonPropertyName("binary")] bool Binary,
     [property: JsonPropertyName("hunks")] IReadOnlyList<TurnDiffHunk> Hunks);
 
 public sealed record TurnDiffHunk(
-    [property: JsonPropertyName("oldStart")] int oldStart,
-    [property: JsonPropertyName("oldLines")] int oldLines,
-    [property: JsonPropertyName("newStart")] int newStart,
-    [property: JsonPropertyName("newLines")] int newLines,
+    [property: JsonPropertyName("oldStart")] int OldStart,
+    [property: JsonPropertyName("oldLines")] int OldLines,
+    [property: JsonPropertyName("newStart")] int NewStart,
+    [property: JsonPropertyName("newLines")] int NewLines,
     [property: JsonPropertyName("lines")] IReadOnlyList<TurnDiffLine> Lines);
 
 public sealed record TurnDiffLine(

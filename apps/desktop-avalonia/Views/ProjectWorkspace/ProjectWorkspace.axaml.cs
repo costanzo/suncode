@@ -66,6 +66,7 @@ public sealed partial class ProjectWorkspace : UserControl
         ChatArea.ExpandedComposerRequested += ShowExpandedComposer;
         ChatArea.LongUserMessageRequested += ShowLongUserMessage;
         ChatArea.ToolDetailRequested += ShowToolActivity;
+        ChatArea.TurnChangesRequested += ShowTurnChanges;
         ProjectSwitcherControl.OpenProjectRequested += OpenProjectRequested;
         ProjectSwitcherControl.ProjectRequested += ProjectRequested;
         ContentSwitcherControl.ContentRequested += ContentRequested;
@@ -251,18 +252,6 @@ public sealed partial class ProjectWorkspace : UserControl
             new Size(480, 260));
     }
 
-    internal void ShowUndoDialog(CheckpointItem checkpoint)
-    {
-        Owner?.ShowConfirmation(
-            "Undo this turn's file changes?",
-            "SunCode will restore the files changed during this turn.",
-            "FILES",
-            checkpoint.PathsText,
-            LocalizationService.GetString("LocUndoChanges", "Undo changes"),
-            () => _ = ViewModel.RestoreCheckpointAsync(checkpoint),
-            LocalizationService.GetString("LocExternalSideEffects", "External side effects cannot be reversed."));
-    }
-
     internal void ShowArchiveDialog(SessionItem session)
     {
         Owner?.ShowArchiveConfirmation(session);
@@ -427,6 +416,8 @@ public sealed partial class ProjectWorkspace : UserControl
     private void ShowToolActivity(MessageItem message) =>
         ViewModel.ShowToolActivity(message.TurnId, message.ToolCallId);
 
+    private void ShowTurnChanges(MessageItem message) => _ = ViewModel.OpenTurnDiffAsync(message.TurnId);
+    
     private async void CopyLongUserMessage(object? sender, RoutedEventArgs e)
     {
         if (_longUserMessage is null || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard) return;

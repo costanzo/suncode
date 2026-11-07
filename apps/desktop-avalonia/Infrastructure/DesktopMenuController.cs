@@ -333,17 +333,6 @@ internal sealed class DesktopMenuController
         Separator(session);
         Action(session, "RetryLastTurn", "Retry Last Turn", () => _ = RunAsync(() => Model!.RetryLastTurnAsync()),
             () => IdleSession && Model?.Messages.Count > 0 && Model?.HasPendingApproval == false && Model?.HasPendingQuestion == false);
-        Dynamic(session, "UndoAgentChanges", "Undo Agent Changes…", PopulateCheckpoints, () => IdleSession);
-    }
-
-    private void PopulateCheckpoints(NativeMenu menu)
-    {
-        var model = Model;
-        var checkpoints = model?.Checkpoints.Where(item => item.CanReview).ToArray() ?? [];
-        foreach (var checkpoint in checkpoints)
-            DynamicAction(menu, $"{checkpoint.TurnId} — {checkpoint.FileCount}", () => Workspace?.ShowUndoDialog(checkpoint),
-                () => IdleSession && ReferenceEquals(Model, model) && model!.Checkpoints.Contains(checkpoint) && checkpoint.CanReview);
-        if (checkpoints.Length == 0) Empty(menu, "NoRestorableChanges", "No Restorable Changes");
     }
 
     private void BuildAgent()

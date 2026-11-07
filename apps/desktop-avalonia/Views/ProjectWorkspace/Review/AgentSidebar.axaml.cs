@@ -1,10 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
 using Avalonia.Input;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
-using SunCode.Desktop.Views.ProjectWorkspace;
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Review;
 
@@ -68,13 +66,13 @@ public sealed partial class AgentSidebar : UserControl
 
     private async void DisableFullControl(object? sender, RoutedEventArgs e) =>
         await ViewModel.DisableFullControlAsync();
-
-    private void RestoreCheckpoint(object? sender, RoutedEventArgs e)
+    
+    private void ToggleTurnChanges(object? sender, RoutedEventArgs e) =>
+        ViewModel.TurnChangesExpanded = !ViewModel.TurnChangesExpanded;
+    
+    private async void OpenTurnChange(object? sender, RoutedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is CheckpointItem checkpoint)
-            this.FindAncestorOfType<ProjectWorkspace>()?.ShowUndoDialog(checkpoint);
+        if ((sender as Control)?.DataContext is TurnChangeItem change)
+            await ViewModel.OpenTurnDiffAsync(ViewModel.TurnChangesTurnId, change.Path);
     }
-
-    private void ViewTurnChanges(object? sender, RoutedEventArgs e) =>
-        this.FindAncestorOfType<ProjectWorkspace>()?.ToggleGitViewer();
 }

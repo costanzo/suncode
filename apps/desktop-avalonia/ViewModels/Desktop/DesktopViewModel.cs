@@ -41,6 +41,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     private string _diagnosticsText = "Diagnostics unavailable";
     private string _sessionLoadError = string.Empty;
     private bool _fullControlEnabled;
+    private bool _turnChangesExpanded;
     private long _sessionLoadVersion;
     private long _childSessionsLoadVersion;
     private string? _loadedSessionId;
@@ -70,6 +71,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public NetworkSettingsViewModel Network { get; }
     public RemoteServerViewModel Remote { get; }
     public GitReviewViewModel Git { get; }
+    public TurnDiffViewModel TurnDiff { get; }
     public ProviderTraceViewModel ProviderTrace { get; }
     public BrowserRuntimeViewModel Browser { get; }
     public ComputerRuntimeViewModel Computer { get; }
@@ -131,8 +133,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsLoadingOlderMessages => _isLoadingOlderMessages;
     public BulkObservableCollection<ActivityItem> Activities { get; } = [];
     public BulkObservableCollection<TodoItem> CurrentTodos { get; } = [];
-    public BulkObservableCollection<string> ChangedPaths { get; } = [];
-    public BulkObservableCollection<CheckpointItem> Checkpoints { get; } = [];
+    ///<summary>Net file changes of the latest turn, shown in the review sidebar.</summary>
+    public BulkObservableCollection<TurnChangeItem> TurnChanges { get; } = [];
+    public string TurnChangesTurnId { get; private set; } = string.Empty;
     public ObservableCollection<ChildSessionItem> ChildSessions { get; } = [];
     public ObservableCollection<ChildSessionTimelineItem> ChildSessionTimeline { get; } = [];
 
@@ -355,7 +358,6 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
     public bool IsReviewTodosVisible => HasCurrentTodos && IsReviewRunning;
-    public bool HasCheckpoints => Checkpoints.Count > 0;
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;
@@ -368,10 +370,13 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool ShowChatInput => SelectedSession is not null && !SelectedSession.IsArchived;
     public bool HasPendingApproval => PendingApproval is not null;
     public bool HasPendingQuestion => PendingQuestion is not null;
-    public bool HasChangedPaths => ChangedPaths.Count > 0;
-    public string TurnChangeSummary => ChangedPaths.Count == 0
-        ? "No files changed in this turn"
-        : $"{ChangedPaths.Count} {(ChangedPaths.Count == 1 ? "file" : "files")} touched";
+    public bool HasTurnChanges => TurnChanges.Count > 0;
+    public string TurnChangeFileCountText => $"{TurnChanges.Count} {(TurnChanges.Count == 1 ? "file" : "files}")}";
+    public int TurnChangeAddedCount => TurnChanges.Count(change => change.IsAdded);
+    public int TurnChangeEditedCount => TurnChanges.Count(change => change.IsModified);
+    public int TurnChangeDeletedCount => TurnChanges.Count(change => change.IsDeleted);
+    public bool HasTurnChangeDeletions => TurnChangeDeletedCount > 0;
+    public bool TurnChangesExpanded { get => _turnChangesExpanded; set => SetProperty(ref _turnChangesExpanded, value); }
     public bool IsTurnActive => !string.IsNullOrWhiteSpace(ActiveTurnId);
     public bool IsTurnCompacting => ActiveTurnState == "compacting";
     public bool IsTurnThinking => ActiveTurnState == "calling_model" && !IsAssistantStreaming && !IsProviderRetrying;
@@ -409,9 +414,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool IsReviewQuestion => !HasPendingApproval && HasPendingQuestion;
     public bool IsReviewWaiting => HasPendingApproval || HasPendingQuestion;
     public bool IsReviewFailed => HasFailedTurn;
-    public bool CanViewReviewChanges => IsReviewChangesVisible && Git.IsAvailable;
-    public bool IsReviewChangesVisible => !IsReviewIdle && !IsReviewCompacting && !IsReviewFailed && HasChangedPaths;
-    public bool IsReviewCheckpointVisible => IsReviewRunning && HasCheckpoints;
+    public bool IsReviewChangesVisible => HasTurnChanges;
     public bool CanCompose => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && !HasSessionLoadError;
     public bool CanSubmit => SelectedSession is not null && !SelectedSession.IsArchived && SelectedModel?.Configured == true && (!string.IsNullOrWhiteSpace(ComposerText) || ComposerAttachments.Count > 0) && !IsSessionLoading && !HasSessionLoadError;
     public bool CanChooseModel => (ConnectionState == "connected" || IsSessionLoading) && SelectedSession is not null && !SelectedSession.IsArchived && !HasSessionLoadError;
@@ -440,9 +443,28 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         OnPropertyChanged(nameof(IsReviewWaiting));
         OnPropertyChanged(nameof(IsReviewFailed));
         OnPropertyChanged(nameof(IsReviewChangesVisible));
-        OnPropertyChanged(nameof(CanViewReviewChanges));
-        OnPropertyChanged(nameof(IsReviewCheckpointVisible));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
+    }
+
+    private void NotifyTurnChangesChanged()
+    {
+        OnPropertyChanged(nameof(TurnChangesTurnId));
+        OnPropertyChanged(nameof(HasTurnChanges));
+        OnPropertyChanged(nameof(TurnChangeFileCountText));
+        OnPropertyChanged(nameof(TurnChangeAddedCount));
+        OnPropertyChanged(nameof(TurnChangeEditedCount));
+        OnPropertyChanged(nameof(TurnChangeDeletedCount));
+        OnPropertyChanged(nameof(HasTurnChangeDeletions));
+        OnPropertyChanged(nameof(IsReviewChangesVisible));
+    }
+    
+    /// <summary>Replaces the sidebar changes with the latest turn's net changes.</summary>
+    private void SetTurnChanges(string turnId, IReadOnlyList<TurnChangeItem> changes)
+    {
+        if (TurnChangesTurnId != turnId) TurnChangesExpanded = false;
+        TurnChangesTurnId = turnId;
+        TurnChanges.ReplaceAll(changes);
+        NotifyTurnChangesChanged();
     }
     public string ProjectTitle => (SelectedProject ?? _openingProject)?.DisplayName ?? "SunCode";
     public string SessionTitle => SelectedSession?.DisplayTitle ?? "No session selected";

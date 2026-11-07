@@ -13,8 +13,8 @@ internal static class SessionSnapshotProjector
         var toolActivityTurns = new List<ToolActivityTurnItem>();
         var activities = new List<ActivityItem>();
         IReadOnlyList<TodoItem> currentTodos = [];
-        var changedPaths = new List<string>();
-        var changedPathSet = new HashSet<string>(StringComparer.Ordinal);
+        IReadOnlyList<TurnChangeItem> turnChanges = [];
+        var turnChangesTurnId = string.Empty;
         ApprovalItem? pendingApproval = snapshot.PendingApproval is { } approval
             ? ApprovalItem.FromSdk(approval)
             : null;
@@ -48,10 +48,12 @@ internal static class SessionSnapshotProjector
                 if (!TurnStates.IsTerminal(state)) activeTurnId = turnId;
                 activeTurnState = state;
                 var toolUses = turn.ToolUses;
-                foreach (var path in turn.ChangedPaths ?? [])
-                {
-                    if (path.Length > 0 && changedPathSet.Add(path)) changedPaths.Add(path);
-                }
+                var changes = (turn.Changes ?? [])
+                    .Where(change => change.Path.Length > 0)
+                    .Select(TurnChangeItem.FromSdk)
+                    .ToArray();
+                turnChanges = changes;
+                turnChangesTurnId = turnId;
                 if (turnId == todoTurnId)
                     currentTodos = turn.Todos
                         .Select(TodoItem.FromSdk)
@@ -112,6 +114,7 @@ internal static class SessionSnapshotProjector
                     finalAssistant.IsFinalAssistant = true;
                     finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, state);
                     finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
+                    finalAssistant.SetTurnChanges(changes);
                 }
                 foreach (var toolUse in toolUses.OrderBy(item => item.CreatedAt, StringComparer.Ordinal).ThenBy(item => item.Ordinal))
                 {
@@ -142,7 +145,7 @@ internal static class SessionSnapshotProjector
             }
         }
 
-        return new SessionSnapshotProjection(messages, toolActivityTurns, activities, changedPaths, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState, snapshot.HasMoreMessages, snapshot.OldestMessageCreatedAt, snapshot.OldestMessageId, imagePayloads);
+        return new SessionSnapshotProjection(messages, toolActivityTurns, activities, turnChangesTurnId, turnChanges, currentTodos, pendingApproval, pendingQuestion, activeTurnId, activeTurnState, snapshot.HasMoreMessages, snapshot.OldestMessageCreatedAt, snapshot.OldestMessageId, imagePayloads);
     }
 
     internal static IReadOnlyList<MessageItem> ProjectOlderMessages(

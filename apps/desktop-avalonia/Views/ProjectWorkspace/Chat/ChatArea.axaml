@@ -303,16 +303,41 @@
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="-7,-7,0,0" HorizontalAlignment="Left">
-                  <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="{DynamicResource LocCopyResponse}" AutomationProperties.Name="{DynamicResource LocCopyResponse}" IsVisible="{Binding ShowCopy}">
-                    <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                <Grid ColumnDefinitions="*,Auto" Margin="-7,-7,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="-7,-7,0,0" HorizontalAlignment="Left">
+                    <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="{DynamicResource LocCopyResponse}" AutomationProperties.Name="{DynamicResource LocCopyResponse}" IsVisible="{Binding ShowCopy}">
+                      <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
+                    </Button>
+                    <TextBlock Classes="assistant-completed-time"
+                               Text="{Binding CompletionTimeText}"
+                               ToolTip.Tip="{Binding CompletionTimeText}"
+                               AutomationProperties.Name="{Binding CompletionTimeText, StringFormat=Message completed at {0}}"
+                               IsVisible="{Binding HasCompletionTime}" />
+                  </StackPanel>
+                  <!-- Net file changes of this turn; opens the turn diff drawer. -->
+                  <Button Grid.Column="1" Classes="quiet" Height="25" MinHeight="25" Padding="6,3" Click="OpenTurnChanges"
+                          ToolTip.Tip="{DynamicResource LocViewTurnChanges}" AutomationProperties.Name="{Binding ChangesLabel}" IsVisible="{Binding ShowChanges}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <svg:Svg Width="12" Height="12" Path="/Assets/icons/check.svg" Css="{DynamicResource SuccessSvgCss}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource LocChanges}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding AddedFileCount}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource LocAdded}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding EditedFileCount}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource LocEdited}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding DeletedFileCount}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource LocDeleted}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </StackPanel>
                   </Button>
-                  <TextBlock Classes="assistant-completed-time"
-                             Text="{Binding CompletionTimeText}"
-                             ToolTip.Tip="{Binding CompletionTimeText}"
-                             AutomationProperties.Name="{Binding CompletionTimeText, StringFormat=Message completed at {0}}"
-                             IsVisible="{Binding HasCompletionTime}" />
-                </StackPanel>
+                </Grid>
+                
               </StackPanel>
             </StackPanel>
           </DataTemplate>

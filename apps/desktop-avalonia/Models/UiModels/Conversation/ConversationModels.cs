@@ -196,10 +196,47 @@ public sealed class MessageItem : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(ShowDuration));
                 OnPropertyChanged(nameof(DurationLabel));
                 OnPropertyChanged(nameof(IsIntermediateAssistant));
+                OnPropertyChanged(nameof(ShowChanges));
             }
         }
     }
     public bool ShowCopy => IsFinalAssistant;
+    public int AddedFileCount { get; private set; }
+    public int EditedFileCount { get; private set; }
+    public int DeletedFileCount { get; private set; }
+    public bool HasDeletedFiles => DeletedFileCount > 0;
+    public bool ShowChanges => IsFinalAssistant && AddedFileCount + EditedFileCount + DeletedFileCount > 0;
+    public string ChangesLabel => $"View changes from this turn: {AddedFileCount} files added, {EditedFileCount} files edited"
+        + (HasDeletedFiles ? $", {DeletedFileCount} files deleted" : string.Empty);
+    
+    /// <summary>Net file changes of this message's turn, shown on its final response.</summary>
+    public void SetTurnChanges(IEnumerable<TurnChangeItem> changes)
+    {
+        var added = 0;
+        var edited = 0;
+        var deleted = 0;
+        foreach (var change in changes)
+        {
+            if (change.IsAdded) added++;
+            else if (change.IsDeleted) deleted++;
+            else edited++;
+        }
+        SetTurnChangeCounts(added, edited, deleted);
+    }
+    
+    public void SetTurnChangeCounts(int added, int edited, int deleted)
+    {
+        if (added == AddedFileCount && edited == EditedFileCount && deleted == DeletedFileCount) return;
+        AddedFileCount = added;
+        EditedFileCount = edited;
+        DeletedFileCount = deleted;
+        OnPropertyChanged(nameof(ShowChanges));
+        OnPropertyChanged(nameof(ChangesLabel));
+        OnPropertyChanged(nameof(AddedFileCount));
+        OnPropertyChanged(nameof(EditedFileCount));
+        OnPropertyChanged(nameof(DeletedFileCount));
+        OnPropertyChanged(nameof(HasDeletedFiles));
+    }
     public bool ProcessExpanded
     {
         get => _processExpanded;
@@ -393,11 +430,18 @@ public sealed record TodoItem(string Content, string Status, string Priority)
     }
 }
 
-public sealed record CheckpointItem(string ManifestId, string TurnId, string Status, IReadOnlyList<string> Paths)
+/// <summary>Net change of one file in a turn: first-touch baseline against latest content.</summary>
+public sealed record TurnChangeItem(string Path, string Status, ulong Additions, ulong Deletions, bool Binary)
 {
-    public string FileCount => $"{Paths.Count} {(Paths.Count == 1 ? "file" : "files")}";
-    public string PathsText => string.Join(Environment.NewLine, Paths);
-    public bool CanReview => Status is "available" or "conflict" or "partial";
+    public bool IsAdded => Status == "added";
+    public bool IsDeleted => Status == "deleted";
+    public bool IsModified => !IsAdded && !IsDeleted;
+    public string StatusLetter => IsAdded ? "A" : IsDeleted ? "D" : "M";
+    public string AdditionsText => Binary ? "BIN" : $"+{Additions}";
+    public string DeletionsText => Binary ? string.Empty : $"-{Deletions}";
+    
+    public static TurnChangeItem FromSdk(TurnFileChange change) =>
+        new(change.Path, change.Status, change.Additions, change.Deletions, change.Binary);
 }
 
 public sealed record GitFileItem(

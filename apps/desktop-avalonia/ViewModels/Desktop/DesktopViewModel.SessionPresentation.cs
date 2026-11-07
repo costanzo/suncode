@@ -22,7 +22,8 @@ public sealed partial class DesktopViewModel
             SelectedToolTurnId = ToolActivity.SelectedTurn?.TurnId,
             SelectedToolCallId = ToolActivity.SelectedTool?.ToolCallId,
             Activities = Activities.ToArray(),
-            ChangedPaths = ChangedPaths.ToArray(),
+            TurnChangesTurnId = TurnChangesTurnId,
+            TurnChanges = TurnChanges.ToArray(),
             CurrentTodos = CurrentTodos.ToArray(),
             ActiveTurnId = ActiveTurnId,
             ActiveTurnState = ActiveTurnState,
@@ -54,7 +55,7 @@ public sealed partial class DesktopViewModel
             ToolActivity.TrySelect(turnId, callId);
         SyncActiveToolRow();
         Activities.ReplaceAll(state.Activities);
-        ChangedPaths.ReplaceAll(state.ChangedPaths);
+        SetTurnChanges(state.TurnChangesTurnId, state.TurnChanges);
         CurrentTodos.ReplaceAll(state.CurrentTodos);
         FullControlEnabled = state.FullControlEnabled;
         LastTurnId = state.LastTurnId;
@@ -82,9 +83,6 @@ public sealed partial class DesktopViewModel
     {
         OnPropertyChanged(nameof(HasMessages));
         OnPropertyChanged(nameof(HasActivities));
-        OnPropertyChanged(nameof(HasChangedPaths));
-        OnPropertyChanged(nameof(TurnChangeSummary));
-        OnPropertyChanged(nameof(CanViewReviewChanges));
         OnPropertyChanged(nameof(HasCurrentTodos));
         OnPropertyChanged(nameof(IsReviewTodosVisible));
         OnPropertyChanged(nameof(LatestActivityText));

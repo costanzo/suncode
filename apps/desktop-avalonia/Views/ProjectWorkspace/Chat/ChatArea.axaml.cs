@@ -29,6 +29,7 @@ public sealed partial class ChatArea : UserControl
     public event EventHandler? ExpandedComposerRequested;
     public event Action<MessageItem>? LongUserMessageRequested;
     public event Action<MessageItem>? ToolDetailRequested;
+    public event Action<MessageItem>? TurnChangesRequested;
 
     public ChatArea()
     {
@@ -425,6 +426,12 @@ public sealed partial class ChatArea : UserControl
     {
         if ((sender as Control)?.DataContext is not MessageItem message) return;
         ToolDetailRequested?.Invoke(message);
+    }
+    
+    private void OpenTurnChanges(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not MessageItem message) return;
+        TurnChangesRequested?.Invoke(message);
     }
 
     private async void PreviewMessageAttachment(object? sender, RoutedEventArgs e)
