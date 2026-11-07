@@ -2,15 +2,31 @@
 
 Status: Current Phase 1 contract.
 
-The `suncode-data` package is the only ORM/database-connection owner and uses Diesel's SQLite backend for connections, transactions, typed table declarations, and query execution. The `suncode-database` package owns backend resources: `suncode_database::sqlite` contains the current SQL manifests, seed data, table manifest, and database-file creation/existence check. There is one current 18-table set; the schema version lives in `PRAGMA user_version` and is advanced by ordered, append-only migration steps in `suncode-data`. A database whose version is newer than the build is rejected without mutation. The schema declares no foreign keys. File names do not encode execution order. Table-owned ORM operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` reserved for cross-table workflows. Opening a database with any unexpected application table fails without conversion. Initialization applies the current manifest transactionally. `session_turn_todo` is the authoritative per-turn todo projection and is replaced transactionally by `todo.updated` events.
+The `suncode-data` package owns Diesel SQLite connections, transactions, typed table declarations, persistence DTOs, and queries. The `suncode-database` package owns the SQL schema and seed manifests, table-name manifest, and database-file setup under `suncode_database::sqlite`. Table-owned operations live under `agent/crates/data/src/operations/`, with `projection.rs` and `recovery.rs` handling cross-table workflows. Manifest order determines script execution order.
 
-There are 18 application tables:
+The current schema has 17 application tables.
 
-`configuration`, `language_server`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_approval_request`, `session_call`, `session_checkpoint`, `session_checkpoint_manifest`, `session_image`, `session_message`, `session_subagent_invocation`, `session_tool_use`, `session_turn`, and `session_turn_todo`.
+`configuration`, `language_server`, `llm_model`, `llm_model_provider`, `mcp_server`, `project`, `project_dependency`, `session`, `session_approval_request`, `session_call`, `session_image`, `session_message`, `session_subagent_invocation`, `session_tool_use`, `session_turn`, `session_turn_change`, and `session_turn_todo`.
+
+## Initialization and compatibility
+
+`SCHEMA_VERSION` in `agent/crates/data/src/store.rs` is currently `1`. Every schema change requires an explicit version bump. Opening accepts either a database whose `PRAGMA user_version` equals that constant, or a fresh database with version `0` and zero application tables. Every other version returns `database_schema_incompatible`, including an unversioned database that already contains application tables. The error directs the caller to delete the incompatible database or choose a new data directory. This is an explicit user recovery action.
+
+Each connection configures `foreign_keys=OFF`, WAL journaling, and a 5,000 ms busy timeout. Initialization then performs the following steps in one transaction.
+
+1. Read the stored version and check admission.
+2. Execute the ordered `CREATE TABLE IF NOT EXISTS` and index scripts.
+3. Compare the sorted application table names with `suncode_database::sqlite::TABLE_NAMES`, excluding SQLite's internal tables. A mismatch fails initialization.
+4. Execute the ordered configuration, provider, and model seed scripts.
+5. Write `PRAGMA user_version=1` and commit.
+
+An initialization failure rolls back that transaction. Reopening a current database repeats the schema and seed scripts. Seed scripts can add catalog entries and refresh built-in model metadata at the same schema version. Their explicit data updates, including saved Gemini model selections, are distinct from schema-version admission.
+
+The compatibility check covers the stored version and table names. Existing same-version table definitions retain their columns and constraints through `IF NOT EXISTS`; the implementation relies on the version bump rule to identify schema changes. The former ordered migration runner and legacy column/provider-table conversion steps have been removed.
 
 ## Conventions
 
-- IDs are non-empty opaque text; agent IDs are UUIDs.
+- IDs are non-empty opaque text. Rust generates kind-prefixed UUID v7 encodings for core entities, while built-in agent IDs are stable catalog identifiers.
 - Timestamps are UTC RFC 3339 strings with millisecond precision.
 - JSON columns must contain valid JSON. Queryable identity, state, ordering, and ownership remain relational columns.
 - Foreign-key enforcement is disabled on every connection. Rust validates referenced identifiers at the owning operation boundary. Projects and sessions are archived rather than normally deleted.
@@ -23,7 +39,7 @@ One row per opened local directory tree: `project_id` primary key, non-empty `us
 
 ### `project_dependency`
 
-One registered read-only source root per row: opaque `dependency_id`, owning `project_id`, canonical root, display name, and creation timestamp. `(project_id, canonical_root)` is unique, and deleting a project cascades to its dependency registrations. The canonical root remains internal to Rust persistence and operations; client DTOs expose only the stable dependency ID and display name.
+One registered read-only source root per row: opaque `dependency_id`, owning `project_id`, canonical root, display name, and creation timestamp. `(project_id, canonical_root)` is unique, and Rust owns referential validation and dependent-row cleanup. The canonical root remains internal to Rust persistence and operations; client DTOs expose only the stable dependency ID and display name.
 
 ### `configuration`
 
@@ -31,7 +47,7 @@ Unified key/value configuration for `global`, `project`, and `session` scopes. G
 
 The project-only `tool_call_limit` key is a JSON integer from 1 through 256. When the row is absent, core uses 64. Global TLS settings include `verify_https_certificates`, `use_system_certificates`, and optional PEM/DER `certificate_path`.
 
-Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`), `browser_use_enabled` (`false`), and `image_directory` (`""`). An empty log directory means `<data directory>/logs`; an empty image directory means `<data directory>/data/images`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; boolean HTTPS-verification and Browser Use values; and an image directory string. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames, but it does not weaken bundled Chromium certificate verification.
+Fresh and reopened current databases seed four global logging settings: `log_level` (`"INFO"`), `log_directory` (`""`), `log_max_bytes` (`10485760`), and `log_retention` (`5`), plus global `verify_https_certificates` (`true`), `use_system_certificates` (`true`), `certificate_path` (`""`), `proxy_mode` (`"system"`), `proxy_url`/`proxy_username`/`proxy_password` (`""`), `proxy_bypass` (`[]`), `browser_use_enabled`/`computer_use_enabled` (`false`), and `image_directory` (`""`). An empty log directory means `<data directory>/logs`; an empty image directory means `<data directory>/data/images`. These settings are global-only. The SDK accepts `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `OFF`; a directory string; a maximum size of at least 1024 bytes; a retention count from 0 through 100; boolean HTTPS-verification and Browser Use values; and an image directory string. Disabling verification makes subsequent built-in provider and WebFetch HTTPS requests accept invalid certificate chains and hostnames, but it does not weaken bundled Chromium certificate verification.
 
 ## MCP Servers
 
@@ -39,7 +55,7 @@ Fresh and reopened current databases seed four global logging settings: `log_lev
 
 One row per global MCP server definition. It stores the opaque `mcp_server_id`, unique case-insensitive display name, immutable unique case-insensitive tool prefix, transport kind and versioned transport JSON, desired enabled state, ordering, optimistic revision, and timestamps. Transport JSON is either structured local stdio configuration or remote Streamable HTTP configuration. It may contain plaintext environment/header secrets; read DTOs expose key names only. Runtime connection state and discovered tools are project-scoped memory and are never persisted in this table.
 
-The tool prefix is generated on create and does not change when the display name is edited. Each successful non-idempotent update advances `revision`. Initialization retains the narrow additive path that added this table to the prior 15-table schema; built-in agents add a separate current compatibility step for `session_subagent_invocation` and session classification columns.
+The tool prefix is generated on create and does not change when the display name is edited. Each successful non-idempotent update advances `revision`. The current schema manifest creates this table during initialization.
 
 ## Language Servers
 
@@ -61,13 +77,13 @@ One durable delegation correlation per child session. It links the parent sessio
 
 The single source of truth for a turn. It combines turn lifecycle, submission idempotency, input/response/error JSON, model selection, cumulative provider usage, and approval continuation state. States are `admitted`, `queued`, `preparing`, `calling_model`, `resolving_calls`, `compacting`, `completed`, `failed`, `cancelled`, and `interrupted`.
 
-### `session_turn_todo`
-
-The authoritative current todo list for one turn. Each row is identified by `(turn_id, ordinal)` and stores bounded content, status, priority, creation/update timestamps, and completion time. A successful `todo.updated` event replaces the complete set for that turn transactionally; `session_tool_use.result_json` remains the result of the individual model call and is not used as the progress projection.
-
 A structured failure write can populate `error_json` and `error_code` after a failed lifecycle projection, but cannot replace completed, cancelled, or interrupted state.
 
 Approval recovery is kept on the turn in `recovery_approval_id`, `recovery_snapshot_json`, `recovery_status`, and recovery timestamps; there is no suspended-turn table. The unique `(session_id, submission_idempotency_key)` constraint makes retries idempotent. Recovery, resuming, and session chronology indexes support startup and history queries.
+
+### `session_turn_todo`
+
+The authoritative current todo list for one turn. Each row is identified by `(turn_id, ordinal)` and stores bounded content, status, priority, creation/update timestamps, and completion time. A successful `todo.updated` event replaces the complete set for that turn transactionally; `session_tool_use.result_json` remains the result of the individual model call and is not used as the progress projection.
 
 ### `session_call`
 
@@ -79,38 +95,38 @@ One persisted image per row, linked to `session`. The row stores opaque `image_i
 
 ### `session_tool_use`
 
-One row per tool invocation, keyed by `(turn_id, tool_call_id)`. It records the owning `session_call_id`, tool name, request JSON, result JSON, lifecycle state, ordinal, timestamps, and error code. States are `requested`, `validating`, `policy_check`, `denied`, `awaiting_approval`, `authorized`, `executing`, `succeeded`, `failed`, `timed_out`, `unknown_completion`, and `reconciling`.
+One row per tool invocation, keyed by `(turn_id, tool_call_id)`. It records the owning `session_call_id`, tool name, request JSON, result JSON, lifecycle state, ordinal, timestamps, and error code. States are `requested`, `validating`, `policy_check`, `denied`, `awaiting_approval`, `awaiting_question`, `authorized`, `executing`, `succeeded`, `failed`, `timed_out`, `unknown_completion`, and `reconciling`.
 
 ### `session_message`
 
 Human-readable messages keyed by `message_id`. Each row links to its session, optionally to a turn and `session_call`, and stores role, message JSON, and `created_at`. Roles are `user`, `assistant`, and `thinking`; the schema rejects `tool`. Message history is ordered by `created_at` with `rowid` as a deterministic tie-breaker; no content sequence or usage column is used. Provider-reported per-call usage belongs to `session_call`; cumulative turn usage belongs to `session_turn`.
 
-Context compaction does not add a table or a `session_message` role. A completed `session_call` with `finish_reason=context_compacted` stores the summary, retained provider messages, and message/tool rowid boundaries in `output_message_json`. Rust selects the latest such row, then appends normalized messages and tool results inserted after those boundaries. Transcript and audit queries continue to read the original rows.
+Context compaction does not add a table or a `session_message` role. A completed `session_call` with `finish_reason=context_compacted` stores the summary, retained provider messages, and message/tool rowid boundaries in `output_message_json`. Rust selects the latest such row, then appends normalized messages and tool results inserted after those boundaries. Transcript and provider-trace queries continue to read the original rows.
 
-## Approvals And Checkpoints
+## Approvals and turn file changes
 
 ### `session_approval_request`
 
-Durable approval state keyed by `approval_id`, linked to session and the composite `(turn_id, tool_call_id)` in `session_tool_use`. It stores operation, arguments JSON, idempotency key, decision metadata, status, and timestamps.
+Durable approval state keyed by `approval_id`, associated with its session and the composite `(turn_id, tool_call_id)` in `session_tool_use`. It stores operation, arguments JSON, idempotency key, decision metadata, status, and timestamps. Rust validates ownership and manages related rows explicitly.
 
-### `session_checkpoint_manifest`
+### `session_turn_change`
 
-One client-visible undo unit per turn, linked to session and optionally to `session_turn`, with lifecycle status, expiry, and restore timestamps.
+One net file change per `(turn_id, relative_path)`, with owning `session_id` and a nonnegative first-touch `ordinal`. Each row stores nullable `baseline_sha256`/`baseline_stored_on` and `current_sha256`/`current_stored_on` pairs, `is_binary`, nonnegative `additions` and `deletions`, `created_at`, `updated_at`, and `expires_at`. Indexes cover `(session_id, turn_id)` and expiry.
 
-### `session_checkpoint`
+The `checkpoint.captured` projection from `write`, `edit`, and `delete` fixes the first-touch baseline and updates the latest version and counts on subsequent captures. A missing baseline represents creation, and a missing current version represents deletion. A path whose latest hash equals its baseline is removed from the projection, including creation followed by deletion in the same turn. Snapshot `conversationTurns[*].changes` lists unexpired net changes in first-touch order with path, status, counts, and binary state. The SDK `turn_diff(session_id, turn_id)` resolves their stored versions into per-file hunks.
 
-Ordered checkpoint metadata linked to a manifest/session and optionally to the composite `(turn_id, tool_call_id)` in `session_tool_use`. Source pre/post images remain owned by the operations package. Indexed by `(manifest_id, ordinal)` for undo and `(turn_id, ordinal)` for the per-turn `changedPaths` snapshot projection.
+The operations package stores full versions outside SQLite as gzip-compressed bytes at `<checkpoint root>/<UTC YYYY-MM-DD>/<sha256>.gz`, using a digest of the uncompressed content. A row expires at midnight UTC after 30 full days following its earliest initially referenced storage day. Reads hide expired rows immediately. Background retention deletes expired rows and then removes storage-day directories older than the 30-day cutoff. Session deletion removes change rows transactionally and releases blobs after their remaining references have been checked.
 
 ## LLM Catalog
 
 ### `llm_model_provider`
 
-Built-in or custom provider row keyed by `provider_id`. It stores display name, endpoint, required `adapter_type`, credential metadata (`credential_mode`, nullable `secret_ref`, nullable `api_key`, and nullable `api_key_mask`), enabled/order state, and timestamps. `keychain` mode stores a UUID reference and mask while the complete API key lives in the platform credential store; `plaintext` mode stores the complete value in `api_key` and leaves `secret_ref` null. A CHECK constraint enforces the mutually exclusive shapes. `adapter_type` names a provider implementation known to `suncode-llm`; supported values are `openai` for OpenAI-compatible endpoints and `anthropic` for the built-in Claude Messages route. API keys never enter DTOs, events, audit payloads, or logs. This is a fresh-system schema; a database without credential-storage columns is rejected as `database_schema_incompatible` and is not migrated.
+Built-in or custom provider row keyed by `provider_id`. It stores display name, endpoint, default endpoint, required `adapter_type`, credential metadata (`credential_mode`, nullable `secret_ref`, nullable `api_key`, and nullable `api_key_mask`), enabled/order state, and timestamps. `keychain` mode stores a UUID reference and mask while the complete API key lives in the platform credential store; `plaintext` mode stores the complete value in `api_key` and leaves `secret_ref` null. A CHECK constraint enforces the mutually exclusive shapes. `adapter_type` names a provider implementation known to `suncode-llm`; supported values are `openai` for OpenAI Responses-compatible endpoints, `chat_completions` for the Tencent Hunyuan route, and `anthropic` for the built-in Claude Messages route. API keys never enter DTOs, events, audit payloads, or logs. Schema-version admission follows the initialization rules above. Same-version definitions are subject to the seed and operation queries that use their credential columns.
 
 ### `llm_model`
 
-Model row keyed by `model_id` and associated with `llm_model_provider` by `provider_id`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort` and `supports_computer_use`, a comma-separated `reasoning_efforts` catalog, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. `supports_computer_use` means the model route may receive a provider-native Computer Use toolset when global enablement and the local backend are also available; it does not grant desktop authority.
+Model row keyed by `model_id` and associated with `llm_model_provider` by `provider_id`. It stores display/request identifiers, context and auto-compaction token limits, optional output limit, capability flags including `supports_reasoning_effort` and `supports_computer_use`, a comma-separated `reasoning_efforts` catalog, enabled/order state, and timestamps. `auto_compact_tokens` is positive and smaller than `context_tokens`. `supports_computer_use` advertises support for SunCode's provider-neutral Computer Use function tools, requiring function calling, vision, and multimodal function results. Global enablement, host capabilities, backend availability, and policy still govern execution.
 
 ## Projection Rules
 
-Durable projection updates occur in one transaction per agent event. The agent rebuilds provider context by merging `session_message` user/assistant/thinking rows with transient tool-role messages derived from succeeded `session_tool_use.result_json` rows, then repairs incomplete assistant/tool tails after interruption. Tool results are never duplicated in `session_message`. Agent events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Audit rows remain immutable and independent from session projections.
+Durable projection updates occur in one transaction per agent event. The agent rebuilds provider context by merging `session_message` user/assistant/thinking rows with transient tool-role messages derived from succeeded `session_tool_use.result_json` rows, then repairs incomplete assistant/tool tails after interruption. Tool results are never duplicated in `session_message`. Agent events are broadcast in memory only; a client that misses events receives `resync.required` and reloads a fresh session snapshot. Durable approval decisions and tool outcomes remain in their normalized owning tables.

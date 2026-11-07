@@ -9,7 +9,7 @@ It is comparable in purpose to Claude Code, Codex, and OpenCode.
 Three commitments differentiate SunCode. Every architectural tradeoff should be resolved in favor of these, and a design that weakens one needs an explicit decision record.
 
 1. **Broad coding utility.** SunCode is designed for coding work across languages, frameworks, and project types rather than for one narrow development workflow. The current desktop release works with projects the user opens and keeps its application state in the embedded agent.
-2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and undo checkpointed filesystem mutations with conflict checks. Shell and external-tool effects are outside this undo guarantee, and delegated children retain separate manifests. Approval is a real decision with real granularity, not a modal that trains users to click through.
+2. **Reviewable authority.** Every machine-affecting action the agent takes passes through one narrow, audited path with a stated scope. Users can see what the agent is permitted to do, what it did, and review retained net file changes and diff hunks from built-in filesystem tools. Delegated child turns retain separate change projections. Approval is a real decision with real granularity, not a modal that trains users to click through.
 3. **One embedded agent core, several native clients and bindings.** One Rust SDK implementation owns session state and machine behavior inside its host process. The .NET Avalonia client embeds it through native bindings, and the native Rust CLI embeds the async facade directly. Future TypeScript and Python packages wrap the same implementation rather than connecting to a service or duplicating agent logic.
 
 ## Users and primary jobs
@@ -20,7 +20,7 @@ The user is a software developer working in code repositories. The jobs SunCode 
 2. Give instructions with relevant files as context.
 3. Follow messages, tool activity, and errors as they stream.
 4. Approve or refuse a sensitive operation, understanding its scope.
-5. Review the resulting diff, and undo it if it is wrong.
+5. Review the resulting diff and decide which corrections are needed.
 6. Interrupt a running turn and redirect it.
 7. Resume earlier sessions from the local database through an SDK host.
 8. Run the agent non-interactively in a script or CI job under a pre-authorized policy.

@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261107-current-sqlite-storage
+
+- Date: 2026-11-07
+- Status: Implemented. Focused checks pass, with five legacy data-layer test expectations still requiring alignment.
+- Supersedes: The migration-runner and legacy conversion behavior in ADR-20261013-sqlite-user-version-migrations, plus earlier checkpoint-table and undo-manifest storage descriptions.
+- Context: Current initialization uses exact schema-version admission, and turn-level diff storage has replaced the former checkpoint tables. The contracts still described ordered migrations, 18 tables, and checkpoint restore methods.
+- Decision: Keep `SCHEMA_VERSION = 1` for the current 17-table schema. Accept the exact stored `PRAGMA user_version`, or version `0` with zero application tables. Reject every other version as `database_schema_incompatible`. Apply schema scripts, validate the table-name manifest, seed data, and record the version in one transaction. Bump the version for schema changes. Rust owns relationship validation and cleanup with SQLite foreign-key enforcement disabled. Store per-turn net file changes in `session_turn_change`, with content-addressed gzip versions outside SQLite and 30-day retention. Expose snapshot `changes` and SDK `turn_diff` for review.
+- Consequences: An incompatible database requires an explicit reset or a new data directory. Same-version reopening applies idempotent schema/seed scripts and preserves existing table definitions. Compatibility validation covers version and table names. Parent and child changes remain separately scoped. Legacy migration tests and their earlier error wording are recorded as verification gaps.
+- Details: `contracts/sqlite-schema.md`, `contracts/persistence.md`, `features/persistence-phase-1/`, `agent/crates/data/src/store.rs`, `agent/crates/data/src/operations/session_turn_change.rs`, `sdks/rust/src/facade/turn_diff.rs`
+
 ## ADR-20261103-markdown-mermaid-svg
 
 - Date: 2026-11-03
@@ -116,7 +126,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20261013-sqlite-user-version-migrations
 
 - Date: 2026-10-13
-- Status: Accepted
+- Status: Superseded by ADR-20261107-current-sqlite-storage
 - Supersedes: The "no version or migration metadata" portion of ADR-20260819-current-schema-bootstrap
 - Context: Initialization detected older layouts by inspecting columns and table SQL, and re-ran a dated data patch on every open. Nothing stopped an older build from opening a database written by a newer one.
 - Decision: Record the schema version in SQLite `PRAGMA user_version`. `suncode-data` keeps an ordered list of migration steps; step `n` upgrades version `n` to `n + 1`, and `SCHEMA_VERSION` equals the step count. Opening runs the table scripts (`IF NOT EXISTS`), the steps above the stored version, structural validation, and the idempotent seed scripts in one transaction, then writes the version. Version 1 holds the pre-versioning column additions; version 2 holds the Claude adapter patch. Existing steps are never edited. Foreign-key constraints are intentionally not used; referential cleanup stays in explicit cascades.
@@ -469,7 +479,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260819-current-schema-bootstrap
 
 - Date: 2026-08-19
-- Status: Accepted; schema versioning superseded by ADR-20261013-sqlite-user-version-migrations
+- Status: Ownership boundaries retained. Versioning and compatibility follow ADR-20261107-current-sqlite-storage.
 - Supersedes: ADR-20260819-sqlite-schema-v14 and the durable client-synchronization cursor portion of ADR-20260807-durable-stream-separation
 - Context: SunCode is a new system, but its database implementation mixed current storage behavior with historical schema versions, upgrade functions, and a monolithic SQL file.
 - Decision: Keep one current SQLite schema with no version or migration metadata. The `suncode-database` package at `agent/crates/database` owns backend resources and SQLite schema/data manifests; the `suncode-data` package at `agent/crates/data` owns Diesel connections, persistence DTOs, and store operations; the runtime core consumes the latter as a library dependency. An ordered schema manifest applies one table-named SQL file per table and a separate ordered data manifest in one transaction. File names do not encode execution order. Reopening the current schema is idempotent, while an unexpected application table causes open to fail without conversion. Live session subscriptions recover through normalized snapshots rather than a persisted cursor table.
