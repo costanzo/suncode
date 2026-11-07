@@ -13,7 +13,7 @@
       <Setter Property="Margin" Value="0" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
     <Style Selector="ListBox.diff-lines ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="BorderBrush" Value="Transparent" />
@@ -41,14 +41,14 @@
         <svg:Svg Grid.Column="0" Width="16" Height="16" Path="/Assets/icons/files.svg" Css="{DynamicResource GitAccentSvgCss}" VerticalAlignment="Center" />
         <TextBlock Grid.Column="2" Text="{DynamicResource LocTurnChanges}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
         <TextBlock Grid.Column="4" Text="{Binding TurnDiff.FileCountText}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-        <Button Grid.Column="6" Classes="icon" Width="26" Height="26" Padding="6" Click="CloseTurnDiff" ToolTip.Tip="{DynamicResource LocCloseTurnChanges}" AutomationProperties.Name="{DynamicResource LocCloseTurnChanges}">
+        <Button Grid.Column="6" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="CloseTurnDiff" ToolTip.Tip="{DynamicResource LocCloseTurnChanges}" AutomationProperties.Name="{DynamicResource LocCloseTurnChanges}">
           <svg:Svg Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
       <Border Grid.Row="1" Background="{DynamicResource GitAccentSurfaceBrush}"/>
       <Grid Grid.Row="2">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="{DynamicResource Layout.GitFileListWidth}" />
+          <ColumnDefinition Width="{Binding Layout.GitFileListWidth}" />
           <ColumnDefinition Width="1" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>

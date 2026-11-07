@@ -70,7 +70,7 @@ public sealed class TurnDiffViewModel : ObservableObject
     /// <summary>Loads the turn's net diff and selects <paramref name="path"/> when present.</summary>
     public async Task LoadAsync(string sessionId, string turnId, string? path = null)
     {
-        if (_host.EnsureSdk()) return;
+        if (!_host.EnsureSdk()) return;
         _load?.Cancel();
         _load?.Dispose();
         var request = new CancellationTokenSource();
@@ -130,7 +130,7 @@ public sealed class TurnDiffViewModel : ObservableObject
     private void RenderSelectedFile()
     {
         DiffLines.Clear();
-        if (SelectedFile is { Binary:true } file && _diffs.TryGetValue(file.Path, out var diff))
+        if (SelectedFile is { Binary: false } file && _diffs.TryGetValue(file.Path, out var diff))
         {
             foreach (var hunk in diff.Hunks)
             {

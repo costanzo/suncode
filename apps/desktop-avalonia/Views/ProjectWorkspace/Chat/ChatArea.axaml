@@ -330,7 +330,7 @@
                         <TextBlock Text="{Binding EditedFileCount}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="{DynamicResource LocEdited}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                       </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="4">
+                      <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasDeletedFiles}">
                         <TextBlock Text="{Binding DeletedFileCount}" Classes="mono" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="{DynamicResource LocDeleted}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                       </StackPanel>
