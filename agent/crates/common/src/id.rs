@@ -29,7 +29,6 @@ pub enum IdKind {
     Exchange,
     Approval,
     Question,
-    CheckpointManifest,
     QueuedMessage,
     SubagentInvocation,
     /// Internal submission key for turns the agent starts itself.
@@ -51,7 +50,6 @@ impl IdKind {
             Self::Exchange => "xch",
             Self::Approval => "apr",
             Self::Question => "que",
-            Self::CheckpointManifest => "ckm",
             Self::QueuedMessage => "qmsg",
             Self::SubagentInvocation => "sub",
             Self::Submission => "sbm",
@@ -141,7 +139,6 @@ mod tests {
             IdKind::Exchange,
             IdKind::Approval,
             IdKind::Question,
-            IdKind::CheckpointManifest,
             IdKind::QueuedMessage,
             IdKind::SubagentInvocation,
             IdKind::Submission,

@@ -99,8 +99,6 @@ pub(crate) fn edit(
         path: path.to_string(),
         content_base64: STANDARD.encode(final_text.as_bytes()),
         expected_base64: Some(STANDARD.encode(current)),
-        idempotency_key: args.idempotency_key.clone(),
-        operation_id: args.operation_id.clone(),
     };
     let mut result = write::write(project_root, checkpoint_root, &write_args)?;
     result["operation"] = json!("edit");

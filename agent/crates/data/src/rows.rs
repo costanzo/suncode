@@ -88,50 +88,6 @@ pub(crate) struct ApprovalRow {
     pub(crate) updated_at: String,
 }
 #[derive(QueryableByName)]
-pub(crate) struct ManifestRow {
-    #[diesel(sql_type = Text)]
-    pub(crate) manifest_id: String,
-    #[diesel(sql_type = Text)]
-    pub(crate) session_id: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) turn_id: Option<String>,
-    #[diesel(sql_type = Text)]
-    pub(crate) status: String,
-    #[diesel(sql_type = Text)]
-    pub(crate) created_at: String,
-    #[diesel(sql_type = Text)]
-    pub(crate) updated_at: String,
-    #[diesel(sql_type = Text)]
-    pub(crate) expires_at: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) restored_at: Option<String>,
-}
-#[derive(QueryableByName)]
-pub(crate) struct CheckpointRow {
-    #[diesel(sql_type = Text)]
-    pub(crate) checkpoint_id: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) manifest_id: Option<String>,
-    #[diesel(sql_type = Text)]
-    pub(crate) session_id: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) turn_id: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) tool_call_id: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) relative_path: Option<String>,
-    #[diesel(sql_type = Text)]
-    pub(crate) status: String,
-    #[diesel(sql_type = Text)]
-    pub(crate) created_at: String,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) restored_at: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
-    pub(crate) invalidated_at: Option<String>,
-    #[diesel(sql_type = Nullable<Integer>)]
-    pub(crate) ordinal: Option<i32>,
-}
-#[derive(QueryableByName)]
 pub(crate) struct ExchangeRow {
     #[diesel(sql_type = Text)]
     pub(crate) call_id: String,

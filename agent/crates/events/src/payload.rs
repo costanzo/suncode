@@ -29,9 +29,6 @@ pub enum EventType {
     QuestionRejected,
     TodoUpdated,
     CheckpointCaptured,
-    CheckpointItemRestored,
-    CheckpointRestoreFailed,
-    CheckpointRestored,
 }
 
 #[derive(Debug, Clone)]
@@ -75,9 +72,6 @@ impl EventType {
             Self::QuestionRejected => "question.rejected",
             Self::TodoUpdated => "todo.updated",
             Self::CheckpointCaptured => "checkpoint.captured",
-            Self::CheckpointItemRestored => "checkpoint.item_restored",
-            Self::CheckpointRestoreFailed => "checkpoint.restore_failed",
-            Self::CheckpointRestored => "checkpoint.restored",
         }
     }
 }
@@ -115,10 +109,7 @@ payload!(QuestionAskedPayload { pub request_id: String, pub turn_id: String, pub
 payload!(QuestionAnsweredPayload { pub request_id: String, pub turn_id: String, pub tool_call_id: String, pub answers: Vec<Vec<String>>, });
 payload!(TodoEventItem { pub content: String, pub status: String, pub priority: String, });
 payload!(TodoUpdatedPayload { pub turn_id: String, pub call_id: Option<String>, pub tool_call_id: String, pub todos: Vec<TodoEventItem>, });
-payload!(CheckpointCapturedPayload { pub turn_id: String, pub tool_call_id: String, pub manifest_id: String, pub checkpoint_id: String, pub path: Option<String>, pub ordinal: i64, });
-payload!(CheckpointItemRestoredPayload { pub manifest_id: String, pub checkpoint_id: String, pub path: Option<String>, });
-payload!(CheckpointRestoreFailedPayload { pub manifest_id: String, pub status: String, pub code: Option<String>, });
-payload!(CheckpointRestoredPayload { pub manifest_id: String, pub restored_items: usize, });
+payload!(CheckpointCapturedPayload { pub turn_id: String, pub tool_call_id: String, pub path: String, pub baseline_sha256: Option<String>, pub baseline_stored_on: Option<String>, pub current_sha256: Option<String>, pub current_stored_on: Option<String>, pub additions: u64, pub deletions: u64, pub binary: bool, });
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -148,9 +139,6 @@ pub enum EventPayload {
     QuestionRejected(QuestionAnsweredPayload),
     TodoUpdated(TodoUpdatedPayload),
     CheckpointCaptured(CheckpointCapturedPayload),
-    CheckpointItemRestored(CheckpointItemRestoredPayload),
-    CheckpointRestoreFailed(CheckpointRestoreFailedPayload),
-    CheckpointRestored(CheckpointRestoredPayload),
 }
 
 impl EventPayload {
@@ -181,9 +169,6 @@ impl EventPayload {
             Self::QuestionRejected(_) => EventType::QuestionRejected,
             Self::TodoUpdated(_) => EventType::TodoUpdated,
             Self::CheckpointCaptured(_) => EventType::CheckpointCaptured,
-            Self::CheckpointItemRestored(_) => EventType::CheckpointItemRestored,
-            Self::CheckpointRestoreFailed(_) => EventType::CheckpointRestoreFailed,
-            Self::CheckpointRestored(_) => EventType::CheckpointRestored,
         }
     }
 
@@ -219,9 +204,6 @@ impl EventPayload {
             Self::QuestionRejected(v) => serialize!(v),
             Self::TodoUpdated(v) => serialize!(v),
             Self::CheckpointCaptured(v) => serialize!(v),
-            Self::CheckpointItemRestored(v) => serialize!(v),
-            Self::CheckpointRestoreFailed(v) => serialize!(v),
-            Self::CheckpointRestored(v) => serialize!(v),
         }
     }
 }

@@ -165,9 +165,9 @@ fn document_rule(allowed_tools: &[String]) -> Option<String> {
         "document_search",
         "spreadsheet_read",
     ]
-        .into_iter()
-        .filter(|name| offers(allowed_tools, name))
-        .collect::<Vec<_>>();
+    .into_iter()
+    .filter(|name| offers(allowed_tools, name))
+    .collect::<Vec<_>>();
     (!tools.is_empty()).then(|| {
         format!(
             "- For PDF, Word (.doc/.docx), PowerPoint (.ppt/.pptx), Excel (.xls/.xlsx), and OpenDocument Spreadsheet (.ods) files, use {} instead of read.",

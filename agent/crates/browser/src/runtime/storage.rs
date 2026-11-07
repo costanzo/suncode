@@ -54,7 +54,7 @@ impl BrowserRuntime {
         self.cef_root()
             .join(format!("browser-{}", project_directory_name(project_id)))
     }
-    
+
     pub(super) fn cef_root(&self) -> PathBuf {
         self.inner.data_dir.join("cef")
     }

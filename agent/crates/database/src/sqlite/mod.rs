@@ -15,13 +15,12 @@ pub const TABLE_NAMES: &[&str] = &[
     "session",
     "session_approval_request",
     "session_call",
-    "session_checkpoint",
-    "session_checkpoint_manifest",
     "session_image",
     "session_message",
     "session_subagent_invocation",
     "session_tool_use",
     "session_turn",
+    "session_turn_change",
     "session_turn_todo",
 ];
 
@@ -35,8 +34,6 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/session_call.sql"),
     include_str!("schema/session_tool_use.sql"),
     include_str!("schema/session_approval_request.sql"),
-    include_str!("schema/session_checkpoint_manifest.sql"),
-    include_str!("schema/session_checkpoint.sql"),
     include_str!("schema/session_message.sql"),
     include_str!("schema/session_image.sql"),
     include_str!("schema/language_server.sql"),
@@ -44,6 +41,7 @@ const SCHEMA_SCRIPTS: &[&str] = &[
     include_str!("schema/llm_model.sql"),
     include_str!("schema/mcp_server.sql"),
     include_str!("schema/session_subagent_invocation.sql"),
+    include_str!("schema/session_turn_change.sql"),
 ];
 
 const DATA_SCRIPTS: &[&str] = &[
@@ -57,10 +55,6 @@ pub fn schema_scripts() -> &'static [&'static str] {
 }
 pub fn data_scripts() -> &'static [&'static str] {
     DATA_SCRIPTS
-}
-
-pub fn llm_model_provider_schema() -> &'static str {
-    include_str!("schema/llm_model_provider.sql")
 }
 
 /// Ensures the SQLite file and its parent directory exist without opening it.

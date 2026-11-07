@@ -33,9 +33,6 @@ pub(crate) const UPLOAD_EVENT_TYPES: &[&str] = &[
     "question.rejected",
     "todo.updated",
     "checkpoint.captured",
-    "checkpoint.item_restored",
-    "checkpoint.restore_failed",
-    "checkpoint.restored",
 ];
 
 pub fn should_upload_event(event_type: &str) -> bool {

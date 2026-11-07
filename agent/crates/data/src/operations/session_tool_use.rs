@@ -64,4 +64,16 @@ impl Store {
         let mut c = lock(&self.connection)?;
         load_tool_uses_by_call(&mut c, call_id)
     }
+    
+    /// The recorded state and result of one tool call in a turn, if any.
+    pub fn turn_tool_use(
+        &self,
+        turn_id: &str,
+        tool_call_id: &str,
+    ) -> Result<Option<SessionCallToolUse>, BusinessError> {
+        let mut c = lock(&self.connection)?;
+        Ok(load_tool_uses(&mut c, turn_id)?
+            .into_iter()
+            .find(|tool|tool.tool_call_id == tool_call_id))
+    }
 }

@@ -19,35 +19,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    session_checkpoint (checkpoint_id) {
-        checkpoint_id -> Text,
-        manifest_id -> Nullable<Text>,
-        session_id -> Text,
-        turn_id -> Nullable<Text>,
-        tool_call_id -> Nullable<Text>,
-        relative_path -> Nullable<Text>,
-        status -> Text,
-        created_at -> Text,
-        restored_at -> Nullable<Text>,
-        invalidated_at -> Nullable<Text>,
-        ordinal -> Nullable<Integer>,
-    }
-}
-
-diesel::table! {
-    session_checkpoint_manifest (manifest_id) {
-        manifest_id -> Text,
-        session_id -> Text,
-        turn_id -> Nullable<Text>,
-        status -> Text,
-        created_at -> Text,
-        updated_at -> Text,
-        expires_at -> Text,
-        restored_at -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
     configuration (configuration_id) {
         configuration_id -> Integer,
         scope -> Text,
@@ -297,10 +268,27 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    session_turn_change (turn_id, relative_path) {
+        turn_id -> Text,
+        relative_path -> Text,
+        session_id -> Text,
+        ordinal -> Integer,
+        baseline_sha256 -> Nullable<Text>,
+        baseline_stored_on -> Nullable<Text>,
+        current_sha256 -> Nullable<Text>,
+        current_stored_on -> Nullable<Text>,
+        is_binary -> Integer,
+        additions -> BigInt,
+        deletions -> BigInt,
+        created_at -> Text,
+        updated_at -> Text,
+        expires_at -> Text,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     session_approval_request,
-    session_checkpoint,
-    session_checkpoint_manifest,
     configuration,
     language_server,
     llm_model,
@@ -315,5 +303,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     session_tool_use,
     session_turn,
     session_turn_todo,
+    session_turn_change,
     session_subagent_invocation,
 );

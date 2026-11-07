@@ -2,8 +2,6 @@
 
 pub(crate) mod approval_request;
 pub(crate) mod attention;
-pub(crate) mod checkpoint;
-pub(crate) mod checkpoint_manifest;
 pub(crate) mod configuration;
 pub(crate) mod language_server;
 pub(crate) mod llm_model;
@@ -17,6 +15,7 @@ pub(crate) mod session_image;
 pub(crate) mod session_message;
 pub(crate) mod session_tool_use;
 pub(crate) mod session_turn;
+pub(crate) mod session_turn_change;
 pub(crate) mod session_turn_todo;
 pub(crate) mod subagent_invocation;
 

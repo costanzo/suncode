@@ -12,6 +12,7 @@ mod todowrite;
 mod webfetch;
 mod write;
 mod documents;
+mod delete;
 
 pub use suncode_common::tool::ToolDefinition;
 

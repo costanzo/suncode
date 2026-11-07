@@ -19,7 +19,6 @@ pub use background::{start_background, BackgroundProcess};
 use crate::arguments::ProcessArguments;
 use crate::context::ProcessOutputCallback;
 use crate::error::retryable;
-use crate::journal::journal_id;
 use crate::scope::require_project;
 use crate::support::{now_string, sha256_hex};
 use artifact::write_process_artifact;
@@ -48,19 +47,21 @@ pub(crate) fn run(
     let (command, command_args) = command_arguments(args)?;
     let cwd = process_cwd(root, args)?;
     let timeout_ms = args.timeout_ms.unwrap_or(120_000).clamp(1, 600_000);
-    let operation_id = journal_id(
-        args.idempotency_key.as_deref(),
-        args.operation_id.as_deref(),
-    )
-    .unwrap_or_else(|| {
-        let sequence = OUTPUT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let seed = format!(
-            "{command}:{}:{}:{sequence}",
-            now_string(),
-            std::process::id()
-        );
-        sha256_hex(seed.as_bytes())
-    });
+    let operation_id = args
+        .idempotency_key
+        .as_deref()
+        .or(args.operation_id.as_deref())
+        .filter(|s| !s.is_empty())
+        .map(|s| sha256_hex(s.as_bytes()))
+        .unwrap_or_else(|| {
+            let sequence = OUTPUT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+            let seed = format!(
+                "{command}:{}:{}:{sequence}",
+                now_string(),
+                std::process::id()
+            );
+            sha256_hex(seed.as_bytes())
+        });
     let child = configure_command(Command::new(&command), args)
         .args(&command_args)
         .current_dir(cwd)

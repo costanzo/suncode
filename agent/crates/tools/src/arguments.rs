@@ -45,10 +45,6 @@ pub(crate) struct EditArguments {
     pub(crate) path: String,
     pub(crate) expected_base64: String,
     pub(crate) replacements: Vec<ReplacementArguments>,
-    #[serde(default)]
-    pub(crate) idempotency_key: Option<String>,
-    #[serde(default)]
-    pub(crate) operation_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,10 +53,12 @@ pub(crate) struct WriteArguments {
     pub(crate) content_base64: String,
     #[serde(default)]
     pub(crate) expected_base64: Option<String>,
-    #[serde(default)]
-    pub(crate) idempotency_key: Option<String>,
-    #[serde(default)]
-    pub(crate) operation_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct DeleteArguments {
+    pub(crate) path: String,
+    pub(crate) expected_base64: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -90,11 +88,6 @@ pub(crate) struct WebfetchArguments {
     pub(crate) format: Option<String>,
     #[serde(default)]
     pub(crate) timeout: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct CheckpointRestoreArguments {
-    pub(crate) checkpoint_id: String,
 }
 
 #[derive(Debug, Deserialize)]

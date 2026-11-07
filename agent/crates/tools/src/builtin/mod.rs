@@ -1,5 +1,5 @@
 //! The built-in tools as a [`ToolProvider`]: `read`, `glob`, `grep`, `write`,
-//! `edit`, `bash`, and `webfetch`, and the read-only document tools,
+//! `edit`, `delete`, `bash`, and `webfetch`, and the read-only document tools,
 //! backed by [`Operations`].
 //!
 //! The core's turn-level tools (`question`, `todowrite`, `skill`,
@@ -46,6 +46,7 @@ fn method(name: &str) -> Option<&'static str> {
         "spreadsheet_read" => Some("tool/spreadsheet_read"),
         "write" => Some("tool/write"),
         "edit" => Some("tool/edit"),
+        "delete" => Some("tool/delete"),
         "bash" => Some("tool/bash"),
         "webfetch" => Some("tool/webfetch"),
         _ => None,
@@ -94,7 +95,7 @@ impl ToolProvider for BuiltinTools {
             "read" | "glob" | "grep" => Some(Risk::ReadOnly),
             name if is_document_tool(name) => Some(Risk::ReadOnly),
             "webfetch" => Some(Risk::NetworkAccess),
-            "write" | "edit" => Some(Risk::ProjectWrite),
+            "write" | "edit" | "delete" => Some(Risk::ProjectWrite),
             "bash" => Some(Risk::ProcessExecution),
             _ => None,
         }

@@ -1,6 +1,3 @@
-
-
-
 use crate::model::Parsed;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};

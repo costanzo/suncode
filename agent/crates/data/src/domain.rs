@@ -381,8 +381,59 @@ pub struct SessionConversationTurn {
     pub messages: Vec<SessionCallMessage>,
     pub tool_uses: Vec<SessionCallToolUse>,
     pub todos: Vec<SessionTurnTodo>,
-    /// Project-relative paths checkpointed during the turn, first-touched order, no duplicates.
-    pub changed_paths: Vec<String>,
+    /// Net file changes made by `write` and `edit` during the turn, first-touched order.
+    pub changes: Vec<TurnFileChange>,
+}
+
+/// Net change of one file across a turn: first-touch baseline versus latest version.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnFileChange {
+    pub path: String,
+    /// `added` when the turn crated the file, otherwise `modified`
+    pub status: String,
+    pub additions: u64,
+    pub deletions: u64,
+    pub binary: bool,
+}
+
+/// One stored file version: the UTC day folder it was stored under and its digest.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct StoredFileVersion {
+    pub stored_on: String,
+    pub sha256: String,
+}
+
+/// Stored versions behind one turn file change, used to render its diff. An
+/// absent baseline is a created file; an absent current version is a deleted one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TurnFileVersion {
+    pub path: String,
+    pub baseline: Option<StoredFileVersion>,
+    pub current: Option<StoredFileVersion>,
+}
+
+impl TurnFileVersion {
+    /// `added`, `modified`, or `deleted`
+    pub fn status(&self) -> &'static str {
+        change_status(self.baseline.is_some(), self.current.is_some())
+    }
+}
+
+pub(crate) fn change_status(baseline: bool, current: bool) -> &'static str {
+    match (baseline, current) {
+        (false, _) => "added",
+        (true, true) => "modified",
+        (true, false) => "deleted",
+    }
+}
+
+/// SunCode-managed files a permanent session delete leaves for the caller to remove.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DeletedSessionFiles {
+    pub image_paths: Vec<String>,
+    /// Stored file version no remaining turn change reference
+    pub file_versions: Vec<StoredFileVersion>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -513,35 +564,6 @@ pub struct DormantCancellation {
     pub pending_call_id: Option<String>,
     pub pending_tool_name: Option<String>,
     pub pending_kind: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckpointManifest {
-    pub manifest_id: String,
-    pub session_id: String,
-    pub turn_id: Option<String>,
-    pub status: String,
-    pub created_at: String,
-    pub updated_at: String,
-    pub expires_at: String,
-    pub restored_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckpointItem {
-    pub checkpoint_id: String,
-    pub manifest_id: Option<String>,
-    pub session_id: String,
-    pub turn_id: Option<String>,
-    pub tool_call_id: Option<String>,
-    pub relative_path: Option<String>,
-    pub status: String,
-    pub created_at: String,
-    pub restored_at: Option<String>,
-    pub invalidated_at: Option<String>,
-    pub ordinal: Option<i64>,
 }
 
 #[derive(Debug, Clone)]

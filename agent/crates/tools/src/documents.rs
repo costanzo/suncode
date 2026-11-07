@@ -1,7 +1,7 @@
 //! The read-only document tools over `suncode_documents`.
 
 use crate::arguments::{
-    DocumentReadArguments, DocumentInspectArguments, DocumentSearchArguments,
+    DocumentInspectArguments, DocumentReadArguments, DocumentSearchArguments,
     SpreadsheetReadArguments,
 };
 use crate::error::{fatal, retryable};
@@ -68,7 +68,7 @@ pub(crate) fn spreadsheet(
     };
     with_path(
         documents.spreadsheet(&path, &request, cancellation),
-        &args.path
+        &args.path,
     )
 }
 

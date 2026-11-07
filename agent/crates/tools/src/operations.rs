@@ -1,6 +1,7 @@
 //! Public operations API consumed by the agent core and SDK.
 
 use crate::arguments::ProcessArguments;
+use crate::checkpoint::{self, FileDiff};
 use crate::context::{ExecutionContext, NetworkSettings, ProcessOutputCallback};
 use crate::error::fatal;
 use crate::process::{self, BackgroundProcess};
@@ -128,6 +129,31 @@ impl Operations {
             documents: &self.documents,
         };
         dispatch::dispatch(method, &params, context)
+    }
+    
+    /// Net line diff between two stored file versions of one turn change,
+    /// each given as `(stored_on, sha256)`; an absent current version is a 
+    /// deleted file.
+    pub fn checkpoint_diff(
+        &self, 
+        baseline: Option<(&str, &str)>, 
+        current: Option<(&str, &str)>
+    ) -> Result<FileDiff, BusinessError> {
+        let load = 
+            |(day, sha256): (&str, &str)| checkpoint::load(&self.checkpoint_root, day, sha256);
+        let baseline = baseline.map(load).transpose()?;
+        let current = current.map(load).transpose()?;
+        Ok(checkpoint::diff(baseline.as_deref(), current.as_deref()))
+    }
+    
+    /// Deletes every day of stored file versions older than `oldest_kept_day`
+    pub fn retain_checkpoints(&self, oldest_kept_day: &str) {
+        checkpoint::retain(&self.checkpoint_root, oldest_kept_day);
+    }
+    
+    /// Deletes individual stored file versions, given as `(stored_on, sha256)`.
+    pub fn remove_checkpoints<'a>(&self, versions: impl IntoIterator<Item = (&'a str, &'a str)>) {
+        checkpoint::remove(&self.checkpoint_root, versions);
     }
 
     fn network_settings(&self) -> NetworkSettings {

@@ -26,3 +26,6 @@ CREATE TABLE IF NOT EXISTS session (
 
 CREATE INDEX IF NOT EXISTS session_project_activity_idx
     ON session(project_id, status, last_activity_at DESC, session_id);
+
+CREATE INDEX IF NOT EXISTS session_parent_activity_idx
+    ON session(parent_session_id, status, last_activity_at DESC, session_id);

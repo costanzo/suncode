@@ -1,10 +1,4 @@
-
-
 use unicode_normalization::UnicodeNormalization;
-
-
-
-
 
 pub(crate) fn clean_page(raw: &str) -> String {
     let mut normalized = String::with_capacity(raw.len());
@@ -34,9 +28,6 @@ fn is_compatibility_form(character: char) -> bool {
         '\u{2E80}'..='\u{2FDF}' | '\u{F900}'..='\u{FAFF}' | '\u{FB00}'..='\u{FB06}'
     )
 }
-
-
-
 
 pub(crate) struct Folded {
     pub(crate) text: String,
@@ -71,11 +62,9 @@ impl Folded {
     }
 }
 
-
 pub(crate) fn fold_query(query: &str) -> String {
     Folded::new(query.trim()).text
 }
-
 
 pub(crate) fn char_slice(text: &str, start: usize, end: usize) -> &str {
     let byte = |position: usize| {
@@ -91,7 +80,6 @@ pub(crate) fn char_slice(text: &str, start: usize, end: usize) -> &str {
             .map_or(text.len() - start_byte, |(index, _)| index);
     &text[start_byte..end_byte]
 }
-
 
 pub(crate) fn collapse_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")

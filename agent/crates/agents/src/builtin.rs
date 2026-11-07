@@ -25,6 +25,7 @@ pub const IMPLEMENTATION_TOOLS: &[&str] = &[
     "spreadsheet_read",
     "write",
     "edit",
+    "delete",
     "bash",
     "todowrite",
     "webfetch",

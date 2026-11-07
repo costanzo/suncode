@@ -1,13 +1,13 @@
 //! Operation dispatch is intentionally explicit: one audited entry per tool.
 
 use crate::arguments::{
-    CheckpointRestoreArguments, EditArguments, GlobArguments, GrepArguments, ProcessArguments,
+    DeleteArguments, EditArguments, GlobArguments, GrepArguments, ProcessArguments,
     ReadArguments, WebfetchArguments, WriteArguments, DocumentInspectArguments, DocumentReadArguments,
     DocumentSearchArguments, SpreadsheetReadArguments,
 };
 use crate::context::ExecutionContext;
 use crate::error::fatal;
-use crate::{checkpoint, edit, process, read, search, webfetch, write, documents};
+use crate::{edit, process, read, search, webfetch, write, documents};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use suncode_common::BusinessError;
@@ -62,6 +62,9 @@ pub(crate) fn dispatch(
         "tool/edit" => run_typed(params, |args: EditArguments| {
             edit::edit(project_root, checkpoint_root, &args)
         }),
+        "tool/delete" => run_typed(params, |args: DeleteArguments| {
+            write::delete(project_root, checkpoint_root, &args)
+        }),
         "tool/bash" => run_typed(params, |args: ProcessArguments| {
             process::run(
                 project_root,
@@ -70,9 +73,6 @@ pub(crate) fn dispatch(
                 cancellation,
                 output_callback,
             )
-        }),
-        "checkpoint/restore" => run_typed(params, |args: CheckpointRestoreArguments| {
-            checkpoint::restore(project_root, checkpoint_root, &args)
         }),
         _ => Err(fatal("method_unavailable", "method unavailable")),
     }

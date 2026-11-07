@@ -1,8 +1,10 @@
 //! Cross-table event projection into normalized table-owned rows.
 
 use crate::operations::{
-    checkpoint::load_changed_paths, session_message::load_messages,
-    session_tool_use::load_tool_uses, session_turn_todo::load_todos,
+    session_message::load_messages,
+    session_tool_use::load_tool_uses,
+    session_turn_change::{self, load_changes},
+    session_turn_todo::load_todos,
 };
 use crate::{
     domain::{SessionConversationTurn, SessionEvent},
@@ -238,14 +240,7 @@ pub(crate) fn apply(
         }
     }
     if event_type == "checkpoint.captured" {
-        if let Some(id) = payload.get("checkpoint_id").and_then(Value::as_str) {
-            sql_query("INSERT OR IGNORE INTO session_checkpoint(checkpoint_id,manifest_id,session_id,turn_id,tool_call_id,relative_path,status,created_at,ordinal) VALUES (?,?,?,?,?,?,'available',?,?)").bind::<Text,_>(id).bind::<Nullable<Text>,_>(payload.get("manifest_id").and_then(Value::as_str)).bind::<Text,_>(session_id).bind::<Nullable<Text>,_>(payload.get("turn_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("tool_call_id").and_then(Value::as_str)).bind::<Nullable<Text>,_>(payload.get("path").and_then(Value::as_str)).bind::<Text,_>(occurred_at).bind::<Nullable<Integer>,_>(payload.get("ordinal").and_then(Value::as_i64).map(|v|v as i32)).execute(connection).map_err(crate::database_error)?;
-        }
-    }
-    if event_type == "checkpoint.item_restored" {
-        if let Some(id) = payload.get("checkpoint_id").and_then(Value::as_str) {
-            sql_query("UPDATE session_checkpoint SET status='restored',restored_at=? WHERE checkpoint_id=? AND session_id=?").bind::<Text,_>(occurred_at).bind::<Text,_>(id).bind::<Text,_>(session_id).execute(connection).map_err(crate::database_error)?;
-        }
+        session_turn_change::record(connection, session_id, occurred_at, payload)?;
     }
     Ok(())
 }
@@ -297,7 +292,7 @@ impl Store {
                 messages: load_messages(&mut c, session_id, &t.turn_id)?,
                 tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
                 todos: load_todos(&mut c, &t.turn_id)?,
-                changed_paths: load_changed_paths(&mut c, &t.turn_id)?,
+                changes: load_changes(&mut c, &t.turn_id)?,
             })
         }
         Ok(out)
@@ -334,7 +329,7 @@ impl Store {
                 messages: by_turn.remove(&t.turn_id).unwrap_or_default(),
                 tool_uses: load_tool_uses(&mut c, &t.turn_id)?,
                 todos: load_todos(&mut c, &t.turn_id)?,
-                changed_paths: load_changed_paths(&mut c, &t.turn_id)?,
+                changes: load_changes(&mut c, &t.turn_id)?,
             });
         }
         Ok(out)

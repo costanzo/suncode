@@ -1,13 +1,15 @@
 //! Operations for `session`.
 
 use crate::{
-    domain::SessionRecord,
+    domain::{SessionRecord, DeletedSessionFiles},
+    operations::session_turn_change,
     store::{business_transaction, lock, now, Store},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Nullable, Text};
 use diesel::sqlite::SqliteConnection;
+use std::collections::BTreeSet;
 use suncode_common::BusinessError;
 
 #[derive(QueryableByName)]
@@ -232,7 +234,7 @@ impl Store {
 
     /// Physically removes a primary session and all of its child session data.
     /// The caller is responsible for deleting the returned SunCode-managed files.
-    pub fn delete_session(&self, id: &str) -> Result<Vec<String>, BusinessError> {
+    pub fn delete_session(&self, id: &str) -> Result<DeletedSessionFiles, BusinessError> {
         let mut connection = lock(&self.connection)?;
         let root = by_id(&mut connection, id)?.ok_or_else(|| BusinessError::missing("session"))?;
         if root.kind != "primary" {
@@ -261,16 +263,17 @@ impl Store {
             cursor += 1;
         }
 
-        let mut managed_files = Vec::new();
+        let mut image_paths = Vec::new();
         for session_id in &session_ids {
             let images =
                 sql_query("SELECT storage_path AS value FROM session_image WHERE session_id=?")
                     .bind::<Text, _>(session_id)
                     .load::<ValueRow>(&mut *connection)
                     .map_err(crate::database_error)?;
-            managed_files.extend(images.into_iter().map(|row| row.value));
+            image_paths.extend(images.into_iter().map(|row| row.value));
         }
 
+        let mut versions = BTreeSet::new();
         business_transaction(&mut connection, |connection| {
             for session_id in session_ids.iter().rev() {
                 let turns =
@@ -300,14 +303,9 @@ impl Store {
                     .bind::<Text, _>(session_id)
                     .execute(connection)
                     .map_err(crate::database_error)?;
-                sql_query("DELETE FROM session_checkpoint WHERE session_id=?")
-                    .bind::<Text, _>(session_id)
-                    .execute(connection)
-                    .map_err(crate::database_error)?;
-                sql_query("DELETE FROM session_checkpoint_manifest WHERE session_id=?")
-                    .bind::<Text, _>(session_id)
-                    .execute(connection)
-                    .map_err(crate::database_error)?;
+                versions.extend(session_turn_change::delete_for_session(
+                    connection, session_id,
+                )?);
                 sql_query("DELETE FROM session_image WHERE session_id=?")
                     .bind::<Text, _>(session_id)
                     .execute(connection)
@@ -332,7 +330,16 @@ impl Store {
             }
             Ok(())
         })?;
-        Ok(managed_files)
+        let mut file_versions = Vec::new();
+        for version in versions {
+            if !session_turn_change::is_reference(&mut connection, &version)? {
+                file_versions.push(version);
+            }
+        }
+        Ok(DeletedSessionFiles {
+            image_paths,
+            file_versions
+        })
     }
 
     pub fn set_session_pinned(

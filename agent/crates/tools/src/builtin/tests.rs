@@ -462,27 +462,4 @@ mod execute {
         .unwrap();
         assert_eq!(cancelled["status"], "cancelled");
     }
-
-    #[test]
-    fn write_uses_the_call_key_as_its_idempotency_key() {
-        let project = temporary_directory("write").canonicalize().unwrap();
-        let tools = provider();
-        let write = || {
-            Call {
-                tools: &tools,
-                project: &project,
-                dependency: &project,
-                timeout_ceiling: None,
-                output: Arc::default(),
-                cancellation: &Flag::default(),
-            }
-            .run("write", json!({"path":"note.txt","content":"once"}))
-            .unwrap()
-        };
-        let first = write();
-        // Same call key: the journal returns the recorded result instead of
-        // writing again, so the checkpoint is identical.
-        let second = write();
-        assert_eq!(first["checkpoint_id"], second["checkpoint_id"]);
-    }
 }

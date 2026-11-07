@@ -49,6 +49,7 @@ dbus = "=0.9.12"
 diesel = { version = "2.2", features = ["sqlite"] }
 encoding_rs = "0.8"
 enigo = { git = "https://github.com/costanzo/enigo.git", rev = "707ab1300c004336a58cbfa4c64ad14a38894b65" }
+flate2 = "1"
 fs2 = "0.4"
 futures-util = "0.3"
 getrandom = "0.4"
@@ -77,6 +78,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.10"
+similar = "2"
 tempfile = "3"
 tokio = "1"
 tokio-util = "0.7"

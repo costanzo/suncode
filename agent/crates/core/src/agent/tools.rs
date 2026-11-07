@@ -61,6 +61,9 @@ impl TurnLoop<'_> {
                     ordinal: index,
                 }),
             )?;
+            if self.replay_recorded_write(call)? {
+                continue;
+            }
             let signature = tool_signature(call);
             if self.context.last_tool_signature.as_deref() == Some(signature.as_str()) {
                 self.context.repeated_tool_stalls += 1;
@@ -665,6 +668,9 @@ impl TurnLoop<'_> {
         call: &ToolCall,
         approval_pin: Option<Value>,
     ) -> Result<(), BusinessError> {
+        if self.replay_recorded_write(call)? {
+            return Ok(());
+        }
         self.services
             .tool_state(self.context, call, ToolState::Authorized, None)?;
         self.services
@@ -710,6 +716,46 @@ impl TurnLoop<'_> {
         self.services
             .tool_state(self.context, call, ToolState::Failed, Some(&error.code))?;
         Err(error)
+    }
+
+    /// A built-in file write or delete is never applied twice: resuming a turn
+    /// after a restart replays the recorded result of one that already
+    /// succeeded and reports one interrupted mid-executioin as an unknown
+    /// completion.
+    fn replay_recorded_write(&mut self, call: &ToolCall) -> Result<bool, BusinessError> {
+        if !matches!(call.name.as_str(), "write" | "delete" | "edit") {
+            return Ok(false);
+        }
+        let Some(recorded) = db_blocking(|| {
+            self.services
+                .store
+                .turn_tool_use(&self.context.turn_id, &call.call_id)
+        })?
+        else {
+            return Ok(false);
+        };
+        let interrupted = recorded.state == "executing"
+            || recorded.error_code.as_deref() == Some("unknown_completion");
+        match (recorded.state.as_str(), recorded.result) {
+            ("succeeded", Some(result)) => {
+                self.record_call_success(call, result)?;
+                Ok(true)
+            }
+            ("succeeded", None) => self.record_unkown_completion(call),
+            _ if interrupted => self.record_unkown_completion(call),
+            _ => Ok(false),
+        }
+    }
+    
+    fn record_unkown_completion(&mut self, call: &ToolCall) -> Result<bool, BusinessError> {
+        let error = BusinessError::new(
+            "unknown_completion",
+            "The change was interrupted; read the file to check whether it was applied",
+        );
+        if !self.record_recoverable_call_error(call, &error)? {
+            return Err(error);
+        }
+        Ok(true)
     }
 
     pub(super) fn execute_skill_call(&self, call: &ToolCall) -> Result<Value, BusinessError> {
@@ -788,7 +834,16 @@ impl TurnLoop<'_> {
     ) -> Result<(), BusinessError> {
         // Providers return model-facing results; built-in tools normalize
         // their own operation output.
-        let mut normalized_result = result.clone();
+        let mut normalized_result = result;
+        // Only built-in file writes carry `checkpoint`; it is runtime metadata
+        // that never reaches the model or the persisted tool result.
+        let checkpoint = if matches!(call.name.as_str(), "write" | "delete" | "edit") {
+            normalized_result
+                .as_object_mut()
+                .and_then(|object| object.remove("checkpoint"))
+        } else {
+            None
+        };
         attach_nearby_instructions(self.context, call, &mut normalized_result);
         let process_failed = (call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
@@ -821,44 +876,8 @@ impl TurnLoop<'_> {
                 result: normalized_result.clone(),
             }),
         )?;
-        let checkpoint_ids = result
-            .get("checkpoint_ids")
-            .and_then(Value::as_array)
-            .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>())
-            .unwrap_or_else(|| {
-                result
-                    .get("checkpoint_id")
-                    .and_then(Value::as_str)
-                    .map(|value| vec![value])
-                    .unwrap_or_default()
-            });
-        if !checkpoint_ids.is_empty() {
-            let manifest = self
-                .services
-                .store
-                .ensure_manifest(&self.context.session_id, &self.context.turn_id)?;
-            let existing =
-                db_blocking(|| self.services.store.checkpoint_items(&manifest.manifest_id))?.len()
-                    as i64;
-            for (index, id) in checkpoint_ids.iter().enumerate() {
-                let path = if index == 0 {
-                    result.get("path").or_else(|| result.get("from"))
-                } else {
-                    result.get("to")
-                }
-                .and_then(Value::as_str);
-                self.services.emit(
-                    &self.context.session_id,
-                    EventPayload::CheckpointCaptured(CheckpointCapturedPayload {
-                        turn_id: self.context.turn_id.clone(),
-                        tool_call_id: call.call_id.clone(),
-                        manifest_id: manifest.manifest_id.clone(),
-                        checkpoint_id: (*id).to_owned(),
-                        path: path.map(str::to_owned),
-                        ordinal: existing + index as i64,
-                    }),
-                )?;
-            }
+        if let Some(checkpoint) = checkpoint {
+            self.record_turn_change(call, &checkpoint)?;
         }
         let mut tool = Message::text(
             "tool",
@@ -873,6 +892,72 @@ impl TurnLoop<'_> {
                 call_id: self.context.active_call_id.clone(),
                 tool_call_id: call.call_id.clone(),
                 message: tool,
+            }),
+        )?;
+        Ok(())
+    }
+    
+    /// Folds one file write or delete into the turn's net change for that
+    /// path: the first one in the turn fixes the baseline, later ones move the
+    /// latest version, and counts always compare baseline to latest. A delete
+    /// has no latest version.
+    fn record_turn_change(
+        &mut self,
+        call: &ToolCall,
+        checkpoint: &Value,
+    ) -> Result<(), BusinessError> {
+        let (Some(path), Some(stored_on)) = (
+            checkpoint.get("path").and_then(Value::as_str),
+            checkpoint.get("stored_on").and_then(Value::as_str),
+        ) else { 
+            return Ok(());
+        };
+        let current_sha256 = checkpoint.get("current_sha256").and_then(Value::as_str);
+        let existing = db_blocking(|| {
+            self.services.store.turn_file_version(
+                &self.context.session_id,
+                &self.context.turn_id,
+                path,
+            )
+        })?;
+        let baseline = match existing {
+            Some(version) => version.baseline,
+            None => checkpoint
+                .get("baseline_sha256")
+                .and_then(Value::as_str)
+                .map(|sha256| suncode_data::StoredFileVersion {
+                    stored_on: stored_on.to_owned(),
+                    sha256: sha256.to_owned(),
+                }),
+        };
+        // The file is already written; an unreadable stored version only
+        // costs the diff, not the tool call.
+        let Ok(diff) = db_blocking(|| {
+            self.services.operations.checkpoint_diff(
+                baseline
+                    .as_ref()
+                    .map(|version| (version.stored_on.as_str(), version.sha256.as_str())),
+                current_sha256.map(|sha256| (stored_on, sha256)),
+            )
+        }) else { 
+            return Ok(());
+        };
+        let (baseline_stored_on, baseline_sha256) = baseline
+            .map(|version| (version.stored_on, version.sha256))
+            .unzip();
+        self.services.emit(
+            &self.context.session_id,
+            EventPayload::CheckpointCaptured(CheckpointCapturedPayload {
+                turn_id: self.context.turn_id.clone(),
+                tool_call_id: call.call_id.clone(),
+                path: path.to_owned(),
+                baseline_sha256,
+                baseline_stored_on,
+                current_sha256: current_sha256.map(str::to_owned),
+                current_stored_on: current_sha256.map(|_| stored_on.to_owned()),
+                additions: diff.additions,
+                deletions: diff.deletions,
+                binary: diff.binary,
             }),
         )?;
         Ok(())

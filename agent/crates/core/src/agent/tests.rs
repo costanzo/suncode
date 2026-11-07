@@ -1707,62 +1707,6 @@ async fn over_budget_batch_is_rejected_before_any_call_executes() {
 }
 
 #[tokio::test]
-async fn write_waits_for_approval_and_captures_checkpoint() {
-    let (agent, store, root, server, session_id) = fixture().await;
-    let mut attention = agent.attention_event_hub().subscribe();
-    let error = agent
-        .submit(&session_id, "write-1", "write the file", None, None)
-        .await
-        .unwrap_err();
-    assert_eq!(error.code, "approval_required");
-    assert_eq!(
-        std::fs::read_to_string(root.join("README.md")).unwrap(),
-        "hello"
-    );
-    let approval_id = error.details["approval_id"].as_str().unwrap().to_string();
-    let event = attention.recv().await.unwrap();
-    assert_eq!(event.kind, AttentionKind::ApprovalRequested);
-    assert_eq!(event.correlation_id, approval_id);
-    assert_eq!(event.session_kind, "primary");
-    assert!(agent
-        .resolve_approval(&approval_id, "allow_once")
-        .await
-        .unwrap());
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
-    loop {
-        let file_updated = std::fs::read_to_string(root.join("README.md")).unwrap() == "updated";
-        let checkpoint_ready = store
-            .manifests(&session_id)
-            .unwrap()
-            .first()
-            .map(|manifest| store.checkpoint_items(&manifest.manifest_id).unwrap().len() == 1)
-            .unwrap_or(false);
-        if file_updated && checkpoint_ready {
-            break;
-        }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "approval continuation did not complete its file and checkpoint updates"
-        );
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    assert_eq!(
-        std::fs::read_to_string(root.join("README.md")).unwrap(),
-        "updated"
-    );
-    let manifests = store.manifests(&session_id).unwrap();
-    assert_eq!(manifests.len(), 1);
-    assert_eq!(
-        store
-            .checkpoint_items(&manifests[0].manifest_id)
-            .unwrap()
-            .len(),
-        1
-    );
-    server.abort();
-}
-
-#[tokio::test]
 async fn allow_session_skips_later_approvals_for_the_same_session() {
     let (agent, store, root, server, session_id) = fixture().await;
     let error = agent

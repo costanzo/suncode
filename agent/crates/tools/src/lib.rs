@@ -6,8 +6,8 @@
 //! - `dispatch`: the explicit method-to-tool table behind `execute_in_project`.
 //! - `context`: per-call execution context and network settings.
 //! - `scope`: project roots and project-relative path containment.
-//! - `journal`: idempotency records for mutating operations.
-//! - `read`, `write`, `edit`, `search`, `checkpoint`, `process`, `webfetch`: tools.
+//! - `read`, `write`, `edit`, `search`, `process`, `webfetch`: tools.
+//! - `checkpoint`: content-addressed file version and per-turn line diffs.
 //! - `project_view`: bounded directory listing and file viewing for clients.
 
 mod arguments;
@@ -18,7 +18,6 @@ mod context;
 mod dispatch;
 mod edit;
 mod error;
-mod journal;
 mod operations;
 mod process;
 mod project_view;
@@ -33,6 +32,7 @@ pub mod definitions;
 
 pub use builtin::BuiltinTools;
 pub use context::ProcessOutputCallback;
+pub use checkpoint::{diff, DiffHunk, DiffLine, FileDiff};
 pub use operations::{CertificatePath, Operations, ProxyConfiguration};
 pub use process::BackgroundProcess;
 
