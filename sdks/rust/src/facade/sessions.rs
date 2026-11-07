@@ -164,8 +164,14 @@ impl AsyncAgentSdk {
             ));
         }
         let image_root = self.resolved_image_directory()?.canonicalize().ok();
-        let paths = self.state.store.delete_session(session_id)?;
-        for path in paths {
+        let deleted = self.state.store.delete_session(session_id)?;
+        self.state.operations.remove_checkpoints(
+            deleted
+                .file_versions
+                .iter()
+                .map(|version| (version.stored_on.as_str(), version.sha256.as_str())),
+        );
+        for path in deleted.image_paths {
             let path_buf = PathBuf::from(&path);
             let allowed = image_root.as_ref().is_some_and(|root| {
                 path_buf

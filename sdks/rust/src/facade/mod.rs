@@ -13,8 +13,7 @@ use suncode_config::Config;
 use suncode_config::{LogSettings, SettingScope};
 use suncode_core::{
     agent::{AgentHostCapabilities, AgentRuntime},
-    AgentLock, AttentionEventHub, CheckpointItemRestoredPayload, CheckpointRestoreFailedPayload,
-    CheckpointRestoredPayload, EventPayload, SessionEventHub,
+    AgentLock, AttentionEventHub, SessionEventHub,
 };
 use suncode_data::{LlmModelProviderInput, LlmModelProviderRecord, Store};
 use suncode_llm::{
@@ -29,7 +28,6 @@ mod attention;
 pub mod blocking;
 mod browser;
 pub use browser::BrowserHostCallback;
-mod checkpoints;
 mod computer;
 mod language_servers;
 mod lifecycle;
@@ -46,6 +44,7 @@ mod subscriptions;
 #[cfg(test)]
 mod tests;
 mod turns;
+mod turn_diff;
 
 pub use blocking::AgentSdk;
 pub use subscriptions::{
@@ -196,16 +195,18 @@ fn provider_adapter(
             certificate_path,
             proxy_configuration,
         ))),
-        "chat_completions" => Ok(Arc::new(ChatCompletionsProvider::new_with_network_configuration(
-            provider.provider_id.clone(),
-            provider.display_name.clone(),
-            provider.endpoint.clone(),
-            keys,
-            verify_https_certificates,
-            use_system_certificates,
-            certificate_path,
-            proxy_configuration,
-        ))),
+        "chat_completions" => Ok(Arc::new(
+            ChatCompletionsProvider::new_with_network_configuration(
+                provider.provider_id.clone(),
+                provider.display_name.clone(),
+                provider.endpoint.clone(),
+                keys,
+                verify_https_certificates,
+                use_system_certificates,
+                certificate_path,
+                proxy_configuration,
+            ),
+        )),
         adapter_type => Err(BusinessError::new(
             "provider_adapter_unsupported",
             format!("provider adapter is not supported: {adapter_type}"),
@@ -371,6 +372,7 @@ where
         log_console_output: options.log_console_output,
     };
     state.agent.recover().await?;
+    turn_diff::retain_turn_changes(state.store.clone(), state.operations.clone());
     Ok(state)
 }
 
@@ -466,21 +468,6 @@ fn detail_string(error: &BusinessError, name: &str) -> SdkResult<String> {
         .and_then(Value::as_str)
         .map(str::to_string)
         .ok_or_else(|| BusinessError::unavailable(format!("approval outcome is missing {name}")))
-}
-
-fn emit_event(state: &AgentState, session_id: &str, payload: EventPayload) -> SdkResult<()> {
-    state
-        .events
-        .publish_projected(session_id, payload, |payload| {
-            let event_type = payload.event_type();
-            let projected = state.store.append_content(
-                session_id,
-                event_type.as_str(),
-                &payload.clone().into_value(),
-            )?;
-            Ok(projected.occurred_at)
-        })
-        .map(|_| ())
 }
 
 fn sanitize_image_extension(value: &str) -> SdkResult<String> {

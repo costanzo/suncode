@@ -4,13 +4,12 @@ use std::collections::BTreeMap;
 use suncode_common::BusinessError;
 use suncode_config::EnvironmentSource;
 use suncode_data::{
-    CheckpointItem, CheckpointManifest, Message, ProjectDependencyRecord, ProjectRecord,
-    ProviderExchange, SessionCallMessage, SessionCallToolUse, SessionImageRecord, SessionRecord,
-    SessionTraceTurn, SettingRecord,
+    Message, ProjectDependencyRecord, ProjectRecord, ProviderExchange, SessionCallMessage, 
+    SessionCallToolUse, SessionImageRecord, SessionRecord, SessionTraceTurn, SettingRecord,
 };
 use suncode_llm::ModelDescriptor;
 
-pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 27;
+pub const SUNCODE_AGENT_SDK_ABI_VERSION: u32 = 28;
 pub use suncode_data::CredentialStorageMode;
 pub type SdkResult<T> = Result<T, BusinessError>;
 
@@ -720,23 +719,25 @@ pub struct ProviderExchangeDetails {
     pub tool_uses: Vec<SessionCallToolUse>,
 }
 
+/// Net per-file diff of one turn, rendered from its first-touch baselines.
 #[derive(Debug, Serialize)]
-pub struct CheckpointsResult {
+#[serde(rename_all = "camelCase")]
+pub struct TurnDiff {
     pub session_id: String,
-    pub checkpoints: Vec<CheckpointManifest>,
+    pub turn_id: String,
+    pub files: Vec<TurnFileDiff>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct CheckpointDetails {
-    pub manifest: CheckpointManifest,
-    pub items: Vec<CheckpointItem>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RestoreOutcome {
-    pub manifest_id: String,
-    pub status: &'static str,
-    pub restored_items: usize,
+#[serde(rename_all = "camelCase")]
+pub struct TurnFileDiff {
+    pub path: String,
+    /// `added` when the turn created the file, otherwise `modified`
+    pub status: String,
+    pub additions: u64,
+    pub deletions: u64,
+    pub binary: bool,
+    pub hunks: Vec<suncode_tool::DiffHunk>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,7 +1,7 @@
 use super::*;
 use serde_json::Value;
 use std::ops::{Deref, DerefMut};
-use suncode_core::{BrowserRuntimeInfo, QueuedMessageSnapshot, agent::TurnResponse};
+use suncode_core::{agent::TurnResponse, BrowserRuntimeInfo, QueuedMessageSnapshot};
 
 pub struct AgentSdk {
     inner: AsyncAgentSdk,
