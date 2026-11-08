@@ -56,7 +56,6 @@ export function SettingsPage({
         id,
         {
           mask: provider.keyPreview,
-          mode: provider.storageMode ?? "keychain",
         },
       ]),
     ),

@@ -26,7 +26,7 @@ The former `gemini-3.5` row used a legacy SunCode ID for wire model `gemini-3.5-
 
 ## xAI Grok catalog
 
-The xAI provider uses `https://api.x.ai/v1` through the existing Responses adapter. Its credential and endpoint follow the same provider Settings path as other providers; credentials use the Rust-owned system store by default or explicit SQLite plaintext mode. Startup seeding adds it to existing databases without overwriting provider credential metadata or endpoint settings.
+The xAI provider uses `https://api.x.ai/v1` through the existing Responses adapter. Its credential and endpoint follow the same provider Settings path as other providers; credentials use the Rust-owned system store exclusively. Startup seeding adds it to existing databases without overwriting provider credential metadata or endpoint settings.
 
 The catalog was checked against the [official xAI model list](https://docs.x.ai/developers/models) and individual model pages on 2026-10-12:
 
@@ -90,3 +90,13 @@ SunCode never sends `previous_response_id`. The local transcript and context com
 The `anthropic` adapter posts to `<endpoint>/messages` and supports the same ordinary `computer_*` function tools. Native client toolsets such as Computer Use remain available as an optional provider-specific optimization.
 
 All built-in adapters apply the global HTTPS certificate and proxy settings described in [`network/`](../network/README.md). Credential, usage, and trace rules are covered in [`agent-phase-1/`](../agent-phase-1/README.md) and [`contracts/agent-sdk/README.md`](../../../contracts/agent-sdk/README.md).
+
+## System-store-only provider credentials
+
+Provider API keys persist exclusively through Rust-owned `suncode-secrets`, using macOS Keychain, Windows Credential Manager, or Linux Secret Service. The provider settings form displays the platform store, masked status, replacement input, Save, Cancel, and confirmed removal. Explicit retry checks actual OS access while preserving the unfinished draft and saved mask.
+
+The Rust data path rejects plaintext storage modes and resolves values only from the system store. The retained C ABI mode symbols accept only `keychain`. Managed clients save a provider/key pair, and CLI `auth set PROVIDER` has no storage option. SQLite retains its existing layout and keychain references. The reserved `api_key` column receives only NULL. The user confirmed there are no plaintext keys requiring migration. Other secret-bearing configuration follows its separate contracts.
+
+Focused checks cover data-layer round trips, replacement and removal rollback, access failures, missing entries, mode rejection, redacted SDK responses, C ABI rejection, CLI arguments, and five managed/Avalonia credential tests in both themes, two sizes, and English/Chinese. The design route has both-theme, constrained-width, three-platform wording, eight-state, keyboard, save/cancel/retry/replacement/removal coverage. Native headless renderings were compared with the specimen.
+
+Full-suite verification still exposes four pre-existing data schema test failures and three pre-existing SDK session/tool test failures, reproduced against the unchanged source snapshot. The ordinary Avalonia test project has unrelated session-change/checkpoint compilation errors; the five credential tests run through an isolated local harness against the production project. Four CLI provider-call integration tests require an unlocked real OS credential store and are opt-in with cleanup. Real installed-platform credential authorization remains release verification.

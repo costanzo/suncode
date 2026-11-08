@@ -147,30 +147,26 @@ impl AsyncAgentSdk {
         })
     }
 
-    /// Save using the provider's configured mode (system keychain for a new provider).
+    /// Store or replace a provider key in the system credential store.
     pub fn set_credential(&self, provider: &str, api_key: &str) -> SdkResult<CredentialUpdate> {
-        let mode = self
-            .state
+        self.state
             .store
-            .llm_model_providers(false)?
-            .into_iter()
-            .find(|record| record.provider_id == provider)
-            .ok_or_else(|| BusinessError::invalid("provider is not supported"))?
-            .credential_mode;
-        self.save_credential(provider, Some(api_key), mode)
+            .save_provider_credential(provider, api_key)?;
+        self.credential_update(provider)
     }
 
-    /// `None` keeps the current key while changing its storage mode.
+    /// Compatibility entry point. System credential storage is the only mode.
+    /// With no replacement key, check access to the existing entry.
     pub fn save_credential(
         &self,
         provider: &str,
         api_key: Option<&str>,
-        mode: CredentialStorageMode,
+        _mode: CredentialStorageMode,
     ) -> SdkResult<CredentialUpdate> {
-        self.state
-            .store
-            .save_provider_credential(provider, api_key, mode)?;
-        self.credential_update(provider)
+        match api_key {
+            Some(api_key) => self.set_credential(provider, api_key),
+            None => self.check_credential(provider),
+        }
     }
 
     pub fn check_credential(&self, provider: &str) -> SdkResult<CredentialUpdate> {

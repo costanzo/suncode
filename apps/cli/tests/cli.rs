@@ -59,6 +59,18 @@ fn command(data_directory: &std::path::Path) -> Command {
     command
 }
 
+// Real-OS credential tests are opt-in. Clean up their UUID-backed entries
+// through the same public CLI path, including when an assertion unwinds.
+struct SystemCredentialCleanup(std::path::PathBuf);
+
+impl Drop for SystemCredentialCleanup {
+    fn drop(&mut self) {
+        for provider in ["deepseek", "openai"] {
+            let _ = command(&self.0).args(["auth", "remove", provider]).output();
+        }
+    }
+}
+
 #[test]
 fn doctor_emits_the_versioned_jsonl_envelope() {
     let directory = tempfile::tempdir().unwrap();
@@ -127,9 +139,11 @@ fn run_without_a_prompt_source_is_an_argument_error() {
 }
 
 #[test]
+#[ignore = "requires an unlocked system credential store and OS authorization"]
 fn run_streams_typed_events_and_returns_a_completed_result() {
     let _guard = ENVIRONMENT.get_or_init(|| Mutex::new(())).lock().unwrap();
     let directory = tempfile::tempdir().unwrap();
+    let _credentials = SystemCredentialCleanup(directory.path().to_path_buf());
     let project = directory.path().join("project");
     std::fs::create_dir_all(&project).unwrap();
     std::fs::write(project.join("README.md"), "sample\n").unwrap();
@@ -143,19 +157,9 @@ fn run_streams_typed_events_and_returns_a_completed_result() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.save_credential(
-            "deepseek",
-            Some("test-key"),
-            suncode_sdk::CredentialStorageMode::Plaintext,
-        )
-        .unwrap();
+        sdk.set_credential("deepseek", "test-key").unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
-        sdk.save_credential(
-            "openai",
-            Some("test-key"),
-            suncode_sdk::CredentialStorageMode::Plaintext,
-        )
-        .unwrap();
+        sdk.set_credential("openai", "test-key").unwrap();
         sdk.set_provider_endpoint("openai", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });
@@ -326,9 +330,11 @@ fn session_list_and_archive_use_the_sdk_lifecycle() {
 }
 
 #[test]
+#[ignore = "requires an unlocked system credential store and OS authorization"]
 fn session_resume_reopens_and_uses_durable_conversation_context() {
     let _guard = ENVIRONMENT.get_or_init(|| Mutex::new(())).lock().unwrap();
     let directory = tempfile::tempdir().unwrap();
+    let _credentials = SystemCredentialCleanup(directory.path().to_path_buf());
     let project_path = directory.path().join("project");
     std::fs::create_dir_all(&project_path).unwrap();
     let (endpoint, shutdown, server, requests) = mock_provider();
@@ -341,12 +347,7 @@ fn session_resume_reopens_and_uses_durable_conversation_context() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.save_credential(
-            "deepseek",
-            Some("test-key"),
-            suncode_sdk::CredentialStorageMode::Plaintext,
-        )
-        .unwrap();
+        sdk.set_credential("deepseek", "test-key").unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         let project = sdk
             .open_project(project_path.to_str().unwrap(), None)
@@ -457,9 +458,11 @@ fn session_resume_reopens_and_uses_durable_conversation_context() {
 }
 
 #[test]
+#[ignore = "requires an unlocked system credential store and OS authorization"]
 fn session_resume_fails_closed_when_an_approval_is_pending() {
     let _guard = ENVIRONMENT.get_or_init(|| Mutex::new(())).lock().unwrap();
     let directory = tempfile::tempdir().unwrap();
+    let _credentials = SystemCredentialCleanup(directory.path().to_path_buf());
     let project_path = directory.path().join("project");
     std::fs::create_dir_all(&project_path).unwrap();
     std::fs::write(project_path.join("README.md"), "original\n").unwrap();
@@ -473,12 +476,7 @@ fn session_resume_fails_closed_when_an_approval_is_pending() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.save_credential(
-            "deepseek",
-            Some("test-key"),
-            suncode_sdk::CredentialStorageMode::Plaintext,
-        )
-        .unwrap();
+        sdk.set_credential("deepseek", "test-key").unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });
@@ -531,9 +529,11 @@ fn session_resume_fails_closed_when_an_approval_is_pending() {
 }
 
 #[test]
+#[ignore = "requires an unlocked system credential store and OS authorization"]
 fn session_resume_fails_closed_when_a_question_is_pending() {
     let _guard = ENVIRONMENT.get_or_init(|| Mutex::new(())).lock().unwrap();
     let directory = tempfile::tempdir().unwrap();
+    let _credentials = SystemCredentialCleanup(directory.path().to_path_buf());
     let project_path = directory.path().join("project");
     std::fs::create_dir_all(&project_path).unwrap();
     let (endpoint, shutdown, server, requests) = mock_provider_with_response(QUESTION_RESPONSE);
@@ -546,12 +546,7 @@ fn session_resume_fails_closed_when_a_question_is_pending() {
         let sdk = AsyncAgentSdk::open_default("cli-integration-test")
             .await
             .unwrap();
-        sdk.save_credential(
-            "deepseek",
-            Some("test-key"),
-            suncode_sdk::CredentialStorageMode::Plaintext,
-        )
-        .unwrap();
+        sdk.set_credential("deepseek", "test-key").unwrap();
         sdk.set_provider_endpoint("deepseek", &endpoint).unwrap();
         sdk.shutdown().await.unwrap();
     });

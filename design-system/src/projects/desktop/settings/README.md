@@ -30,10 +30,10 @@ Explicit actions animate checks, downloads, verification, and restart in memory.
 
 The C# client owns an application-wide coordinator, so closing Settings preserves a download. Its checked-in distribution configuration enables catalog checks against the canonical www origin with pinned public trust. Current signed 0.1.0 metadata uses sample package values; real archives, trusted initial-installer receipt integration, platform signing configuration, and signed installed-package restart/platform release conformance remain release work. See root `DESIGN.md` for the interaction contract and `apps/desktop-avalonia/Infrastructure/Updates/README.md` for client delivery boundaries.
 
-## Provider credentials — review only
+## Provider credentials
 
-Open `#/projects/desktop/settings/provider-credentials` for the interactive API key storage proposal. The toolbar outside the Settings specimen selects macOS, Windows, or Linux wording and normal, locked, denied, unavailable, missing-entry, saving, save-failed, or remove-failed states. Retry returns the fixture to Normal; it performs no OS request.
+Open `#/projects/desktop/settings/provider-credentials` for system-store-only API key settings. The review toolbar selects macOS, Windows, or Linux wording and normal, locked, denied, unavailable, missing-entry, saving, save-failed, or remove-failed states. Retry returns the fixture to Normal.
 
-DeepSeek demonstrates a saved system-keychain key, OpenAI a saved plaintext key, and Zhipu an empty provider that defaults to system-keychain storage. All providers support Save, Cancel, replacement, explicit plaintext confirmation, and confirmed removal. Successful fixture changes survive in-page provider navigation; only masks and mode leave `ProviderCredential.jsx`. No secret is persisted. `styles/provider-credentials.css` owns this feature's styles.
+DeepSeek and OpenAI demonstrate saved system-store keys. Zhipu demonstrates an empty provider. Save, Cancel, replacement, and confirmed removal follow the production Rust SDK and Avalonia interaction. The form shows the platform store without a storage selector. Only masks leave `ProviderCredential.jsx`, and fixture changes survive in-page provider navigation. Secret values remain unpersisted component state. `styles/provider-credentials.css` owns the styles.
 
-Approval is pending. This page establishes a UI proposal, not an implemented Rust credential contract. No migration flow is planned for the new system.
+The new system has no plaintext-key migration flow. Linux requires a running, unlocked Secret Service in the user session. Real OS authorization and installed-platform behavior require release verification.

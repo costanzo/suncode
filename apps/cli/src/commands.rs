@@ -329,14 +329,14 @@ fn auth(sdk: &AsyncAgentSdk, command: &AuthCommand) -> Result<CommandReport, Cli
                 text,
             })
         }
-        AuthCommand::Set { provider, storage } => {
+        AuthCommand::Set { provider } => {
             let current = sdk
                 .list_credentials()
                 .map_err(CliError::from_business)?
                 .credentials
                 .into_iter()
                 .find(|credential| credential.provider == *provider);
-            let Some(current) = current else {
+            let Some(_) = current else {
                 return Err(CliError {
                     code: "provider_not_found".into(),
                     message: "provider is not supported".into(),
@@ -353,16 +353,8 @@ fn auth(sdk: &AsyncAgentSdk, command: &AuthCommand) -> Result<CommandReport, Cli
             if value.trim().is_empty() {
                 return Err(CliError::invalid("API key must not be empty"));
             }
-            let mode = match storage {
-                Some(storage) => suncode_sdk::CredentialStorageMode::parse(storage.as_str())
-                    .map_err(CliError::from_business)?,
-                None => current.mode,
-            };
-            if mode == suncode_sdk::CredentialStorageMode::Plaintext {
-                eprintln!("warning: plaintext storage writes the complete API key to the local SQLite database");
-            }
             let result = sdk
-                .save_credential(provider, Some(&value), mode)
+                .set_credential(provider, &value)
                 .map_err(CliError::from_business)?;
             Ok(CommandReport {
                 event_type: "auth.updated",

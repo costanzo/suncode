@@ -125,11 +125,7 @@ export function ProvidersPanel({ onSelect, endpoints, credentials }) {
               <code>{endpoints[id]}</code>
             </span>
             <small className={credentials[id].mask ? "is-configured" : ""}>
-              {credentials[id].mask
-                ? credentials[id].mode === "keychain"
-                  ? "System keychain"
-                  : "Plaintext"
-                : "API key needed"}
+              {credentials[id].mask ? "System keychain" : "API key needed"}
             </small>
             <Icon name="arrow" size={14} />
           </button>
@@ -155,8 +151,7 @@ export function ProviderPanel({
   const configured = Boolean(credential.mask);
   const usable =
     configured &&
-    (credential.mode === "plaintext" ||
-      !["locked", "denied", "unavailable", "missing"].includes(issue));
+    !["locked", "denied", "unavailable", "missing"].includes(issue);
   const saveEndpoint = () => {
     const normalized = draftEndpoint.trim().replace(/\/+$/, "");
     onEndpointChange(normalized);

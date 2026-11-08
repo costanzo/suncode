@@ -3685,6 +3685,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "suncode-config",
  "suncode-sdk",
  "tempfile",
 ]

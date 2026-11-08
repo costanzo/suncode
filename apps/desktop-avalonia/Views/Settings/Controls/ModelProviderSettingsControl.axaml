@@ -28,71 +28,6 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="5" />
     </Style>
-    <Style Selector="RadioButton.credential-option">
-      <Setter Property="MinHeight" Value="62" />
-      <Setter Property="Padding" Value="12" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-      <Setter Property="Template">
-        <ControlTemplate>
-          <Border x:Name="OptionBorder"
-                  Background="{TemplateBinding Background}"
-                  BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="{TemplateBinding CornerRadius}"
-                  Padding="{TemplateBinding Padding}">
-            <Grid ColumnDefinitions="14,*" ColumnSpacing="12">
-              <Border Width="13" Height="13" CornerRadius="7"
-                      BorderThickness="1" BorderBrush="{DynamicResource TextSecondaryBrush}"
-                      VerticalAlignment="Center">
-                <Ellipse x:Name="SelectedDot" Width="7" Height="7"
-                         Fill="{DynamicResource AccentBrush}" IsVisible="False" />
-              </Border>
-              <ContentPresenter x:Name="PART_ContentPresenter" Grid.Column="1"
-                                Content="{TemplateBinding Content}"
-                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                HorizontalContentAlignment="Stretch"
-                                VerticalContentAlignment="Center" />
-            </Grid>
-          </Border>
-        </ControlTemplate>
-      </Setter>
-    </Style>
-    <Style Selector="RadioButton.credential-option:checked">
-      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-    </Style>
-    <Style Selector="RadioButton.credential-option:pointerover">
-      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
-    </Style>
-    <Style Selector="RadioButton.credential-option:disabled">
-      <Setter Property="Opacity" Value="0.62" />
-    </Style>
-    <Style Selector="RadioButton.credential-option:checked /template/ Ellipse#SelectedDot">
-      <Setter Property="IsVisible" Value="True" />
-    </Style>
-    <Style Selector="RadioButton.credential-option:focus-visible /template/ Border#OptionBorder">
-      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-    </Style>
-    <Style Selector="TextBlock.credential-option-description">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="LineHeight" Value="16" />
-    </Style>
-    <Style Selector="TextBlock.credential-option-recommended">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
     <Style Selector="TextBlock.credential-input-label">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -258,61 +193,6 @@
               <TextBlock x:Name="CredentialLocationTextBlock" Classes="settings-row-hint" TextWrapping="Wrap" />
             </StackPanel>
           </Grid>
-          <StackPanel Spacing="8">
-            <TextBlock Text="{DynamicResource LocCredentialStorageLabel}" FontSize="12" FontWeight="SemiBold" />
-            <StackPanel x:Name="CredentialModeInput" Spacing="8">
-              <RadioButton x:Name="CredentialModeKeychainInput"
-                           Classes="credential-option"
-                           GroupName="CredentialStorageMode"
-                           Tag="keychain"
-                           IsCheckedChanged="CredentialModeChanged"
-                           AutomationProperties.Name="System keychain storage">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                  <StackPanel Spacing="3">
-                    <WrapPanel Orientation="Horizontal">
-                      <TextBlock Text="{DynamicResource LocCredentialKeychainOption}" FontSize="12" FontWeight="SemiBold" />
-                      <TextBlock Text="{DynamicResource LocRecommended}" Classes="credential-option-recommended" Margin="8,0,0,0" />
-                    </WrapPanel>
-                    <TextBlock x:Name="CredentialKeychainDescriptionTextBlock" Classes="credential-option-description" />
-                  </StackPanel>
-                  <svg:Svg Grid.Column="1"
-                           Width="16"
-                           Height="16"
-                           Path="/Assets/icons/lock.svg"
-                           Css="{DynamicResource IconSvgCss}"
-                           VerticalAlignment="Center" />
-                </Grid>
-              </RadioButton>
-              <RadioButton x:Name="CredentialModePlaintextInput"
-                           Classes="credential-option"
-                           GroupName="CredentialStorageMode"
-                           Tag="plaintext"
-                           IsCheckedChanged="CredentialModeChanged"
-                           AutomationProperties.Name="Plaintext SQLite storage">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                  <StackPanel Spacing="3">
-                    <TextBlock Text="{DynamicResource LocCredentialPlaintextOption}" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock Text="{DynamicResource LocCredentialPlaintextDescription}"
-                               Classes="credential-option-description" />
-                  </StackPanel>
-                  <svg:Svg Grid.Column="1"
-                           Width="16"
-                           Height="16"
-                           Path="/Assets/icons/file-config.svg"
-                           Css="{DynamicResource IconSvgCss}"
-                           VerticalAlignment="Center" />
-                </Grid>
-              </RadioButton>
-            </StackPanel>
-          </StackPanel>
-          <Border x:Name="CredentialPlaintextWarning" Classes="settings-warning"
-                  Background="{DynamicResource WarningSurfaceBrush}"
-                  BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1" IsVisible="False">
-            <StackPanel Spacing="4">
-              <TextBlock Text="{DynamicResource LocCredentialPlaintextWarningTitle}" Classes="credential-input-label" />
-              <TextBlock Text="{DynamicResource LocCredentialPlaintextHint}" Classes="credential-option-description" />
-            </StackPanel>
-          </Border>
           <StackPanel Spacing="8">
             <TextBlock x:Name="CredentialInputLabelTextBlock" Classes="credential-input-label" />
             <TextBox x:Name="ApiKeyInput"

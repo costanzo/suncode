@@ -244,12 +244,10 @@ public sealed partial class AgentSdk : IDisposable
         [provider, apiKey],
         values => NativeMethods.suncode_agent_sdk_set_credential(_handle, values[0], values[1]));
 
-    private Task<JsonElement> RawSetCredentialWithModeAsync(string provider, string apiKey, string mode) => WithUtf8Async(
-        [provider, apiKey, mode],
-        values => NativeMethods.suncode_agent_sdk_set_credential_with_mode(_handle, values[0], values[1], values[2]));
-
-    private Task<JsonElement> RawChangeCredentialModeAsync(string provider, string mode) => WithUtf8Async(
-        [provider, mode],
+    // The retained ABI mode entry point checks the existing system-store key
+    // when called without a replacement value.
+    private Task<JsonElement> RawCheckCredentialAsync(string provider) => WithUtf8Async(
+        [provider, "keychain"],
         values => NativeMethods.suncode_agent_sdk_change_credential_mode(_handle, values[0], values[1]));
 
     private Task<JsonElement> RawRemoveCredentialAsync(string provider) => WithUtf8Async(

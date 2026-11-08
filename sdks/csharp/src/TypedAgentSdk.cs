@@ -237,10 +237,10 @@ public sealed partial class AgentSdk
             JsonSerializer.Serialize(request, TypedJsonOptions)));
 
     public Task<CredentialUpdate> SetCredentialAsync(SetCredentialRequest request) =>
-        Typed<CredentialUpdate>(RawSetCredentialWithModeAsync(request.Provider, request.ApiKey, request.StorageMode));
+        Typed<CredentialUpdate>(RawSetCredentialAsync(request.Provider, request.ApiKey));
 
-    public Task<CredentialUpdate> ChangeCredentialModeAsync(string provider, string storageMode) =>
-        Typed<CredentialUpdate>(RawChangeCredentialModeAsync(provider, storageMode));
+    public Task<CredentialUpdate> CheckCredentialAsync(string provider) =>
+        Typed<CredentialUpdate>(RawCheckCredentialAsync(provider));
 
     public Task<CredentialUpdate> RemoveCredentialAsync(string provider) =>
         Typed<CredentialUpdate>(RawRemoveCredentialAsync(provider));

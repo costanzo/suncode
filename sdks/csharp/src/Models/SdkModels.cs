@@ -876,7 +876,7 @@ public sealed record SetSettingRequest(
     string Key,
     JsonElement Value);
 
-public sealed record SetCredentialRequest(string Provider, string ApiKey, string StorageMode = "keychain");
+public sealed record SetCredentialRequest(string Provider, string ApiKey);
 
 public sealed record ProviderEndpointRequest(string Provider, string Endpoint);
 

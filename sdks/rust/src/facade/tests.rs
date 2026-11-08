@@ -1863,6 +1863,31 @@ fn session_image_upload_enforces_payload_bounds() {
 }
 
 #[test]
+fn credential_compatibility_api_only_accepts_system_storage() {
+    assert!(CredentialStorageMode::parse("plaintext").is_err());
+    assert!(serde_json::from_str::<CredentialStorageMode>(r#""plaintext""#).is_err());
+    let directory = tempfile::tempdir().unwrap();
+    let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));
+    let result = sdk
+        .save_credential(
+            "openai",
+            Some("test-system-key"),
+            CredentialStorageMode::Keychain,
+        )
+        .unwrap();
+    assert_eq!(result.mode, CredentialStorageMode::Keychain);
+    assert!(result.configured);
+    let result = sdk
+        .save_credential("openai", None, CredentialStorageMode::Keychain)
+        .unwrap();
+    assert!(result.configured);
+    let serialized = serde_json::to_string(&sdk.list_credentials().unwrap()).unwrap();
+    assert!(!serialized.contains("test-system-key"));
+    sdk.remove_credential("openai").unwrap();
+    assert!(!sdk.check_credential("openai").unwrap().configured);
+}
+
+#[test]
 fn named_credential_methods_update_model_availability() {
     let directory = tempfile::tempdir().unwrap();
     let sdk = AgentSdk::from_state_for_test(test_state(directory.path()));

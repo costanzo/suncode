@@ -173,7 +173,7 @@
       "description": "Choose from the seeded provider catalog, manage provider credentials, and configure existing provider endpoints.",
       "details": [
         "Select model-advertised capabilities and reasoning options.",
-        "Provider keys default to the operating-system credential store, with an explicit plaintext option."
+        "Provider keys are saved in the operating-system credential store."
       ],
       "note": "Capabilities and access depend on the model and provider account. Catalog entries are not a guarantee of live compatibility; arbitrary provider/model creation is not available in the client."
     },

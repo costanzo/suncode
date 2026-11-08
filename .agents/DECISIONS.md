@@ -85,10 +85,20 @@ Newest first. Historical context is retained only when it still explains a curre
 - Consequences: Models get a cheaper, more precise way to find targets and read text, but tree quality depends on each application, so screenshots remain primary. There is no new permission prompt: macOS shares the input control trust, and SunCode never toggles the Linux accessibility bus. The marker-based redaction is a convention between `suncode-computer` and core rather than a typed content kind.
 - Details: `features/computer-use/`, `contracts/agent-sdk/README.md`, `agent/crates/computer/src/accessibility/`
 
+## ADR-20261108-system-only-provider-secrets
+
+- Date: 2026-11-08
+- Status: Accepted, implemented and focused-tested
+- Supersedes: the provider-level plaintext choice in `ADR-20261018-provider-secret-storage`.
+- Context: The user confirms this fresh system has no plaintext API keys and authorizes removing the storage choice.
+- Decision: Persist provider API keys exclusively through `suncode-secrets`. Remove plaintext data resolution and saving, CLI storage selection, and Avalonia/specimen storage controls. Keep the database layout and existing keychain references. The reserved `api_key` column receives only NULL. Retain C ABI mode-aware symbols and redacted mode fields, accepting only `keychain`. The managed request takes provider and API key, and explicit retry checks actual OS access. No plaintext migration is included.
+- Consequences: Linux needs a usable Secret Service in the logged-in user session. Locked, denied, unavailable, and missing-entry failures remain visible and preserve metadata. Real installed-platform authorization remains release verification. Other secret-bearing settings retain their current contracts.
+- Details: `contracts/persistence.md`, `contracts/agent-sdk/README.md`, `contracts/cli.md`, `DESIGN.md`.
+
 ## ADR-20261018-provider-secret-storage
 
 - Date: 2026-10-18
-- Status: Accepted; implemented and focused-tested
+- Status: Superseded in part by `ADR-20261108-system-only-provider-secrets`
 - Supersedes: `ADR-20260812-plaintext-provider-secrets` and the SQLite-only credential conclusions in `ADR-20260827-sqlite-only-provider-credentials`.
 - Context: Provider API keys stored directly in SQLite were unnecessarily exposed to database readers and backups. The new system has no migration requirement and needs a cross-platform provider-level choice.
 - Decision: Add `suncode-secrets` as the only platform credential-store boundary. New and unspecified provider credentials use the OS store: macOS Keychain, Windows Credential Manager, or Linux Secret Service. A provider may explicitly select `plaintext`, in which case the complete value is stored in SQLite. Keychain mode stores only a UUID reference and mask in SQLite; the modes are mutually exclusive. Save, mode changes, and removal use rollback across the two stores. SDK and client DTOs expose only mode, mask, source, and status; complete values remain in Rust memory for the provider request and are zeroized where owned by the secrets crate. Old schemas lacking credential columns are rejected as incompatible; no migration or ECC/master key is added.

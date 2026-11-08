@@ -587,21 +587,18 @@ pub struct SettingRecord {
 pub enum CredentialStorageMode {
     #[default]
     Keychain,
-    Plaintext,
 }
 impl CredentialStorageMode {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Keychain => "keychain",
-            Self::Plaintext => "plaintext",
         }
     }
     pub fn parse(value: &str) -> Result<Self, suncode_common::BusinessError> {
         match value {
             "keychain" => Ok(Self::Keychain),
-            "plaintext" => Ok(Self::Plaintext),
             _ => Err(suncode_common::BusinessError::invalid(
-                "credential storage mode is invalid",
+                "provider API keys require system credential storage (keychain)",
             )),
         }
     }

@@ -17,9 +17,9 @@ impl Store {
     ) -> Result<Vec<LlmModelProviderRecord>, BusinessError> {
         let mut connection = lock(&self.connection)?;
         let sql = if enabled_only {
-            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(api_key IS NOT NULL OR secret_ref IS NOT NULL) AS api_key_configured,credential_mode,api_key_mask,enabled,sort_order,created_at,updated_at FROM llm_model_provider WHERE enabled=1 ORDER BY sort_order,provider_id"
+            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(secret_ref IS NOT NULL) AS api_key_configured,credential_mode,api_key_mask,enabled,sort_order,created_at,updated_at FROM llm_model_provider WHERE enabled=1 ORDER BY sort_order,provider_id"
         } else {
-            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(api_key IS NOT NULL OR secret_ref IS NOT NULL) AS api_key_configured,credential_mode,api_key_mask,enabled,sort_order,created_at,updated_at FROM llm_model_provider ORDER BY sort_order,provider_id"
+            "SELECT provider_id,display_name,endpoint,default_endpoint,adapter_type,(secret_ref IS NOT NULL) AS api_key_configured,credential_mode,api_key_mask,enabled,sort_order,created_at,updated_at FROM llm_model_provider ORDER BY sort_order,provider_id"
         };
         sql_query(sql)
             .load::<ProviderRow>(&mut *connection)

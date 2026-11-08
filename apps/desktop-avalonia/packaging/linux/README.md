@@ -47,6 +47,8 @@ The optional .NET `libcoreclrtraceptprovider.so` is deliberately removed from th
 
 Extract the tar.gz and run `./suncode` inside `SunCode-<version>-<rid>/`. Its directory-relative wrapper forwards arguments and supports spaces in the extracted path. It installs no global launcher, desktop entry, icons or protocol handler. Remove the extracted folder to remove binaries; the separate data directory survives.
 
+Provider API keys require a running Secret Service implementation in the logged-in user's D-Bus session, with an available unlocked collection. Install and configure the desktop environment's credential service before saving keys. A service absence, locked collection, or denied request is reported in Settings with recovery actions. Packaging native D-Bus libraries alone does not provision the user credential service.
+
 Self-contained .NET still needs compatible native system libraries: glibc/libstdc++, ICU/OpenSSL and font/X11/D-Bus dependencies. The archive installs none and is not a musl/Alpine or universal Linux package. RPM/AppImage output is not implemented.
 
 `SUNCODE_UPDATE_DISTRIBUTION_FILE` selects existing update configuration. These full baseline packages are not independent component archives and create no trusted receipt. SHA-256 sidecars detect corruption rather than authenticate the publisher; repository/package signing and managed-update enrollment remain release work.

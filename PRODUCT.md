@@ -29,7 +29,7 @@ The user opens a project in the Avalonia desktop application, creates or resumes
 - The built-in catalog has seven providers with two stable model identities each, including Qwen3.8 Max and Qwen3.8 Flash.
 - The Avalonia client embeds the Rust SDK through its method-oriented C ABI and does not access SQLite, model providers, or project files directly.
 - Machine-affecting operations use an audited internal Rust dispatcher; this is an auditability boundary, not an OS sandbox.
-- Provider credentials are stored in Rust-owned plaintext SQLite secret records and must not enter SDK responses, events, audit rows, or logs.
+- Provider API keys are stored through Rust-owned system credential storage and must not enter SDK responses, events, audit rows, or logs.
 - Phase 1 is an embedded desktop product. Cloud execution, multi-tenancy, hosted identity, collaboration, CLI/TUI/Web clients, mobile clients, IDE plugins, and executable third-party extensions are deferred or out of scope.
 - The production desktop application uses Avalonia; other desktop UI toolkits and Electron are not supported production dependencies. Node.js and Bun are not Phase 1 production runtime dependencies.
 - Project, session, and turn are the product's domain terms; workspace and task are retired terms.

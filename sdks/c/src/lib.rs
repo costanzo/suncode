@@ -1894,7 +1894,14 @@ mod tests {
         std::env::remove_var("SUNCODE_DATABASE_PATH");
         std::env::set_var("SUNCODE_NON_INTERACTIVE", "false");
 
-        let sdk = AgentSdk::open_default("test-native-watch").unwrap();
+        let sdk = AgentSdk::open_with_options(
+            "test-native-watch",
+            suncode_sdk::SdkOpenOptions {
+                environment_source: suncode_config::EnvironmentSource::Process,
+                ..suncode_sdk::SdkOpenOptions::default()
+            },
+        )
+        .unwrap();
         let project_root = directory.path().join("project");
         std::fs::create_dir_all(&project_root).unwrap();
         let project = sdk
@@ -1904,6 +1911,42 @@ mod tests {
             .create_session(&project.project_id, Some("Session"), None)
             .unwrap();
         let mut handle = SunCodeAgentHandle { sdk };
+        // Retained mode-aware ABI symbols reject plaintext before OS access.
+        let provider = CString::new("openai").unwrap();
+        let api_key = CString::new("test-value-never-stored").unwrap();
+        let plaintext = CString::new("plaintext").unwrap();
+        for result in [
+            unsafe {
+                suncode_agent_sdk_set_credential_with_mode(
+                    &mut handle,
+                    provider.as_ptr(),
+                    api_key.as_ptr(),
+                    plaintext.as_ptr(),
+                )
+            },
+            unsafe {
+                suncode_agent_sdk_change_credential_mode(
+                    &mut handle,
+                    provider.as_ptr(),
+                    plaintext.as_ptr(),
+                )
+            },
+        ] {
+            let response: Value =
+                serde_json::from_str(unsafe { CStr::from_ptr(result) }.to_str().unwrap()).unwrap();
+            assert_eq!(response["ok"], false);
+            assert_eq!(response["error"]["code"], "invalid_arguments");
+            assert!(!response.to_string().contains("test-value-never-stored"));
+            unsafe { suncode_agent_sdk_string_free(result) };
+        }
+        assert!(handle
+            .sdk
+            .list_credentials()
+            .unwrap()
+            .credentials
+            .iter()
+            .all(|item| !item.configured));
+
         let missing_shell = directory.path().join("missing/sh");
         let shell_request = CString::new(serde_json::json!({"agent":{"mode":"custom","path":missing_shell,"resolved":{"path":missing_shell,"family":"sh","version":"host supplied","interactiveArgs":[]}},"terminal":{"mode":"system","path":""}}).to_string()).unwrap();
         let saved = unsafe {

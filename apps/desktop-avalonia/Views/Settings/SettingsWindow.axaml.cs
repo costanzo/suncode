@@ -66,7 +66,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         if (next is null) return;
         _settings = new SettingsWindowViewModel(next);
         _settings.Navigation.ProviderPanelShown += ShowProviderPanel;
-        ProviderManager.CredentialModeChangedRequest += CredentialModeChanged;
         _settings.AttachDialogs(this);
         next.Models.CollectionChanged += ModelsCollectionChanged;
         next.AppSettings.LanguageChanged += LanguageChanged;
@@ -77,7 +76,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
     {
         if (_settings is not { } settings) return;
         settings.Navigation.ProviderPanelShown -= ShowProviderPanel;
-        ProviderManager.CredentialModeChangedRequest -= CredentialModeChanged;
         settings.Desktop.Models.CollectionChanged -= ModelsCollectionChanged;
         settings.Desktop.AppSettings.LanguageChanged -= LanguageChanged;
         settings.Dispose();
@@ -155,49 +153,30 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         if (_credentialBusy) return;
         var provider = ActiveProviderId;
         var value = ProviderManager.ApiKeyText?.Trim();
-        var mode = ProviderManager.CredentialMode;
-        if (string.IsNullOrWhiteSpace(value)
-            && string.Equals(mode, ViewModel.ProviderCredentialMode(ActiveProviderId), StringComparison.Ordinal)) return;
-        async Task CommitAsync()
+        if (string.IsNullOrWhiteSpace(value)) return;
+        _credentialBusy = true;
+        ProviderManager.SetCredentialBusy(true);
+        ProviderManager.SetCredentialFeedback(L("LocCredentialSaving", "Saving API key…"));
+        try
         {
-            _credentialBusy = true;
-            ProviderManager.SetCredentialBusy(true);
-            ProviderManager.SetCredentialFeedback(L("LocCredentialSaving", "Saving API key…"));
-            try
+            var saved = await ViewModel.SaveCredentialAsync(provider, value);
+            if (ActiveProviderId != provider) return;
+            if (saved)
             {
-                var saved = await ViewModel.SaveCredentialAsync(provider, value ?? string.Empty, mode);
-                if (ActiveProviderId != provider) return;
-                if (saved)
-                {
-                    ProviderManager.ApiKeyText = string.Empty;
-                    RefreshProvider();
-                    ProviderManager.SetCredentialFeedback(L("LocCredentialSaved", "API key settings saved."));
-                }
-                else
-                {
-                    ProviderManager.SetCredentialFeedback(ViewModel.StatusText, true);
-                }
+                ProviderManager.ApiKeyText = string.Empty;
+                RefreshProvider();
+                ProviderManager.SetCredentialFeedback(L("LocCredentialSaved", "API key saved."));
             }
-            finally
+            else
             {
-                _credentialBusy = false;
-                ProviderManager.SetCredentialBusy(false);
+                RefreshProvider();
+                ProviderManager.SetCredentialFeedback(ViewModel.StatusText, true);
             }
         }
-        if (mode == "plaintext")
+        finally
         {
-            Confirm(
-                new ConfirmationRequest(
-                    L("LocCredentialPlaintextTitle", "Save API key as plaintext?"),
-                    L("LocCredentialPlaintextMessage", "The complete API key will be readable from the local SQLite database and its backups."),
-                    ActiveProviderId,
-                    "PLAINTEXT",
-                    L("LocCredentialUsePlaintext", "Use plaintext")),
-                () => _ = CommitAsync());
-        }
-        else
-        {
-            await CommitAsync();
+            _credentialBusy = false;
+            ProviderManager.SetCredentialBusy(false);
         }
     }
 
@@ -215,17 +194,15 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
     {
         if (_credentialBusy) return;
         var provider = ActiveProviderId;
-        var mode = ProviderManager.CredentialMode;
         _credentialBusy = true;
         ProviderManager.SetCredentialBusy(true);
         try
         {
-            await ViewModel.RefreshCredentialsAsync();
+            var accessible = await ViewModel.CheckCredentialAsync(provider);
             if (ActiveProviderId == provider)
             {
                 RefreshProvider();
-                ProviderManager.CredentialMode = mode;
-                UpdateCredentialSaveState();
+                ProviderManager.SetCredentialFeedback(accessible ? string.Empty : ViewModel.StatusText, !accessible);
             }
         }
         finally
@@ -238,20 +215,8 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
     private void ProviderApiKeyChanged(object? sender, TextChangedEventArgs e) =>
         UpdateCredentialSaveState();
 
-    private void CredentialModeChanged(object? sender, string mode)
-    {
-        var provider = ActiveProviderId;
-        if (string.IsNullOrWhiteSpace(provider)) return;
-        UpdateCredentialSaveState();
-    }
-
-    private void UpdateCredentialSaveState()
-    {
-        var value = ProviderManager.ApiKeyText?.Trim();
-        ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(value)
-            || !string.IsNullOrEmpty(ViewModel.ProviderCredentialMask(ActiveProviderId))
-                && !string.Equals(ProviderManager.CredentialMode, ViewModel.ProviderCredentialMode(ActiveProviderId), StringComparison.Ordinal);
-    }
+    private void UpdateCredentialSaveState() =>
+        ProviderManager.CanSaveCredential = !string.IsNullOrWhiteSpace(ProviderManager.ApiKeyText);
 
     private void ProviderEndpointChanged(object? sender, TextChangedEventArgs e) =>
         RefreshProviderEndpointActions();
@@ -294,11 +259,8 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
             {
                 var removed = await ViewModel.RemoveCredentialAsync(provider);
                 if (ActiveProviderId != provider) return;
-                if (removed)
-                {
-                    ProviderManager.ApiKeyText = string.Empty;
-                    RefreshProvider();
-                }
+                if (removed) ProviderManager.ApiKeyText = string.Empty;
+                RefreshProvider();
                 ProviderManager.SetCredentialFeedback(removed ? L("LocCredentialRemoved", "API key removed.") : ViewModel.StatusText, !removed);
             }
             finally
@@ -314,8 +276,6 @@ public sealed partial class SettingsWindow : Window, ISettingsDialogs
         var configured = ViewModel.IsProviderConfigured(ActiveProviderId);
         ProviderManager.CredentialConfigured = configured;
         ProviderManager.CredentialStatus = ViewModel.ProviderCredentialStatus(ActiveProviderId);
-        ProviderManager.SavedCredentialMode = ViewModel.ProviderCredentialMode(ActiveProviderId);
-        ProviderManager.CredentialMode = ProviderManager.SavedCredentialMode;
         ProviderManager.CredentialMask = ViewModel.ProviderCredentialMask(ActiveProviderId);
         ProviderManager.CredentialStatusText = configured
             ? L("LocApiKeyConfigured", "API key configured")

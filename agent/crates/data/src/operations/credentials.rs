@@ -13,7 +13,6 @@ pub struct ProviderCredentialRecord {
     pub provider_id: String,
     pub mode: CredentialStorageMode,
     pub secret_ref: Option<String>,
-    pub plaintext: Option<String>,
     pub mask: Option<String>,
 }
 
@@ -26,13 +25,10 @@ struct CredentialRow {
     #[diesel(sql_type = Nullable<Text>)]
     secret_ref: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
-    api_key: Option<String>,
-    #[diesel(sql_type = Nullable<Text>)]
     api_key_mask: Option<String>,
 }
 
 impl Store {
-    /// Compatibility shim for older hosts. New callers should select a mode explicitly.
     pub fn llm_provider_api_key(&self, provider_id: &str) -> Result<Option<String>, BusinessError> {
         self.resolve_provider_credential(provider_id)
     }
@@ -42,8 +38,7 @@ impl Store {
         provider_id: &str,
         value: &str,
     ) -> Result<(), BusinessError> {
-        self.save_provider_credential(provider_id, Some(value), CredentialStorageMode::Keychain)
-            .map(|_| ())
+        self.save_provider_credential(provider_id, value)
     }
 
     pub fn delete_llm_provider_api_key(&self, provider_id: &str) -> Result<(), BusinessError> {
@@ -58,7 +53,7 @@ impl Store {
             return Err(BusinessError::invalid("model provider id is required"));
         }
         let mut connection = lock(&self.connection)?;
-        sql_query("SELECT provider_id,credential_mode,secret_ref,api_key,api_key_mask FROM llm_model_provider WHERE provider_id=?")
+        sql_query("SELECT provider_id,credential_mode,secret_ref,api_key_mask FROM llm_model_provider WHERE provider_id=?")
             .bind::<Text, _>(provider_id.trim())
             .get_result::<CredentialRow>(&mut *connection)
             .optional()
@@ -68,7 +63,6 @@ impl Store {
                     provider_id: row.provider_id,
                     mode: CredentialStorageMode::parse(&row.credential_mode)?,
                     secret_ref: row.secret_ref,
-                    plaintext: row.api_key,
                     mask: row.api_key_mask,
                 })
             })
@@ -78,44 +72,15 @@ impl Store {
     fn set_provider_credential_metadata(
         &self,
         provider_id: &str,
-        mode: CredentialStorageMode,
-        plaintext: Option<&str>,
         secret_ref: Option<&str>,
         mask: Option<&str>,
     ) -> Result<(), BusinessError> {
-        let provider_id = provider_id.trim();
-        if provider_id.is_empty() || (plaintext.is_some() == secret_ref.is_some()) {
-            return Err(BusinessError::invalid(
-                "credential storage fields are invalid",
-            ));
-        }
-        if mode == CredentialStorageMode::Plaintext && plaintext.is_none()
-            || mode == CredentialStorageMode::Keychain && secret_ref.is_none()
-        {
-            return Err(BusinessError::invalid(
-                "credential storage value does not match its mode",
-            ));
-        }
         let mut connection = lock(&self.connection)?;
-        let changed = sql_query("UPDATE llm_model_provider SET api_key=?,credential_mode=?,secret_ref=?,api_key_mask=?,updated_at=? WHERE provider_id=?")
-            .bind::<Nullable<Text>, _>(plaintext)
-            .bind::<Text, _>(mode.as_str())
+        // Keep the database layout compatible with existing keychain records.
+        // The former plaintext column is reserved and always cleared.
+        let changed = sql_query("UPDATE llm_model_provider SET api_key=NULL,credential_mode='keychain',secret_ref=?,api_key_mask=?,updated_at=? WHERE provider_id=?")
             .bind::<Nullable<Text>, _>(secret_ref)
             .bind::<Nullable<Text>, _>(mask)
-            .bind::<Text, _>(&now())
-            .bind::<Text, _>(provider_id)
-            .execute(&mut *connection)
-            .map_err(crate::database_error)?;
-        if changed == 0 {
-            Err(BusinessError::invalid("model provider does not exist"))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn clear_provider_credential(&self, provider_id: &str) -> Result<(), BusinessError> {
-        let mut connection = lock(&self.connection)?;
-        let changed = sql_query("UPDATE llm_model_provider SET api_key=NULL,secret_ref=NULL,api_key_mask=NULL,updated_at=? WHERE provider_id=?")
             .bind::<Text, _>(&now())
             .bind::<Text, _>(provider_id.trim())
             .execute(&mut *connection)
@@ -130,10 +95,10 @@ impl Store {
     pub fn save_provider_credential(
         &self,
         provider_id: &str,
-        value: Option<&str>,
-        requested_mode: CredentialStorageMode,
+        value: &str,
     ) -> Result<(), BusinessError> {
-        if value.is_some_and(|value| value.trim().is_empty()) {
+        let value = suncode_secrets::SecretValue::new(value.trim().to_string());
+        if value.expose().is_empty() {
             return Err(BusinessError::invalid("provider API key is required"));
         }
         let _guard = self.credential_guard()?;
@@ -150,63 +115,22 @@ impl Store {
         } else {
             None
         };
-        let resolved = match value.filter(|value| !value.trim().is_empty()) {
-            Some(value) => suncode_secrets::SecretValue::new(value.trim().to_string()),
-            None => match current.mode {
-                CredentialStorageMode::Plaintext => suncode_secrets::SecretValue::new(current.plaintext.clone().ok_or_else(|| BusinessError::invalid("provider API key is required"))?),
-                CredentialStorageMode::Keychain => suncode_secrets::SecretValue::new(previous.as_ref().ok_or_else(|| BusinessError::new("credential_missing", "Enter a replacement API key; the saved system keychain entry is missing."))?.expose().to_string()),
-            },
-        };
-        let mask = mask_secret(resolved.expose());
-        match requested_mode {
-            CredentialStorageMode::Keychain => self
-                .secrets
-                .set(&id, resolved.expose())
-                .map_err(credential_store_error)?,
-            CredentialStorageMode::Plaintext => (),
-        }
-        let update = self.set_provider_credential_metadata(
-            provider_id,
-            requested_mode,
-            (requested_mode == CredentialStorageMode::Plaintext).then(|| resolved.expose()),
-            (requested_mode == CredentialStorageMode::Keychain).then_some(reference.as_str()),
-            Some(&mask),
-        );
-        if update.is_err() && requested_mode == CredentialStorageMode::Keychain {
+        self.secrets
+            .set(&id, value.expose())
+            .map_err(credential_store_error)?;
+        let mask = mask_secret(value.expose());
+        let update =
+            self.set_provider_credential_metadata(provider_id, Some(&reference), Some(&mask));
+        if update.is_err() {
             let rollback = match previous {
                 Some(previous) => self.secrets.set(&id, previous.expose()),
-                None if requested_mode == CredentialStorageMode::Keychain => {
-                    self.secrets.delete(&id)
-                }
-                None => Ok(()),
+                None => self.secrets.delete(&id),
             };
             if rollback.is_err() {
                 return Err(BusinessError::new("credential_recovery_required", "Credential storage update and rollback failed. Check system keychain access and enter the API key again."));
             }
         }
-        update?;
-
-        // Once SQLite no longer points at the keychain entry, removal failure must
-        // restore its previous metadata before returning an error.
-        if requested_mode == CredentialStorageMode::Plaintext && current.secret_ref.is_some() {
-            if let Err(error) = self.secrets.delete(&id) {
-                let restored = self.set_provider_credential_metadata(
-                    provider_id,
-                    current.mode,
-                    current.plaintext.as_deref(),
-                    current.secret_ref.as_deref(),
-                    current.mask.as_deref(),
-                );
-                if restored.is_err() {
-                    return Err(BusinessError::new(
-                        "credential_recovery_required",
-                        "Credential storage update and rollback failed. Check system keychain access and enter the API key again.",
-                    ));
-                }
-                return Err(credential_store_error(error));
-            }
-        }
-        Ok(())
+        update
     }
 
     pub fn remove_provider_credential(&self, provider_id: &str) -> Result<(), BusinessError> {
@@ -222,7 +146,7 @@ impl Store {
         } else {
             None
         };
-        let update = self.clear_provider_credential(provider_id);
+        let update = self.set_provider_credential_metadata(provider_id, None, None);
         if update.is_err() {
             if let Some((id, previous)) = previous {
                 self.secrets.set(&id, previous.expose()).map_err(|_| {
@@ -244,18 +168,21 @@ impl Store {
         let Some(record) = self.provider_credential(provider_id)? else {
             return Ok(None);
         };
-        match record.mode {
-            CredentialStorageMode::Plaintext => Ok(record.plaintext),
-            CredentialStorageMode::Keychain => {
-                let Some(reference) = record.secret_ref else {
-                    return Ok(None);
-                };
-                self.secrets.get(&Self::credential_secret_id(&reference)?)
-                    .map_err(credential_store_error)?
-                    .map(|value| Some(value.into_string()))
-                    .ok_or_else(|| BusinessError::new("credential_missing", "Saved API key is missing from the system keychain. Enter a replacement key."))
-            }
-        }
+        let Some(reference) = record.secret_ref.as_deref() else {
+            return Ok(None);
+        };
+        let id = Self::credential_secret_id(reference)?;
+        self.secrets
+            .get(&id)
+            .map_err(credential_store_error)?
+            .map(|value| value.into_string())
+            .ok_or_else(|| {
+                BusinessError::new(
+                    "credential_missing",
+                    "The saved system keychain entry is missing. Enter a replacement API key.",
+                )
+            })
+            .map(Some)
     }
 
     pub fn provider_credential_status(
@@ -265,28 +192,13 @@ impl Store {
         let Some(record) = self.provider_credential(provider_id)? else {
             return Ok("missing");
         };
-        if record.secret_ref.is_none() && record.plaintext.is_none() {
-            return Ok("missing");
-        }
-        match record.mode {
-            CredentialStorageMode::Plaintext => Ok(
-                if record
-                    .plaintext
-                    .as_deref()
-                    .is_some_and(|value| !value.is_empty())
-                {
-                    "configured"
-                } else {
-                    "missing"
-                },
-            ),
-            // Reading the secret here would trigger a macOS KeyChain prompt on every startup.
-            CredentialStorageMode::Keychain => Ok(if record.secret_ref.is_some() {
-                "configured"
-            } else {
-                "missing"
-            }),
-        }
+        // Status is a metadata projection. Reading the secret here could
+        // trigger a macOS Keychain prompt on every startup.
+        Ok(if record.secret_ref.is_some() {
+            "configured"
+        } else {
+            "missing"
+        })
     }
 
     pub fn credential_secret_id(provider_id: &str) -> Result<SecretId, BusinessError> {
@@ -368,49 +280,65 @@ mod tests {
     }
 
     #[test]
-    fn keychain_write_failure_preserves_plaintext_and_never_falls_back() {
+    fn keychain_write_failure_preserves_the_existing_key() {
         let backend = Arc::new(FailingStore::default());
         let store = Store::open_memory()
             .unwrap()
             .with_secret_store(backend.clone());
         store
-            .save_provider_credential(
-                "openai",
-                Some("fake-key-for-tests"),
-                CredentialStorageMode::Plaintext,
-            )
+            .save_provider_credential("openai", "fake-original-key")
             .unwrap();
+        let before = store.provider_credential("openai").unwrap().unwrap();
         *backend.set_error.lock().unwrap() = Some(SecretStoreError::AccessDenied);
         assert_eq!(
             store
-                .save_provider_credential("openai", None, CredentialStorageMode::Keychain)
+                .save_provider_credential("openai", "fake-replacement-key")
                 .unwrap_err()
                 .code,
             "credential_access_denied"
         );
+        assert!(store.provider_credential("openai").unwrap().unwrap() == before);
+        assert_eq!(
+            store
+                .resolve_provider_credential("openai")
+                .unwrap()
+                .as_deref(),
+            Some("fake-original-key")
+        );
+    }
+
+    #[test]
+    fn unavailable_store_never_creates_a_database_credential() {
+        let backend = Arc::new(FailingStore::default());
+        let store = Store::open_memory()
+            .unwrap()
+            .with_secret_store(backend.clone());
+        *backend.set_error.lock().unwrap() = Some(SecretStoreError::Unavailable);
+        assert_eq!(
+            store
+                .save_provider_credential("openai", "fake-secret-value")
+                .unwrap_err()
+                .code,
+            "credential_store_unavailable"
+        );
         let record = store.provider_credential("openai").unwrap().unwrap();
-        assert_eq!(record.mode, CredentialStorageMode::Plaintext);
         assert!(record.secret_ref.is_none());
-        assert_eq!(record.plaintext.as_deref(), Some("fake-key-for-tests"));
+        assert!(record.mask.is_none());
+        assert_eq!(
+            store.provider_credential_status("openai").unwrap(),
+            "missing"
+        );
     }
 
     #[test]
     fn failed_sqlite_update_restores_replaced_keychain_value() {
         let store = Store::open_memory().unwrap();
         store
-            .save_provider_credential(
-                "openai",
-                Some("fake-original-key"),
-                CredentialStorageMode::Keychain,
-            )
+            .save_provider_credential("openai", "fake-original-key")
             .unwrap();
         fail_database_updates(&store);
         assert!(store
-            .save_provider_credential(
-                "openai",
-                Some("fake-replacement-key"),
-                CredentialStorageMode::Keychain
-            )
+            .save_provider_credential("openai", "fake-replacement-key")
             .is_err());
         assert_eq!(
             store
@@ -431,29 +359,21 @@ mod tests {
     }
 
     #[test]
-    fn failed_keychain_delete_restores_storage_metadata() {
+    fn failed_keychain_delete_preserves_storage_metadata() {
         let backend = Arc::new(FailingStore::default());
         let store = Store::open_memory()
             .unwrap()
             .with_secret_store(backend.clone());
         store
-            .save_provider_credential(
-                "openai",
-                Some("fake-original-key"),
-                CredentialStorageMode::Keychain,
-            )
+            .save_provider_credential("openai", "fake-original-key")
             .unwrap();
         let before = store.provider_credential("openai").unwrap().unwrap();
         *backend.delete_error.lock().unwrap() = Some(SecretStoreError::AccessDenied);
         assert_eq!(
-            store
-                .save_provider_credential("openai", None, CredentialStorageMode::Plaintext)
-                .unwrap_err()
-                .code,
+            store.remove_provider_credential("openai").unwrap_err().code,
             "credential_access_denied"
         );
-        let after = store.provider_credential("openai").unwrap().unwrap();
-        assert!(before == after);
+        assert!(store.provider_credential("openai").unwrap().unwrap() == before);
         assert_eq!(
             store
                 .resolve_provider_credential("openai")
@@ -467,11 +387,7 @@ mod tests {
     fn failed_metadata_clear_restores_removed_keychain_entry() {
         let store = Store::open_memory().unwrap();
         store
-            .save_provider_credential(
-                "openai",
-                Some("fake-original-key"),
-                CredentialStorageMode::Keychain,
-            )
+            .save_provider_credential("openai", "fake-original-key")
             .unwrap();
         fail_database_updates(&store);
         assert!(store.remove_provider_credential("openai").is_err());
@@ -491,11 +407,7 @@ mod tests {
             .unwrap()
             .with_secret_store(backend.clone());
         store
-            .save_provider_credential(
-                "openai",
-                Some("fake-original-key"),
-                CredentialStorageMode::Keychain,
-            )
+            .save_provider_credential("openai", "fake-original-key")
             .unwrap();
         for (error, code) in [
             (SecretStoreError::Locked, "credential_locked"),
@@ -520,7 +432,6 @@ mod tests {
                 code
             );
             let record = store.provider_credential("openai").unwrap().unwrap();
-            assert!(record.plaintext.is_none());
             assert!(record.mask.is_some());
         }
     }
@@ -534,9 +445,7 @@ mod tests {
             .unwrap()
             .batch_execute("UPDATE llm_model_provider SET enabled=0 WHERE provider_id='openai'")
             .unwrap();
-        store
-            .save_provider_credential("openai", Some("tiny"), CredentialStorageMode::Keychain)
-            .unwrap();
+        store.save_provider_credential("openai", "tiny").unwrap();
         assert_eq!(
             store
                 .provider_credential("openai")
@@ -546,9 +455,6 @@ mod tests {
                 .as_deref(),
             Some("••••••••")
         );
-        store
-            .save_provider_credential("openai", None, CredentialStorageMode::Plaintext)
-            .unwrap();
         store.remove_provider_credential("openai").unwrap();
         assert_eq!(
             store.provider_credential_status("openai").unwrap(),

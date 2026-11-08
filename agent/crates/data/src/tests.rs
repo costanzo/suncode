@@ -646,8 +646,11 @@ fn seeded_model_catalog_matches_current_provider_limits_and_capabilities() {
 fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");
+    let secrets = std::sync::Arc::new(suncode_secrets::MemorySecretStore::default());
     {
-        let store = Store::open(&path).unwrap();
+        let store = Store::open(&path)
+            .unwrap()
+            .with_secret_store(secrets.clone());
         let mut connection = store.connection.lock().unwrap();
         connection.batch_execute(
             "DELETE FROM llm_model WHERE provider_id IN ('xai', 'minimax', 'meta', 'mimo');
@@ -657,15 +660,13 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
         ).unwrap();
         drop(connection);
         store
-            .save_provider_credential(
-                "openai",
-                Some("test-existing-key"),
-                crate::CredentialStorageMode::Plaintext,
-            )
+            .save_provider_credential("openai", "test-existing-key")
             .unwrap();
     }
     for _ in 0..2 {
-        let store = Store::open(&path).unwrap();
+        let store = Store::open(&path)
+            .unwrap()
+            .with_secret_store(secrets.clone());
         let providers = store.llm_model_providers(true).unwrap();
         assert_eq!(providers.len(), 12);
         let openai = providers
@@ -722,11 +723,14 @@ fn reopening_existing_catalog_adds_new_providers_and_preserves_provider_settings
 }
 
 #[test]
-fn chat_completions_adapter_migration_preserves_provider_settings() {
+fn reopening_custom_provider_preserves_system_credential_metadata() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("agent.sqlite3");
+    let secrets = std::sync::Arc::new(suncode_secrets::MemorySecretStore::default());
     {
-        let store = Store::open(&path).unwrap();
+        let store = Store::open(&path)
+            .unwrap()
+            .with_secret_store(secrets.clone());
         store
             .upsert_llm_model_provider(LlmModelProviderInput {
                 provider_id: "custom-gateway",
@@ -739,45 +743,16 @@ fn chat_completions_adapter_migration_preserves_provider_settings() {
             })
             .unwrap();
         store
-            .save_provider_credential(
-                "custom-gateway",
-                Some("existing-secret-value"),
-                crate::CredentialStorageMode::Plaintext,
-            )
+            .save_provider_credential("custom-gateway", "existing-secret-value")
             .unwrap();
-        let mut connection = store.connection.lock().unwrap();
-        connection
-            .batch_execute(
-                "DELETE FROM llm_model WHERE provider_id='tencent';
-                 DELETE FROM llm_model_provider WHERE provider_id='tencent';
-                 DROP INDEX llm_model_provider_enabled_order_idx;
-                 ALTER TABLE llm_model_provider RENAME TO llm_model_provider_current;
-                 CREATE TABLE llm_model_provider (
-                    provider_id TEXT PRIMARY KEY CHECK(length(provider_id) > 0),
-                    display_name TEXT NOT NULL CHECK(length(display_name) > 0),
-                    endpoint TEXT NOT NULL CHECK(length(endpoint) > 0),
-                    default_endpoint TEXT NOT NULL CHECK(length(default_endpoint) > 0),
-                    adapter_type TEXT NOT NULL DEFAULT 'openai' CHECK(adapter_type IN ('openai', 'anthropic')),
-                    api_key TEXT,
-                    credential_mode TEXT NOT NULL DEFAULT 'keychain' CHECK(credential_mode IN ('keychain', 'plaintext')),
-                    secret_ref TEXT,
-                    api_key_mask TEXT,
-                    enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0, 1)),
-                    sort_order INTEGER NOT NULL DEFAULT 0 CHECK(sort_order >= 0),
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    CHECK((credential_mode = 'keychain' AND api_key IS NULL) OR
-                          (credential_mode = 'plaintext' AND secret_ref IS NULL))
-                 );
-                 INSERT INTO llm_model_provider SELECT * FROM llm_model_provider_current;
-                 DROP TABLE llm_model_provider_current;
-                 CREATE INDEX llm_model_provider_enabled_order_idx ON llm_model_provider(enabled, sort_order, provider_id);
-                 PRAGMA user_version=2;",
-            )
-            .unwrap();
+        store.connection.lock().unwrap().batch_execute(
+            "DELETE FROM llm_model WHERE provider_id='tencent'; DELETE FROM llm_model_provider WHERE provider_id='tencent';"
+        ).unwrap();
     }
 
-    let store = Store::open(&path).unwrap();
+    let store = Store::open(&path)
+        .unwrap()
+        .with_secret_store(secrets.clone());
     let providers = store.llm_model_providers(false).unwrap();
     let custom = providers
         .iter()
@@ -805,56 +780,74 @@ fn chat_completions_adapter_migration_preserves_provider_settings() {
 }
 
 #[test]
-fn credential_storage_modes_keep_secret_values_out_of_the_wrong_store() {
+fn provider_credentials_store_only_references_and_masks_in_sqlite() {
     let store = Store::open_memory().unwrap();
     store
-        .save_provider_credential(
-            "openai",
-            Some("sk-test-value-123456789"),
-            crate::CredentialStorageMode::Plaintext,
-        )
+        .save_provider_credential("openai", "sk-test-value-123456789")
         .unwrap();
-    let plaintext = store.provider_credential("openai").unwrap().unwrap();
-    assert_eq!(
-        plaintext.plaintext.as_deref(),
-        Some("sk-test-value-123456789")
-    );
-    assert!(plaintext.secret_ref.is_none());
-    assert_eq!(plaintext.mask.as_deref(), Some("sk-t••••••••6789"));
-
-    store
-        .save_provider_credential("openai", None, crate::CredentialStorageMode::Keychain)
-        .unwrap();
-    let keychain = store.provider_credential("openai").unwrap().unwrap();
-    assert!(keychain.plaintext.is_none());
-    let reference = keychain.secret_ref.as_deref().unwrap();
-    let secret_id = Store::credential_secret_id(reference).unwrap();
+    let record = store.provider_credential("openai").unwrap().unwrap();
+    assert_eq!(record.mode, crate::CredentialStorageMode::Keychain);
+    assert_eq!(record.mask.as_deref(), Some("sk-t••••••••6789"));
+    let secret_id = Store::credential_secret_id(record.secret_ref.as_deref().unwrap()).unwrap();
     assert_eq!(
         store.secrets.get(&secret_id).unwrap().unwrap().expose(),
         "sk-test-value-123456789"
     );
-
-    store
-        .save_provider_credential("openai", None, crate::CredentialStorageMode::Plaintext)
+    #[derive(QueryableByName)]
+    struct KeyRow {
+        #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+        api_key: Option<String>,
+    }
+    let row = sql_query("SELECT api_key FROM llm_model_provider WHERE provider_id='openai'")
+        .get_result::<KeyRow>(&mut *store.connection.lock().unwrap())
         .unwrap();
-    let plaintext_again = store.provider_credential("openai").unwrap().unwrap();
-    assert!(plaintext_again.secret_ref.is_none());
+    assert!(row.api_key.is_none());
+    store
+        .save_provider_credential("openai", "replacement-key-value")
+        .unwrap();
     assert_eq!(
-        plaintext_again.plaintext.as_deref(),
-        Some("sk-test-value-123456789")
+        store
+            .provider_credential("openai")
+            .unwrap()
+            .unwrap()
+            .secret_ref,
+        record.secret_ref
     );
+    assert_eq!(
+        store
+            .resolve_provider_credential("openai")
+            .unwrap()
+            .as_deref(),
+        Some("replacement-key-value")
+    );
+    store.remove_provider_credential("openai").unwrap();
     assert!(store.secrets.get(&secret_id).unwrap().is_none());
+    assert_eq!(
+        store.provider_credential_status("openai").unwrap(),
+        "missing"
+    );
+}
+
+#[test]
+fn plaintext_credential_modes_and_records_are_rejected() {
+    assert!(crate::CredentialStorageMode::parse("plaintext").is_err());
+    assert!(serde_json::from_str::<crate::CredentialStorageMode>(r#""plaintext""#).is_err());
+    let store = Store::open_memory().unwrap();
+    store.connection.lock().unwrap().batch_execute(
+        "UPDATE llm_model_provider SET credential_mode='plaintext',api_key='unsupported-test-value' WHERE provider_id='openai'"
+    ).unwrap();
+    assert!(store.resolve_provider_credential("openai").is_err());
+    assert!(store
+        .save_provider_credential("openai", "replacement")
+        .is_err());
+    assert!(store.llm_model_providers(false).is_err());
 }
 
 #[test]
 fn missing_keychain_entry_is_reported_without_exposing_or_clearing_its_mask() {
     let store = Store::open_memory().unwrap();
     store
-        .save_provider_credential(
-            "openai",
-            Some("sk-test-value-123456789"),
-            crate::CredentialStorageMode::Keychain,
-        )
+        .save_provider_credential("openai", "sk-test-value-123456789")
         .unwrap();
     let record = store.provider_credential("openai").unwrap().unwrap();
     let id = Store::credential_secret_id(record.secret_ref.as_deref().unwrap()).unwrap();
@@ -864,7 +857,6 @@ fn missing_keychain_entry_is_reported_without_exposing_or_clearing_its_mask() {
     assert_eq!(error.code, "credential_missing");
     let record = store.provider_credential("openai").unwrap().unwrap();
     assert_eq!(record.mask.as_deref(), Some("sk-t••••••••6789"));
-    assert!(record.plaintext.is_none());
 }
 
 #[test]
