@@ -1,10 +1,4 @@
 @media (max-width: 1100px) {
-  .workbench-body {
-    grid-template-columns: 175px minmax(0, 1fr);
-  }
-  .demo-review {
-    display: none;
-  }
   .story-row {
     gap: 32px;
   }
@@ -197,100 +191,6 @@
   }
   .hero-actions .button {
     font-size: 12px;
-  }
-  .demo-section {
-    margin-top: 40px;
-  }
-  .demo-tabs {
-    gap: 17px;
-    overflow-x: auto;
-    padding: 3px;
-    margin-inline: -3px;
-  }
-  .demo-tabs button {
-    font-size: 10px;
-    flex-shrink: 0;
-    gap: 6px;
-  }
-  .step-mark {
-    width: 14px;
-    height: 14px;
-  }
-  .workbench-titlebar {
-    gap: 12px;
-    height: 36px;
-    padding-inline: 12px;
-  }
-  .demo-project {
-    font-size: 9px;
-    gap: 6px;
-  }
-  .demo-project > span {
-    display: none;
-  }
-  .window-dots {
-    gap: 4px;
-  }
-  .window-dots i {
-    width: 5px;
-    height: 5px;
-  }
-  .illustration-label {
-    font-size: 8px;
-  }
-  .workbench-body {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 440px;
-  }
-  .demo-sidebar {
-    display: none;
-  }
-  .demo-conversation {
-    padding: 20px 14px 14px;
-  }
-  .demo-conversation-heading {
-    padding-bottom: 20px;
-  }
-  .demo-conversation-heading h3 {
-    font-size: 11px;
-  }
-  .demo-user {
-    font-size: 10px;
-    max-width: 92%;
-  }
-  .demo-assistant {
-    gap: 10px;
-    font-size: 10px;
-  }
-  .demo-stage {
-    margin-left: 0;
-  }
-  .demo-stage pre {
-    font-size: 8px;
-  }
-  .demo-approval {
-    padding: 13px;
-  }
-  .demo-approval-title > span {
-    display: none;
-  }
-  .demo-decision {
-    gap: 8px;
-    font-size: 8px;
-  }
-  .demo-checkpoint > span {
-    display: none;
-  }
-  .workbench-status > span:nth-child(2) {
-    display: none;
-  }
-  .demo-caption {
-    display: block;
-    padding-block: 17px;
-  }
-  .demo-caption p {
-    margin-top: 8px;
-    line-height: 1.7;
   }
   .principles {
     gap: 14px;

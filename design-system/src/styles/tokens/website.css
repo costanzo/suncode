@@ -1,5 +1,11 @@
 :root,
 [data-website-theme="dark"] {
+  --website-demo-margin: 56px;
+  --website-demo-height: 700px;
+  --website-demo-diff-height: 260px;
+  --website-demo-mobile-conversation-height: 340px;
+  --website-demo-mobile-review-height: 280px;
+  --website-demo-mobile-file-list-height: 84px;
   --website-color-scheme: dark;
   --website-canvas: #0d0f12;
   --website-surface: #121519;

@@ -3,7 +3,8 @@
   background: var(--surface);
 }
 
-.workspace-git {
+.workspace-git,
+[data-website-theme="dark"] .workspace-git {
   --git-accent: #69c5b0;
   --git-accent-hover: #7dd2be;
   --git-accent-surface: #172824;
@@ -15,7 +16,8 @@
   --git-danger: #e68a83;
 }
 
-[data-theme="light"] .workspace-git {
+:where([data-theme="light"]) .workspace-git,
+[data-website-theme="light"] .workspace-git {
   --git-accent: #2f8f7d;
   --git-accent-hover: #277f6f;
   --git-accent-surface: #e0f2ee;

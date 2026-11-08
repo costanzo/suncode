@@ -38,7 +38,7 @@ function TrafficLight({ kind, label, onClick, isActive }) {
       onKeyUp={() => isActive && setState("normal")}
       onBlur={() => setState("normal")}
     >
-      <img src={source} alt="" draggable="false" />
+      <img src={typeof source === "string" ? source : source.src} alt="" draggable="false" />
     </button>
   );
 }
@@ -54,8 +54,18 @@ export function TrafficLights({
   return (
     <div className={`traffic-lights ${className}`} aria-label="Window controls">
       <TrafficLight kind="close" label="Close window" onClick={onClose} isActive={isActive} />
-      <TrafficLight kind="minimize" label="Minimize window" onClick={onMinimize} isActive={isActive} />
-      <TrafficLight kind="maximize" label={maximizeLabel} onClick={onMaximize} isActive={isActive} />
+      <TrafficLight
+        kind="minimize"
+        label="Minimize window"
+        onClick={onMinimize}
+        isActive={isActive}
+      />
+      <TrafficLight
+        kind="maximize"
+        label={maximizeLabel}
+        onClick={onMaximize}
+        isActive={isActive}
+      />
     </div>
   );
 }

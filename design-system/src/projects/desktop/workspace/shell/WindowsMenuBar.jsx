@@ -265,7 +265,7 @@ export function WindowsMenuBar({
       className={`windows-menu-titlebar ${platform === "ubuntu" ? "is-ubuntu" : ""} ${!isActive ? "is-inactive" : ""}`}
       onDoubleClick={onTitleBarDoubleClick}
     >
-      <img className="windows-menu-logo" src={logoUrl} alt="SunCode" />
+      <img className="windows-menu-logo" src={typeof logoUrl === "string" ? logoUrl : logoUrl.src} alt="SunCode" />
       <div className="windows-menu-region" ref={regionRef}>
         {expanded ? (
           <nav

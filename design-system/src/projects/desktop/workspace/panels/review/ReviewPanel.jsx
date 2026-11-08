@@ -14,7 +14,13 @@ import {
   currentTurnTodos,
 } from "../../data/review.js";
 
-export function ReviewPanel({ compact = false, standalone = false, state = "approval" }) {
+export function ReviewPanel({
+  compact = false,
+  standalone = false,
+  state = "approval",
+  initialChangesOpen = false,
+  onApprovalDecision,
+}) {
   const running = state === "running" || state === "running-no-changes";
   const compacting = state === "compacting";
   const waiting = state === "approval" || state === "question";
@@ -23,32 +29,37 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
   const failed = state === "failed";
   const noChanges = state === "running-no-changes";
   const inactive = idle;
-  const statusTone = idle
-    ? "idle"
-    : failed
-      ? "failed"
-      : compacting
-        ? "compacting"
-        : running
-          ? "running"
-          : state === "approval"
-            ? "approval"
-            : "question";
-  const statusLabel = noSession
-    ? "No session selected"
+  const completed = state === "completed";
+  const statusTone = completed
+    ? "completed"
     : idle
-      ? "Agent idle"
+      ? "idle"
       : failed
-        ? "Turn failed"
+        ? "failed"
         : compacting
-          ? "Compacting conversation context"
+          ? "compacting"
           : running
-            ? noChanges
-              ? "Agent running, no file changes"
-              : "Agent running"
+            ? "running"
             : state === "approval"
-              ? "Waiting for approval"
-              : "Waiting for answer";
+              ? "approval"
+              : "question";
+  const statusLabel = completed
+    ? "Turn completed"
+    : noSession
+      ? "No session selected"
+      : idle
+        ? "Agent idle"
+        : failed
+          ? "Turn failed"
+          : compacting
+            ? "Compacting conversation context"
+            : running
+              ? noChanges
+                ? "Agent running, no file changes"
+                : "Agent running"
+              : state === "approval"
+                ? "Waiting for approval"
+                : "Waiting for answer";
   const [questionOption, setQuestionOption] = useState(null);
   const [customAnswer, setCustomAnswer] = useState("");
   const questionOptions = [
@@ -71,7 +82,7 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
   const turnChangeRows = completedTurnChangeSet;
   const showTurnChanges =
     !inactive && !noChanges && !failed && !compacting && turnChangeRows.length > 0;
-  const [turnChangesOpen, setTurnChangesOpen] = useState(false);
+  const [turnChangesOpen, setTurnChangesOpen] = useState(initialChangesOpen);
   return (
     <aside
       className={`workspace-panel workspace-review ${compact ? "is-compact" : ""} ${standalone ? "is-standalone" : ""}`}
@@ -80,15 +91,17 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
         <div className="workspace-review-title-group">
           <h2>Review</h2>
           <h3>
-            {idle
-              ? "No active process"
-              : failed
-                ? "Turn stopped"
-                : compacting
-                  ? "Compacting context"
-                  : running
-                    ? "1 active process"
-                    : "Awaiting input"}
+            {completed
+              ? "Turn completed"
+              : idle
+                ? "No active process"
+                : failed
+                  ? "Turn stopped"
+                  : compacting
+                    ? "Compacting context"
+                    : running
+                      ? "1 active process"
+                      : "Awaiting input"}
           </h3>
         </div>
         <i role="status" aria-label={statusLabel} title={statusLabel} />
@@ -215,15 +228,22 @@ export function ReviewPanel({ compact = false, standalone = false, state = "appr
               </div>
               <strong>Run the production design build</strong>
               <code>vite build</code>
+              <small>Project scope · design-system/</small>
               <div className="workspace-approval-actions">
-                <Button variant="primary" size="sm">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => onApprovalDecision?.("allow-once")}
+                >
                   Allow once
                 </Button>
-                <Button variant="danger" size="sm">
+                <Button variant="danger" size="sm" onClick={() => onApprovalDecision?.("deny")}>
                   Deny
                 </Button>
               </div>
-              <Button size="sm">Allow for session</Button>
+              <Button size="sm" onClick={() => onApprovalDecision?.("allow-session")}>
+                Allow for session
+              </Button>
             </div>
           ) : (
             <div className="workspace-question-card">

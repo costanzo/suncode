@@ -56,3 +56,12 @@ export const runningConversationToolCalls = [
 
 export const longQueuedMessageText =
   "Please update the conversation layout using the attached reference. Keep the composer available while the build is running, preserve the existing image previews, and make the queue easier to scan without covering the assistant output.\n\nCheck the light and dark themes, keyboard navigation, and narrow windows. Long messages should remain readable when expanded, including all paragraphs and line breaks.\n\nFinally, verify the existing tests and summarize any remaining limitations. Do not discard or shorten this instruction when it is promoted to steering.";
+
+export const workspaceConversationExample = {
+  prompt: "Review the conversation layout and keep the existing attachment behavior.",
+  progress:
+    "Inspecting the workspace shell and keeping the long-running build visible in the conversation timeline.",
+  response:
+    "I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.",
+  tools: runningConversationToolCalls,
+};

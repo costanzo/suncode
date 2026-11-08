@@ -110,3 +110,7 @@
   padding: 0 6px;
   font-size: 9px;
 }
+
+.workspace-review-heading.is-completed i {
+  background: var(--success);
+}

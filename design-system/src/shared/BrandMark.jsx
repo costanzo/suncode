@@ -4,7 +4,8 @@ import mark16Url from "../assets/logos/suncode-mark-16.svg";
 import "./brand-mark.css";
 
 export function BrandMark({ size = 24, className = "" }) {
-  const url = size <= 16 ? mark16Url : size <= 24 ? mark24Url : markUrl;
+  const asset = size <= 16 ? mark16Url : size <= 24 ? mark24Url : markUrl;
+  const url = typeof asset === "string" ? asset : asset.src;
   return (
     <i
       className={`suncode-brand-mark ${className}`}

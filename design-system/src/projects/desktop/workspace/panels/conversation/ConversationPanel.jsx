@@ -11,7 +11,7 @@ import { ConversationAttachments } from "./ConversationAttachments.jsx";
 import { QueuedInputs } from "./QueuedInputs.jsx";
 
 import { TurnChangeSummary } from "../../shared/TurnChangeSummary.jsx";
-import { runningConversationToolCalls, workspaceModelGroups } from "../../data/conversation.js";
+import { workspaceConversationExample, workspaceModelGroups } from "../../data/conversation.js";
 import { completedTurnChanges } from "../../data/review.js";
 
 const createSampleAttachment = (name, title, detail) => {
@@ -41,6 +41,7 @@ export function ConversationPanel({
   initialQueueCollapsed = false,
   onViewChanges,
   onOpenToolActivity,
+  example = workspaceConversationExample,
 }) {
   const inputHintId = useId();
   const inputModeHint =
@@ -164,7 +165,7 @@ export function ConversationPanel({
   };
   const activeTool =
     updating && turnPhase !== "running"
-      ? runningConversationToolCalls.find((tool) => tool.tone === "running")
+      ? example.tools.find((tool) => tool.tone === "running")
       : null;
   const messageCharacters = Array.from(message).length;
   const handleAttachmentChange = (event) => {
@@ -302,9 +303,7 @@ export function ConversationPanel({
     stopped: "Turn stopped. Your draft and queued messages are kept.",
   }[turnPhase];
   const copyResponse = async () => {
-    await navigator.clipboard?.writeText(
-      "I split Workspace into a complete composition and focused pages for sessions, explorer, conversation, review, source control, and provider trace.",
-    );
+    await navigator.clipboard?.writeText(example.response);
     setCopiedResponse(true);
     if (copyResetTimerRef.current) window.clearTimeout(copyResetTimerRef.current);
     copyResetTimerRef.current = window.setTimeout(() => setCopiedResponse(false), 1400);
@@ -361,7 +360,7 @@ export function ConversationPanel({
                       ))}
                     </div>
                   )}
-                  <p>Review the conversation layout and keep the existing attachment behavior.</p>
+                  <p>{example.prompt}</p>
                 </div>
                 {state === "intermediate-assistant" && (
                   <div className="workspace-message workspace-message-assistant workspace-message-assistant-intermediate">
@@ -393,10 +392,7 @@ export function ConversationPanel({
                 {!updating && !thinking && state !== "content-retrying" ? (
                   <div className="workspace-message workspace-message-assistant">
                     <div className="workspace-assistant-duration">Worked for 42s</div>
-                    <p>
-                      I split Workspace into a complete composition and focused pages for sessions,
-                      explorer, conversation, review, source control, and provider trace.
-                    </p>
+                    <p>{example.response}</p>
                     <div className="workspace-message-footer">
                       <div className="workspace-message-actions">
                         <button
@@ -421,10 +417,7 @@ export function ConversationPanel({
                   </div>
                 ) : (
                   <div className="workspace-message workspace-message-assistant workspace-message-assistant-status">
-                    <p>
-                      Inspecting the workspace shell and keeping the long-running build visible in
-                      the conversation timeline.
-                    </p>
+                    <p>{example.progress}</p>
                   </div>
                 )}
               </>

@@ -205,6 +205,12 @@ export function WorkspaceWindow({
   onWindowMinimize,
   onWindowClose,
   onTitlebarCommand,
+  conversationState = "content-updating",
+  conversationExample,
+  statusbarContent,
+  reviewState = "approval",
+  initialChangesOpen = false,
+  onApprovalDecision,
 }) {
   const ubuntu = titlebarPlatform === "ubuntu";
   const [navigation, setNavigation] = useState("sessions");
@@ -314,12 +320,20 @@ export function WorkspaceWindow({
             ) : (
               <ConversationPanel
                 compact
-                state={activeSessionArchived ? "archived" : "content-updating"}
+                example={conversationExample}
+                state={activeSessionArchived ? "archived" : conversationState}
                 onViewChanges={gitAvailable ? () => setDrawer("git") : undefined}
                 onOpenToolActivity={() => setDrawer("tools")}
               />
             )}
-            {rightRegion === "review" && <ReviewPanel compact />}
+            {rightRegion === "review" && (
+              <ReviewPanel
+                compact
+                state={reviewState}
+                initialChangesOpen={initialChangesOpen}
+                onApprovalDecision={onApprovalDecision}
+              />
+            )}
             {rightRegion === "children" && (
               <ChildSessionsPanel
                 compact
@@ -368,24 +382,28 @@ export function WorkspaceWindow({
         </aside>
       </div>
       <footer className="workspace-statusbar">
-        <div>
-          {gitAvailable && (
-            <>
-              <code>codex/workspace-design</code>
-              <b>3 changes</b>
-              <span>+308</span>
-              <i>−8</i>
-            </>
-          )}
-        </div>
-        <div>
-          <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />
-          <RemoteServerStatus configured connected />
-          <span className="workspace-running-session-status is-running" title="2 running">
-            <i aria-hidden="true" />
-            <code>2 running</code>
-          </span>
-        </div>
+        {statusbarContent ?? (
+          <>
+            <div>
+              {gitAvailable && (
+                <>
+                  <code>codex/workspace-design</code>
+                  <b>3 changes</b>
+                  <span>+308</span>
+                  <i>−8</i>
+                </>
+              )}
+            </div>
+            <div>
+              <McpLoadingStatus settled={3} total={5} connected={2} failed={1} />
+              <RemoteServerStatus configured connected />
+              <span className="workspace-running-session-status is-running" title="2 running">
+                <i aria-hidden="true" />
+                <code>2 running</code>
+              </span>
+            </div>
+          </>
+        )}
       </footer>
       <DialogWindowConfirmation
         open={Boolean(archiveRequest)}

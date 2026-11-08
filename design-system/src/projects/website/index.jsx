@@ -3,6 +3,7 @@ import { BrandMark } from "../../shared/BrandMark.jsx";
 import { Icon } from "../../shared/Icon.jsx";
 import { PageHeader, Section } from "../../shared/PagePrimitives.jsx";
 import "./website.css";
+import { WorkbenchDemo } from "./WorkbenchDemo.jsx";
 
 const samples = [
   {
@@ -36,7 +37,6 @@ export function WebsiteProjectPage() {
   const [theme, setTheme] = useState("light");
   const [query, setQuery] = useState("");
   const [availability, setAvailability] = useState("All capabilities");
-  const [step, setStep] = useState(0);
   const [menu, setMenu] = useState(false);
   const visible = samples.filter(
     (sample) =>
@@ -104,39 +104,7 @@ export function WebsiteProjectPage() {
             <a className="website-specimen-cta" href="#/projects/website">
               Explore every feature
             </a>
-            <div className="website-specimen-tabs">
-              {["Inspect the project", "Review the scope", "Inspect the changes"].map(
-                (label, index) => (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-pressed={step === index}
-                    onClick={() => setStep(index)}
-                  >
-                    {label}
-                  </button>
-                ),
-              )}
-            </div>
-            <div className="website-specimen-demo">
-              <span>Illustrative session</span>
-              <h3>
-                {
-                  ["Understand before changing", "Approval needed", "Checkpointed file changes"][
-                    step
-                  ]
-                }
-              </h3>
-              <p>
-                {
-                  [
-                    "Read project context and tool activity.",
-                    "Inspect the operation and its scope before deciding.",
-                    "Review mutations and restore with conflict checks.",
-                  ][step]
-                }
-              </p>
-            </div>
+            <WorkbenchDemo />
           </div>
         </div>
       </Section>

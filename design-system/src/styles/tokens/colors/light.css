@@ -1,4 +1,6 @@
-[data-theme="light"] {
+[data-theme="light"],
+:where([data-theme="light"]) .website-workbench,
+[data-website-theme="light"] .website-workbench {
   color-scheme: light;
   --terminal-ansi-0: #26313a;
   --terminal-ansi-1: #b42318;
