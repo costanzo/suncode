@@ -4,7 +4,7 @@
 
 These are two separate capabilities. Each has its own profile, and they do not share state.
 
-Desktop builds exclude CEF by default (`SunCodeBundleCef=false`), including the CefGlue project reference and CEF-dependent code. They do not require a local CefGlue fork, and browser entry points remain hidden. Enabling CEF requires `SunCodeBundleCef=true` and an explicit `CefGlueForkRoot` pointing to an Avalonia 12-compatible fork.
+Desktop builds exclude CEF by default (`SunCodeBundleCef=false`), including the CefGlue project reference and CEF-dependent code. They do not require a local CefGlue fork, and browser entry points remain hidden. Enabling CEF requires `SunCodeBundleCef=true` and an explicit `CefGlueForkRoot` pointing to an Avalonia 12-compatible fork matching the declared CEF 156.0.15 runtime. The runtime package references and native copy paths are aligned at that version; external CefGlue and installed-runtime conformance require separate validation.
 
 ## Browser Use (CEF CDP)
 

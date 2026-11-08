@@ -7,7 +7,7 @@ use crate::{
 };
 use futures_util::future::BoxFuture;
 use rmcp::{
-    model::{CallToolRequestParams, ClientInfo, Implementation, PaginatedRequestParams},
+    model::{CallToolRequestParams, ClientConfig, Implementation, PaginatedRequestParams},
     service::{NotificationContext, RunningService},
     ClientHandler, RoleClient,
 };
@@ -34,8 +34,8 @@ impl Handler {
 }
 
 impl ClientHandler for Handler {
-    fn get_info(&self) -> ClientInfo {
-        ClientInfo::new(
+    fn get_info(&self) -> ClientConfig {
+        ClientConfig::new(
             Default::default(),
             Implementation::new("SunCode", env!("CARGO_PKG_VERSION")),
         )

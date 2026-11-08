@@ -42,7 +42,7 @@ pub(crate) fn parse(bytes: &[u8], format: Format) -> Result<ParsedWorkbook, Docu
     Ok(ParsedWorkbook { format, sheets })
 }
 
-fn open<'a>(bytes: &'a [u8], format: Format) -> Result<Sheets<Cursor<&'a [u8]>>, DocumentError> {
+fn open(bytes: &[u8], format: Format) -> Result<Sheets<Cursor<&[u8]>>, DocumentError> {
     let result = match format {
         Format::Xls => open_workbook_from_rs::<Xls<_>, _>(Cursor::new(bytes))
             .map(Sheets::Xls)

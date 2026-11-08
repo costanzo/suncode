@@ -80,7 +80,11 @@ pub(super) fn write_process_artifact(
         )
     })?;
     drop(file);
-    let id = format!("{:x}", hasher.finalize());
+    let id: String = hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
     let destination = directory.join(format!("{id}.bin"));
     if destination.exists() {
         let _ = fs::remove_file(&temporary);

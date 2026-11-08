@@ -140,8 +140,8 @@ pub(crate) fn retain(checkpoint_root: &Path, oldest_kept_day: &str) {
         return;
     };
     for entry in entries.flatten() {
-        let expired =
-            parse_day(&entry.file_name().to_string_lossy().as_ref()).is_some_and(|day| day < oldest);
+        let expired = parse_day(entry.file_name().to_string_lossy().as_ref())
+            .is_some_and(|day| day < oldest);
         if expired && entry.file_type().is_ok_and(|value| value.is_dir()) {
             let _ = fs::remove_dir_all(entry.path());
         }

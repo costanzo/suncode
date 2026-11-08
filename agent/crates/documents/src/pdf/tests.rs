@@ -197,14 +197,16 @@ fn other_pages_keep_the_existing_layout_extractor() {
             "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica", "Encoding" => "WinAnsiEncoding",
         } },
     });
+    let bytes = bytes(document);
+    let layout_document = pdf_extract::Document::load_mem(&bytes).unwrap();
     let mut expected = String::new();
     pdf_extract::output_doc_page(
-        &document,
+        &layout_document,
         &mut pdf_extract::PlainTextOutput::new(&mut expected),
         2,
     )
     .unwrap();
-    let parsed = parse(&bytes(document)).unwrap();
+    let parsed = parse(&bytes).unwrap();
     assert_eq!(parsed.units[0].text, "中文");
     assert_eq!(parsed.units[1].text, clean_page(&expected));
     assert!(parsed.units[1].text.contains("Hello"));

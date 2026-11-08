@@ -4,6 +4,7 @@ use crate::model::{Format, ParsedDocument, Unit, UnitKind, Warning};
 use crate::text::clean_page;
 use crate::DocumentError;
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId};
+use std::cell::LazyCell;
 use std::collections::{BTreeMap, HashSet};
 
 #[cfg(test)]
@@ -22,6 +23,15 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<ParsedDocument, DocumentError> {
     // Keep the original layout-aware extractor for other pages. The alternate
     // document is created only when a page needs the named Unicode CMap decoder.
     let mut alternate = None;
+    // pdf-extract exposes its own older lopdf document type. Load that view
+    // only for pages that need its layout-aware extractor.
+    let layout_document = LazyCell::new(|| -> Result<_, pdf_extract::Error> {
+        let mut document = pdf_extract::Document::load_mem(bytes)?;
+        if document.is_encrypted() {
+            document.decrypt("")?;
+        }
+        Ok(document)
+    });
     let mut units = Vec::new();
     for (number, id) in document.get_pages() {
         // lopdf skips missing content objects; surface them as parse errors
@@ -39,7 +49,9 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<ParsedDocument, DocumentError> {
         } else {
             let mut text = String::new();
             let mut output = pdf_extract::PlainTextOutput::new(&mut text);
-            pdf_extract::output_doc_page(&document, &mut output, number).map_err(pdf_error)?;
+            let layout_document = layout_document.as_ref().map_err(pdf_error)?;
+            pdf_extract::output_doc_page(layout_document, &mut output, number)
+                .map_err(pdf_error)?;
             text
         };
         units.push(Unit::new(UnitKind::Page, clean_page(&text)));

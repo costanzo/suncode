@@ -1,5 +1,4 @@
 use super::*;
-use diesel::sql_types::BigInt;
 use diesel::{
     connection::SimpleConnection, sql_query, Connection, QueryableByName, RunQueryDsl,
     SqliteConnection,

@@ -43,7 +43,9 @@ pub(crate) fn decrypt_remote_payload(payload: &str, key_text: &str) -> RemoteRes
         .map_err(|_| BusinessError::invalid("remote encryption key is not valid base64url"))?;
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|_| BusinessError::invalid("remote encryption key is invalid"))?;
-    let nonce = Nonce::from_slice(&bytes[..NONCE_BYTES]);
+    let nonce: &Nonce<_> = bytes[..NONCE_BYTES]
+        .try_into()
+        .map_err(|_| BusinessError::invalid("encrypted payload nonce is invalid"))?;
     let plaintext = cipher
         .decrypt(nonce, &bytes[NONCE_BYTES..])
         .map_err(|_| BusinessError::invalid("encrypted payload authentication failed"))?;
@@ -58,11 +60,11 @@ pub(crate) fn encrypt_remote_payload(value: &Value, key_text: &str) -> RemoteRes
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|_| BusinessError::invalid("remote encryption key is invalid"))?;
     let nonce_bytes = suncode_common::random::bytes::<NONCE_BYTES>();
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce = Nonce::from(nonce_bytes);
     let plaintext = serde_json::to_vec(value)
         .map_err(|_| BusinessError::invalid("remote payload JSON is invalid"))?;
     let ciphertext = cipher
-        .encrypt(nonce, plaintext.as_ref())
+        .encrypt(&nonce, plaintext.as_ref())
         .map_err(|_| BusinessError::unavailable("remote payload encryption failed"))?;
     let mut bytes = nonce_bytes.to_vec();
     bytes.extend_from_slice(&ciphertext);
@@ -99,6 +101,15 @@ pub(crate) fn remote_response_body(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decrypts_existing_e2e_v1_wire_format() {
+        // AES-256-GCM fixture produced independently with Apple CryptoKit,
+        // using a zero key and nonce with the JSON plaintext {}.
+        let key = URL_SAFE_NO_PAD.encode([0_u8; AES_KEY_BYTES]);
+        let payload = "e2e-v1:AAAAAAAAAAAAAAAAtdrwEuhkeKzzrxsRUrSLX79J";
+        assert_eq!(decrypt_remote_payload(payload, &key).unwrap(), json!({}));
+    }
 
     #[test]
     fn keys_are_full_length_and_nonces_are_fresh_per_encryption() {

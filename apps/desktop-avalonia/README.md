@@ -20,7 +20,7 @@ Prepare the bundled Browser Use runtime once before the first Debug build or aft
 
 The Avalonia client starts CEF with remote debugging on localhost port 9222. Rust connects to CEF through CDP; no Node.js or Playwright runtime is packaged.
 
-CEF is currently excluded from builds and packages (`SunCodeBundleCef=false`), so Browser Use and the built-in browser are unavailable and their entry points are hidden. Default builds do not reference CefGlue or require `CefGlueForkRoot`. To include CEF, pass both `-p:SunCodeBundleCef=true` and `-p:CefGlueForkRoot=/path/to/CefGlue` to `dotnet build`, `run`, or `publish`. The path must point to a CefGlue fork compatible with Avalonia 12 and contain `CefGlue.Avalonia/CefGlue.Avalonia.csproj`.
+CEF is currently excluded from builds and packages (`SunCodeBundleCef=false`), so Browser Use and the built-in browser are unavailable and their entry points are hidden. Default builds do not reference CefGlue or require `CefGlueForkRoot`. To include CEF, pass both `-p:SunCodeBundleCef=true` and `-p:CefGlueForkRoot=/path/to/CefGlue` to `dotnet build`, `run`, or `publish`. The path must point to a CefGlue fork compatible with Avalonia 12 and the declared CEF 156.0.15 runtime, and contain `CefGlue.Avalonia/CefGlue.Avalonia.csproj`.
 
 ```sh
 dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj

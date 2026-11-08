@@ -1,11 +1,11 @@
-# RoyalTerminal Windows PTY compatibility patch
+# RoyalTerminal Windows PTY source backend
 
-This client-local project replaces only the `RoyalApps.RoyalTerminal.Terminal.Pty.Windows` 0.7.0 transitive package. Its package ID and assembly identity match that package so RoyalTerminal's existing platform factory uses it without changing the Avalonia control or Unix backend.
+This client-local project provides the `RoyalApps.RoyalTerminal.Terminal.Pty.Windows` 0.7.2 backend. Its package ID and assembly identity match the upstream package so RoyalTerminal's platform factory selects it.
 
-`WindowsPty.cs`, `WindowsPtyEnvironment.cs`, and `LICENSE` are copied from [RoyalTerminal commit 4f5d6689ddb792a6e2c3ded923e198cad3d62012](https://github.com/royalapplications/RoyalTerminal/tree/4f5d6689ddb792a6e2c3ded923e198cad3d62012), the source revision recorded by the 0.7.0 package. The MIT license and upstream headers are retained.
+`WindowsPty.cs`, `WindowsPtyEnvironment.cs`, `SafePseudoConsoleHandle.cs`, and `LICENSE` follow [RoyalTerminal commit c5e5365c08733ea7df42eec98fd505f1cfcef70b](https://github.com/royalapplications/RoyalTerminal/tree/c5e5365c08733ea7df42eec98fd505f1cfcef70b), the source revision recorded by the 0.7.2 package. The MIT license and upstream source headers are retained. These source files match upstream.
+
+The 0.7.2 release incorporates the Windows 10 correction previously carried locally. It sets `STARTF_USESTDHANDLES` with null standard handles before `CreateProcessW`, allowing ConPTY to supply the console handles. It also leases and asynchronously releases the pseudoconsole through `SafePseudoConsoleHandle` to preserve output draining during process exit and resize races.
 
 The build copies the license to `ThirdPartyNotices/RoyalTerminal.Pty.Windows.LICENSE` in application output and publish directories.
 
-The sole source patch sets `STARTF_USESTDHANDLES` with null standard handles before `CreateProcessW`. On Windows 10, leaving the flag unset can preserve the parent's standard handles even when the child is attached to a pseudoconsole. The shell then writes outside the terminal and cannot read terminal input. Explicit null handles let ConPTY supply the console handles. Do not set these handles to the host-side PTY pipes, enable handle inheritance, or change the host process's global standard handles.
-
-Remove this override when an official release includes the correction, after running the Windows terminal integration tests against that release. Do not edit the NuGet cache or patch a deployed binary. Upstream code outside this compatibility correction remains unchanged.
+The source-backed integration is retained until the Windows terminal integration tests run against the official 0.7.2 package on Windows. After that verification, the project reference can be replaced with the official package. Do not edit the NuGet cache or patch a deployed binary.

@@ -27,7 +27,7 @@ Evidence: `agent/crates/documents/src/{detect,office,xlsx,query,tests}.rs` and `
 
 ## Chinese PDF text
 
-Pages using `UniGB-UCS2-H` or `UniGB-UTF16-H` use the Rust-owned `lopdf` text decoder. Valid explicit `ToUnicode` maps take precedence; invalid maps return `parse_failed` instead of silently substituting another encoding. Direct, indirect, and inherited font resources are resolved before choosing the page adapter. Other pages retain the existing layout-aware extraction path.
+Pages using `UniGB-UCS2-H` or `UniGB-UTF16-H` use the Rust-owned `lopdf` text decoder. Valid explicit `ToUnicode` maps take precedence; invalid maps return `parse_failed` instead of silently substituting another encoding. Direct, indirect, and inherited font resources are resolved before choosing the page adapter. Other pages retain the existing layout-aware extraction path. The adapter uses lopdf 0.47 while pdf-extract 0.12 retains its own lopdf 0.42 dependency, so the layout view is loaded lazily from the original bytes. Parser fingerprints use revision 4 after the dependency upgrade.
 
 Unsupported named Type 0 encodings in page font resources return `parse_failed` with the encoding name. The targeted adapter is not full Adobe-GB1/Adobe-CNS1 CMap support. It rejects pages combining these Chinese encodings with Form XObjects, or other composite fonts lacking a usable `ToUnicode` map, rather than silently omitting their text. Image XObjects remain compatible. The alternate decoder follows content-stream order; equivalent visual reading order for complex layouts is not guaranteed.
 
