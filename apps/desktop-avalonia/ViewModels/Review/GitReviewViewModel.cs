@@ -43,6 +43,29 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
         _service = service ?? new GitService();
     }
 
+    internal DiffReviewerViewModel? Reviewer { get; private set; }
+    internal event Action<DiffReviewerViewModel>? ReviewerRequested;
+
+    internal void OpenReviewer()
+    {
+        if (_disposed || !IsReady || _host.SelectedProject is not { } project) return;
+        if (Reviewer is null)
+        {
+            var reviewer = new DiffReviewerViewModel(_service, project);
+            Reviewer = reviewer;
+            ReviewerRequested?.Invoke(reviewer);
+            _ = reviewer.OpenAsync(Scope, SelectedFile?.Path);
+        }
+        else ReviewerRequested?.Invoke(Reviewer);
+    }
+
+    internal void ReleaseReviewer(DiffReviewerViewModel reviewer)
+    {
+        if (Reviewer != reviewer) return;
+        Reviewer = null;
+        reviewer.Dispose();
+    }
+
     public bool IsAvailable { get => _available; private set => SetProperty(ref _available, value); }
 
     public async Task CheckAvailabilityAsync()
@@ -286,6 +309,9 @@ public sealed class GitReviewViewModel : ObservableObject, IDisposable
 
     internal void Clear()
     {
+        var reviewer = Reviewer;
+        Reviewer = null;
+        reviewer?.Dispose();
         _refresh?.Cancel();
         _refresh?.Dispose();
         _refresh = null;

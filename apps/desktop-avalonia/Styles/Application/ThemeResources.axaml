@@ -19,8 +19,22 @@
   <x:Double x:Key="QuestionWindowMinHeight">400</x:Double>
   <x:Double x:Key="QuestionWindowTextSize">14</x:Double>
   <x:Double x:Key="QuestionWindowOptionSize">12</x:Double>
+  <x:Double x:Key="DiffReviewerWidth">1200</x:Double>
+  <x:Double x:Key="DiffReviewerHeight">680</x:Double>
+  <x:Double x:Key="DiffReviewerMinWidth">820</x:Double>
+  <x:Double x:Key="DiffReviewerMinHeight">480</x:Double>
+  <x:Double x:Key="DiffReviewerRowHeight">22</x:Double>
+  <x:Double x:Key="DiffReviewerFoldHeight">32</x:Double>
+  <x:Double x:Key="DiffReviewerGutterWidth">42</x:Double>
+  <x:Double x:Key="DiffReviewerCodeSize">11</x:Double>
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="DiffReviewerAddedBrush" Color="#78c99b" />
+      <SolidColorBrush x:Key="DiffReviewerAddedSurfaceBrush" Color="#1e2b29" />
+      <SolidColorBrush x:Key="DiffReviewerDeletedSurfaceBrush" Color="#2a1919" />
+      <SolidColorBrush x:Key="DiffReviewerAddedWordBrush" Color="#3d78c99b" />
+      <SolidColorBrush x:Key="DiffReviewerDeletedWordBrush" Color="#3de68a83" />
+      <SolidColorBrush x:Key="DiffReviewerWarningBrush" Color="#d9b77f" />
       <SolidColorBrush x:Key="UbuntuCaptionBrush" Color="#1aedf0f3" />
       <SolidColorBrush x:Key="UbuntuCaptionHoverBrush" Color="#26edf0f3" />
       <SolidColorBrush x:Key="UbuntuCaptionPressedBrush" Color="#40edf0f3" />
@@ -129,6 +143,12 @@
       <SolidColorBrush x:Key="ContentFileSurfaceBrush" Color="#1d2d29" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="DiffReviewerAddedBrush" Color="#27845b" />
+      <SolidColorBrush x:Key="DiffReviewerAddedSurfaceBrush" Color="#e5f0eb" />
+      <SolidColorBrush x:Key="DiffReviewerDeletedSurfaceBrush" Color="#fae6e4" />
+      <SolidColorBrush x:Key="DiffReviewerAddedWordBrush" Color="#3d27845b" />
+      <SolidColorBrush x:Key="DiffReviewerDeletedWordBrush" Color="#3db6463f" />
+      <SolidColorBrush x:Key="DiffReviewerWarningBrush" Color="#835f26" />
       <SolidColorBrush x:Key="UbuntuCaptionBrush" Color="#1a17202a" />
       <SolidColorBrush x:Key="UbuntuCaptionHoverBrush" Color="#2617202a" />
       <SolidColorBrush x:Key="UbuntuCaptionPressedBrush" Color="#4017202a" />

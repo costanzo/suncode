@@ -182,7 +182,7 @@ public sealed class GitReviewViewModelTests
             return ReadError is not null ? Task.FromException<GitStatusResult>(ReadError)
                 : ReadStatus?.Invoke(StatusCalls) ?? Task.FromResult(Status("a.txt"));
         }
-        public Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default) =>
+        public Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default, bool includeUnchanged = false) =>
             ReadDiff?.Invoke(path) ?? Task.FromResult(Diff("patch"));
     }
 

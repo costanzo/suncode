@@ -18,5 +18,5 @@ internal interface IGitService
 {
     Task<bool> CheckAvailabilityAsync(CancellationToken cancellation = default);
     Task<GitStatusResult> StatusAsync(string projectRoot, CancellationToken cancellation = default);
-    Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default);
+    Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default, bool includeUnchanged = false);
 }

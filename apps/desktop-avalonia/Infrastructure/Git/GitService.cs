@@ -77,7 +77,7 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
             files.Sum(file => file.Deletions), truncated || snapshot.UnsupportedPaths);
     }
 
-    public async Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default)
+    public async Task<GitDiffResult> DiffAsync(string projectRoot, string scope, string path, CancellationToken cancellation = default, bool includeUnchanged = false)
     {
         if (scope is not ("all" or "staged" or "unstaged")) throw new ArgumentException("Unknown Git diff scope.");
         ValidateRelative(path);
@@ -91,15 +91,25 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
         if (file.Status == "untracked") return await UntrackedDiffAsync(runner, context, path, cancellation);
         var paths = new List<string> { context.Prefix + path };
         if (file.OldPath is { } oldPath) paths.Add(context.Prefix + oldPath);
-        var patch = await DiffCommandAsync(runner, context, scope, paths, false, cancellation);
+        var patch = await DiffCommandAsync(runner, context, scope, paths, false, cancellation, includeUnchanged);
         RequireSuccess(patch);
         var diff = GitOutputParser.Patch(patch.Text, patch.Truncated);
+        var effectiveScope = scope;
         // Merge conflicts have no ordinary two-way patch; show the HEAD-to-worktree content.
         if (file.Conflicted && scope == "unstaged" && diff.Hunks.Count == 0)
         {
-            patch = await DiffCommandAsync(runner, context, "all", paths, false, cancellation);
+            effectiveScope = "all";
+            patch = await DiffCommandAsync(runner, context, "all", paths, false, cancellation, includeUnchanged);
             RequireSuccess(patch);
             diff = GitOutputParser.Patch(patch.Text, patch.Truncated);
+        }
+        if (includeUnchanged && diff.Truncated)
+        {
+            // A long unchanged prefix must not use the entire review budget before the edit.
+            // Keep a compact, useful comparison and mark its unavailable context explicitly.
+            patch = await DiffCommandAsync(runner, context, effectiveScope, paths, false, cancellation);
+            RequireSuccess(patch);
+            diff = GitOutputParser.Patch(patch.Text, truncated: true);
         }
         return diff;
     }
@@ -147,12 +157,12 @@ internal sealed class GitService(Func<IEnumerable<string>>? candidates = null) :
     }
 
     private static async Task<GitCommandResult> DiffCommandAsync(GitCommandRunner runner, RepositoryContext context,
-        string scope, IEnumerable<string> paths, bool numstat, CancellationToken cancellation)
+        string scope, IEnumerable<string> paths, bool numstat, CancellationToken cancellation, bool includeUnchanged = false)
     {
         var args = context.FilterOverrides.Concat(new[] { "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames",
             "--ignore-submodules=none", "--submodule=short" }).ToList();
         if (numstat) args.AddRange(["--numstat", "-z"]);
-        else args.AddRange(["--patch", "--unified=3", "--src-prefix=a/", "--dst-prefix=b/"]);
+        else args.AddRange(["--patch", includeUnchanged ? $"--unified={MaxLines}" : "--unified=3", "--src-prefix=a/", "--dst-prefix=b/"]);
         if (scope == "staged") args.Add("--cached");
         if (scope != "unstaged")
         {

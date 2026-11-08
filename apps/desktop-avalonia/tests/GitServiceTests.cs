@@ -6,6 +6,41 @@ namespace SunCode.Desktop.Tests;
 public sealed class GitServiceTests
 {
     [Fact]
+    public async Task ReviewerContextComesFromEachGitRangeAndKeepsBoundedReads()
+    {
+        using var repo = await Repository.CreateAsync();
+        var original = Enumerable.Range(1, 90).Select(number => $"line {number}").ToArray();
+        repo.Write("file.txt", string.Join('\n', original) + "\n"); await repo.Commit();
+        var staged = (string[])original.Clone(); staged[20] = "staged";
+        repo.Write("file.txt", string.Join('\n', staged) + "\n"); await repo.Run("add", "file.txt");
+        var working = (string[])staged.Clone(); working[60] = "working";
+        repo.Write("file.txt", string.Join('\n', working) + "\n");
+        foreach (var (scope, oldText, newText) in new[] { ("all", original, working), ("staged", original, staged), ("unstaged", staged, working) })
+        {
+            var diff = await repo.Service.DiffAsync(repo.Root, scope, "file.txt", includeUnchanged: true);
+            var document = SunCode.Desktop.Models.DiffReviewDocument.Create(diff);
+            Assert.Equal(string.Join('\n', oldText) + "\n", document.Copy(true, 0, document.Text(true).Length));
+            Assert.Equal(string.Join('\n', newText) + "\n", document.Copy(false, 0, document.Text(false).Length));
+            Assert.False(diff.Truncated);
+        }
+        Assert.DoesNotContain("line 1\n", (await repo.Service.DiffAsync(repo.Root, "all", "file.txt")).Patch);
+    }
+
+    [Fact]
+    public async Task LargeContextFallsBackToNavigableChangedHunks()
+    {
+        using var repo = await Repository.CreateAsync();
+        var lines = Enumerable.Range(1, 15_000).Select(number => $"line {number}").ToArray();
+        repo.Write("large.txt", string.Join('\n', lines) + "\n"); await repo.Commit();
+        lines[14_000] = "changed near the end";
+        repo.Write("large.txt", string.Join('\n', lines) + "\n");
+        var diff = await repo.Service.DiffAsync(repo.Root, "all", "large.txt", includeUnchanged: true);
+        Assert.True(diff.Truncated);
+        Assert.Contains(diff.Hunks.SelectMany(hunk => hunk.Lines), line => line.Kind == "addition" && line.Text == "changed near the end");
+        Assert.Equal(1, SunCode.Desktop.Models.DiffReviewDocument.Create(diff).ChangeCount);
+    }
+
+    [Fact]
     public async Task MissingGitIsOptionalAndCanBeDetectedLater()
     {
         string[] candidates = [];

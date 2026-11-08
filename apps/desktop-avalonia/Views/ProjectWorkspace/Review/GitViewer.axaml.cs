@@ -11,7 +11,41 @@ public sealed partial class GitViewer : UserControl
     public GitViewer()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) => AttachReviewer();
+        SizeChanged += (_, _) =>
+        {
+            GitScopeGroup.IsVisible = GitScopeDivider.IsVisible = Bounds.Width >= 980;
+            GitHeaderBranch.Width = Math.Clamp(Bounds.Width - 465, 48, 190);
+        };
     }
+
+    private GitReviewViewModel? _git;
+    private DiffReviewerWindow? _reviewerWindow;
+
+    private void AttachReviewer()
+    {
+        if (_git is not null) _git.ReviewerRequested -= ShowReviewer;
+        _reviewerWindow?.Close();
+        _git = (DataContext as DesktopViewModel)?.Git;
+        if (_git is not null) _git.ReviewerRequested += ShowReviewer;
+    }
+
+    private void ShowReviewer(DiffReviewerViewModel reviewer)
+    {
+        if (_reviewerWindow is { } existing)
+        {
+            if (existing.WindowState == WindowState.Minimized) existing.WindowState = WindowState.Normal;
+            existing.Activate();
+            return;
+        }
+        if (TopLevel.GetTopLevel(this) is not Window owner || _git is not { } git) return;
+        var window = new DiffReviewerWindow(reviewer);
+        _reviewerWindow = window;
+        window.Closed += (_, _) => { _reviewerWindow = null; git.ReleaseReviewer(reviewer); };
+        window.ShowFor(owner);
+    }
+
+    private void OpenDiffReviewer(object? sender, RoutedEventArgs e) => ViewModel.Git.OpenReviewer();
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 

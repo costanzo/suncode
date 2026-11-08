@@ -1,0 +1,132 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SunCode.Desktop.ViewModels"
+        xmlns:controls="using:SunCode.Desktop.Controls"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.DiffReviewerWindow"
+        x:DataType="vm:DiffReviewerViewModel"
+        Width="{DynamicResource DiffReviewerWidth}" Height="{DynamicResource DiffReviewerHeight}"
+        MinWidth="{DynamicResource DiffReviewerMinWidth}" MinHeight="{DynamicResource DiffReviewerMinHeight}"
+        Background="{DynamicResource SurfaceBrush}" WindowDecorations="Full" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="TreeViewItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="IsExpanded" Value="{ReflectionBinding Entry.IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="TreeViewItem:selected">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Margin" Value="6,0" />
+    </Style>
+    <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.diff-file-icon">
+      <Setter Property="FontFamily" Value="avares://SunCode/Assets/fonts#seti" />
+      <Setter Property="FontSize" Value="17.5" />
+      <Setter Property="Foreground" Value="{DynamicResource FileIconDefaultBrush}" />
+    </Style>
+    <Style Selector="Grid.file-blue TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconBlueBrush}" /></Style>
+    <Style Selector="Grid.file-yellow TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconYellowBrush}" /></Style>
+    <Style Selector="Grid.file-muted TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconMutedBrush}" /></Style>
+    <Style Selector="Grid.file-green TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconGreenBrush}" /></Style>
+    <Style Selector="Grid.file-purple TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconPurpleBrush}" /></Style>
+    <Style Selector="Grid.file-pink TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconPinkBrush}" /></Style>
+    <Style Selector="Grid.file-red TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconRedBrush}" /></Style>
+    <Style Selector="Grid.file-orange TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconOrangeBrush}" /></Style>
+    <Style Selector="Grid.file-ink TextBlock.diff-file-icon"><Setter Property="Foreground" Value="{DynamicResource FileIconInkBrush}" /></Style>
+    <Style Selector="Button.diff-action"><Setter Property="Width" Value="26" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="Padding" Value="5" /></Style>
+  </Window.Styles>
+  <Grid RowDefinitions="36,*">
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SurfaceRaisedBrush}">
+      <Grid Margin="12,0" ColumnDefinitions="Auto,*,Auto,12,Auto">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocAll}" IsChecked="{Binding ScopeAll, Mode=OneWay}" Click="AllClicked" />
+          <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocStaged}" IsChecked="{Binding ScopeStaged, Mode=OneWay}" Click="StagedClicked" />
+          <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocUnstaged}" IsChecked="{Binding ScopeUnstaged, Mode=OneWay}" Click="UnstagedClicked" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" />
+          <TextBlock Text="{Binding Branch}" Classes="mono" FontSize="11" MaxWidth="200" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <Button Grid.Column="4" x:Name="RefreshButton" Classes="icon diff-action" Click="RefreshClicked" IsEnabled="{Binding !IsLoading}" ToolTip.Tip="{DynamicResource LocRefreshGitStatus}" AutomationProperties.Name="{DynamicResource LocRefreshGitStatus}">
+          <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="1" x:Name="ReviewBody" ColumnDefinitions="240,4,*" SizeChanged="BodySizeChanged">
+      <Grid Background="{DynamicResource SurfaceRaisedBrush}" RowDefinitions="36,*">
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+          <Grid Margin="12,0" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+            <TextBlock Text="{DynamicResource LocDiffChanges}" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="{Binding FileCountText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+          </Grid>
+        </Border>
+        <TreeView Grid.Row="1" x:Name="ChangedFilesTree" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedNode}" IsEnabled="{Binding CanSelect}" Background="Transparent" BorderThickness="0" Padding="4,8" AutomationProperties.Name="{DynamicResource LocDiffChangedFiles}">
+          <TreeView.DataTemplates>
+            <TreeDataTemplate DataType="vm:DiffReviewerNode" ItemsSource="{Binding Children}">
+              <Grid ColumnDefinitions="14,*,16" ColumnSpacing="6" Height="24" ToolTip.Tip="{Binding Entry.Path}"
+                    Classes.file-blue="{Binding Entry.IsFileIconBlue}" Classes.file-yellow="{Binding Entry.IsFileIconYellow}" Classes.file-muted="{Binding Entry.IsFileIconMuted}"
+                    Classes.file-green="{Binding Entry.IsFileIconGreen}" Classes.file-purple="{Binding Entry.IsFileIconPurple}" Classes.file-pink="{Binding Entry.IsFileIconPink}"
+                    Classes.file-red="{Binding Entry.IsFileIconRed}" Classes.file-orange="{Binding Entry.IsFileIconOrange}" Classes.file-ink="{Binding Entry.IsFileIconInk}">
+                <svg:Svg Width="14" Height="14" Path="/Assets/icons/folder.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding Entry.IsDirectory}" />
+                <TextBlock Classes="diff-file-icon" Text="{Binding Entry.FileIconGlyph}" IsVisible="{Binding Entry.IsFile}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Entry.Name}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DiffReviewerWarningBrush}" IsVisible="{Binding IsModified}" />
+                <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DiffReviewerAddedBrush}" IsVisible="{Binding IsAdded}" />
+                <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsDeleted}" />
+              </Grid>
+            </TreeDataTemplate>
+          </TreeView.DataTemplates>
+        </TreeView>
+      </Grid>
+      <GridSplitter Grid.Column="1" Background="{DynamicResource BorderBrush}" ResizeDirection="Columns" AutomationProperties.Name="{DynamicResource LocDiffResizeFiles}" />
+      <Grid Grid.Column="2" RowDefinitions="36,Auto,Auto,*">
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+          <Grid Margin="12,0" ColumnDefinitions="*,Auto,8,Auto,12,Auto,Auto,Auto" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedPath}" Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedPath}" />
+            <TextBlock Grid.Column="1" Text="{Binding AdditionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DiffReviewerAddedBrush}" IsVisible="{Binding ShowStats}" />
+            <TextBlock Grid.Column="3" Text="{Binding DeletionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ShowStats}" />
+            <Button Grid.Column="5" x:Name="PreviousButton" Classes="icon diff-action" Click="PreviousClicked" IsEnabled="{Binding CanPrevious}" ToolTip.Tip="{DynamicResource LocDiffPrevious}" AutomationProperties.Name="{DynamicResource LocDiffPrevious}"><svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}" /></Button>
+            <TextBlock Grid.Column="6" Text="{Binding ChangePosition}" Classes="mono" FontSize="11" Width="42" TextAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{DynamicResource LocDiffPosition}" />
+            <Button Grid.Column="7" x:Name="NextButton" Classes="icon diff-action" Click="NextClicked" IsEnabled="{Binding CanNext}" ToolTip.Tip="{DynamicResource LocDiffNext}" AutomationProperties.Name="{DynamicResource LocDiffNext}"><svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}" RenderTransform="rotate(180deg)" /></Button>
+          </Grid>
+        </Border>
+        <Border Grid.Row="1" Background="{DynamicResource FieldBrush}" Padding="12,8" IsVisible="{Binding HasOldPath}"><TextBlock Text="{Binding OldPath}" Classes="mono" FontSize="11" TextWrapping="Wrap" ToolTip.Tip="{DynamicResource LocDiffRenamedFrom}" /></Border>
+        <StackPanel Grid.Row="2" Background="{DynamicResource WarningSurfaceBrush}">
+          <TextBlock Margin="12,8" Text="{DynamicResource LocDiffTruncated}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource DiffReviewerWarningBrush}" IsVisible="{Binding IsLimited}" />
+          <TextBlock Margin="12,8" Text="{DynamicResource LocDiffStatusLimited}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource DiffReviewerWarningBrush}" IsVisible="{Binding StatusLimited}" />
+        </StackPanel>
+        <Grid Grid.Row="3">
+          <Grid RowDefinitions="30,*" IsVisible="{Binding HasDocument}">
+            <Border Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+              <Grid ColumnDefinitions="*,1,*"><TextBlock Margin="12,0" Text="{Binding BeforeTitle}" FontSize="11" VerticalAlignment="Center" /><Border Grid.Column="1" Background="{DynamicResource BorderBrush}" /><TextBlock Grid.Column="2" Margin="12,0" Text="{Binding AfterTitle}" FontSize="11" VerticalAlignment="Center" /></Grid>
+            </Border>
+            <Grid Grid.Row="1" ColumnDefinitions="*,1,*">
+              <controls:DiffCodePane x:Name="BeforeEditor" AutomationProperties.Name="{DynamicResource LocDiffOldVersion}" />
+              <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
+              <controls:DiffCodePane Grid.Column="2" x:Name="AfterEditor" AutomationProperties.Name="{DynamicResource LocDiffNewVersion}" />
+            </Grid>
+          </Grid>
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420" Margin="24" Spacing="12" IsVisible="{Binding ShowMessage}">
+            <ProgressBar IsIndeterminate="True" Width="120" Height="3" IsVisible="{Binding IsLoading}" />
+            <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>
