@@ -74,6 +74,7 @@ import { WorkspaceConversationPage } from "../projects/desktop/workspace/convers
 import { WorkspaceEditorPage } from "../projects/desktop/workspace/editor/index.jsx";
 import { WorkspaceReviewPage } from "../projects/desktop/workspace/review/index.jsx";
 import { WorkspaceSourceControlPage } from "../projects/desktop/workspace/source-control/index.jsx";
+import { DiffReviewerPage } from "../projects/desktop/workspace/diff-reviewer/index.jsx";
 import { WorkspaceProviderTracePage } from "../projects/desktop/workspace/provider-trace/index.jsx";
 import { WorkspaceToolActivityPage } from "../projects/desktop/workspace/tool-activity/index.jsx";
 import { WorkspaceTerminalPage } from "../projects/desktop/workspace/terminal/index.jsx";
@@ -196,6 +197,7 @@ const routes = {
   "/projects/desktop/workspace/editor": WorkspaceEditorPage,
   "/projects/desktop/workspace/review": WorkspaceReviewPage,
   "/projects/desktop/workspace/source-control": WorkspaceSourceControlPage,
+  "/projects/desktop/workspace/diff-reviewer": DiffReviewerPage,
   "/projects/desktop/workspace/provider-trace": WorkspaceProviderTracePage,
   "/projects/desktop/workspace/tool-activity": WorkspaceToolActivityPage,
   "/projects/desktop/workspace/terminal": WorkspaceTerminalPage,

@@ -305,6 +305,12 @@ export const primaryModules = [
                 keywords: "git changed files diff additions deletions",
               },
               {
+                path: "/projects/desktop/workspace/diff-reviewer",
+                label: "Diff Reviewer",
+                keywords:
+                  "git changed files tree side by side comparison window difference navigation",
+              },
+              {
                 path: "/projects/desktop/workspace/provider-trace",
                 label: "Provider trace",
                 keywords: "model calls tokens cache duration request response",

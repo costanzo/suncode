@@ -63,6 +63,22 @@ export function SourceControlPanel({
           disabled={unavailable}
         />
         <IconButton icon="refresh" label="Refresh Git status" onClick={() => setFilter("")} />
+        <button
+          type="button"
+          className="workspace-icon-button"
+          title="Open Diff Reviewer"
+          aria-label="Open Diff Reviewer"
+          disabled={unavailable}
+          onClick={() =>
+            window.open(
+              "#/projects/desktop/workspace/diff-reviewer",
+              "_blank",
+              "noopener,noreferrer",
+            )
+          }
+        >
+          <Icon name="expand" size={15} />
+        </button>
         <IconButton
           icon="copy"
           label="Copy patch"

@@ -90,6 +90,12 @@ export function WorkspacePage() {
       <Section id="workspace-modules" title="Focused workspace surfaces">
         <div className="module-card-grid">
           <ModuleLink
+            to="/projects/desktop/workspace/diff-reviewer"
+            icon="files"
+            title="Diff Reviewer"
+            description="A separate change review window with a changed-file tree, side-by-side comparisons, and difference navigation."
+          />
+          <ModuleLink
             to="/projects/desktop/workspace/child-sessions"
             icon="agent"
             title="Child sessions"

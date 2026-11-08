@@ -40,7 +40,10 @@
     border-top: 1px solid var(--border);
   }
   .workspace-git > header {
-    grid-template-columns: 16px 8px minmax(0, 1fr) minmax(120px, 210px) 8px 26px 8px 26px 8px 26px;
+    grid-template-columns: 16px 8px minmax(0, 1fr) minmax(
+        120px,
+        210px
+      ) 8px 26px 8px 26px 8px 26px 8px 26px;
     gap: 0;
   }
   .workspace-git > header > .workspace-git-icon {
@@ -57,14 +60,17 @@
     grid-column: 4;
     width: 100%;
   }
-  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(4) {
     grid-column: 6;
   }
-  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
     grid-column: 8;
   }
-  .workspace-git > header > .workspace-icon-button:last-child {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
     grid-column: 10;
+  }
+  .workspace-git > header > .workspace-icon-button:last-child {
+    grid-column: 12;
   }
 }
 
@@ -276,7 +282,7 @@
     min-width: 0;
   }
   .workspace-git > header {
-    grid-template-columns: 16px 8px minmax(0, 1fr) 26px 8px 26px 8px 26px;
+    grid-template-columns: 16px 8px minmax(0, 1fr) 26px 8px 26px 8px 26px 8px 26px;
     gap: 0;
   }
   .workspace-git > header > .workspace-git-icon {
@@ -292,14 +298,17 @@
   .workspace-git > header > input {
     display: none;
   }
-  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(4) {
     grid-column: 4;
   }
-  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(3) {
     grid-column: 6;
   }
-  .workspace-git > header > .workspace-icon-button:last-child {
+  .workspace-git > header > .workspace-icon-button:nth-last-child(2) {
     grid-column: 8;
+  }
+  .workspace-git > header > .workspace-icon-button:last-child {
+    grid-column: 10;
   }
   .workspace-git > header input,
   .workspace-git > header .workspace-scope {

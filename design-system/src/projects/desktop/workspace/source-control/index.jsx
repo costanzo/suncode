@@ -30,6 +30,7 @@ const sourceControlGuides = {
         "Switch between All, Staged, and Unstaged scopes.",
         "Select a changed file to inspect its line-level diff.",
         "Use the filter, refresh, or copy patch controls from the header.",
+        "Open Diff Reviewer beside Refresh to launch the separate side-by-side review page.",
       ],
       style: [
         "The drawer uses a 36px toolbar and a 230px file list at desktop widths.",

@@ -52,6 +52,8 @@ Feature views must consume semantic resources such as `AccentBrush`, `SurfaceRai
 
 Desktop Workspace additionally exposes an Editor child route for Explorer file selection, read-only syntax highlighting, session-based return to Conversation, and loading, empty, failure, and constrained states.
 
+Desktop Workspace also exposes Diff Reviewer at `#/projects/desktop/workspace/diff-reviewer`, parallel to Source control. This route previews a standalone native-framed window with a changed-file Explorer tree and side-by-side read-only comparison, difference navigation, foldable unchanged context, and synchronized vertical scrolling. It includes loading, failure, no-changes, no-selection, binary, reading-limit, constrained, and macOS/Windows frame specimens. The per-project native window lifecycle is specified in root `DESIGN.md` and awaits Avalonia implementation and native verification.
+
 ## Asset Rules
 
 - Put source-imported product images, logos, illustrations, and reusable icons in `src/assets/`.

@@ -1,0 +1,23 @@
+:root {
+  --diff-reviewer-width: 1200px;
+  --diff-reviewer-height: 680px;
+  --diff-reviewer-min-width: 820px;
+  --diff-reviewer-min-height: 480px;
+  --diff-reviewer-tree-width: 240px;
+  --diff-reviewer-tree-min-width: 180px;
+  --diff-reviewer-tree-max-width: 360px;
+  --diff-reviewer-pane-min-width: 280px;
+  --diff-reviewer-row-height: 22px;
+  --diff-reviewer-gutter-width: 42px;
+  --diff-reviewer-fold-height: 32px;
+  --diff-reviewer-code-size: 11px;
+  --diff-reviewer-caption-size: 11px;
+  --diff-reviewer-divider-width: 4px;
+  --diff-reviewer-added: var(--copy-success);
+  --diff-reviewer-deleted: var(--danger);
+  --diff-reviewer-warning: color-mix(in srgb, var(--warning) 85%, var(--text));
+  --diff-reviewer-added-surface: color-mix(in srgb, var(--copy-success) 12%, var(--surface));
+  --diff-reviewer-deleted-surface: var(--danger-surface);
+  --diff-reviewer-added-word: color-mix(in srgb, var(--copy-success) 24%, transparent);
+  --diff-reviewer-deleted-word: color-mix(in srgb, var(--danger) 24%, transparent);
+}

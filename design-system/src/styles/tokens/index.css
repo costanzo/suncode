@@ -3,4 +3,5 @@
 @import "colors/light.css";
 @import "typography/index.css";
 @import "spacing.css";
+@import "diff-reviewer.css";
 @import "website.css";

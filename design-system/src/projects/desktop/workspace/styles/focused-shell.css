@@ -43,16 +43,20 @@
   border-radius: 0;
 }
 
-.workspace-git > header > .workspace-icon-button:nth-last-child(3) {
+.workspace-git > header > .workspace-icon-button:nth-last-child(4) {
   grid-column: 11;
 }
 
-.workspace-git > header > .workspace-icon-button:nth-last-child(2) {
+.workspace-git > header > .workspace-icon-button:nth-last-child(3) {
   grid-column: 13;
 }
 
-.workspace-git > header > .workspace-icon-button:last-child {
+.workspace-git > header > .workspace-icon-button:nth-last-child(2) {
   grid-column: 15;
+}
+
+.workspace-git > header > .workspace-icon-button:last-child {
+  grid-column: 17;
 }
 
 .workspace-git > header > .workspace-icon-button {

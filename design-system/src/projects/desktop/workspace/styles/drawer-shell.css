@@ -48,7 +48,7 @@
 .workspace-git > header {
   grid-template-columns:
     16px 8px minmax(0, 190px) 8px 1px 8px max-content minmax(0, 1fr)
-    210px 8px 26px 8px 26px 8px 26px;
+    210px 8px 26px 8px 26px 8px 26px 8px 26px;
   gap: 0;
   min-height: 36px;
 }

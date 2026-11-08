@@ -1,0 +1,321 @@
+.diff-reviewer-preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: var(--diff-reviewer-caption-size);
+  color: var(--text-secondary);
+}
+.diff-reviewer-preview-controls label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.diff-reviewer-preview-controls select {
+  min-height: var(--control-sm);
+  padding-inline: var(--space-2);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.diff-reviewer-preview {
+  max-width: 100%;
+  padding-bottom: var(--space-4);
+  overflow: auto;
+}
+.diff-reviewer-preview.is-constrained {
+  max-width: var(--diff-reviewer-min-width);
+}
+.diff-reviewer-window {
+  width: min(var(--diff-reviewer-width), 100%);
+  min-width: var(--diff-reviewer-min-width);
+  min-height: var(--diff-reviewer-min-height);
+}
+.diff-reviewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface);
+}
+.diff-reviewer-toolbar,
+.diff-reviewer-file-toolbar,
+.diff-reviewer-sidebar > header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-md);
+  padding-inline: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-toolbar {
+  background: var(--surface-raised);
+}
+.diff-reviewer-branch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.diff-reviewer-body {
+  display: grid;
+  grid-template-columns: var(--diff-reviewer-tree-width) var(--diff-reviewer-divider-width) minmax(
+      0,
+      1fr
+    );
+  flex: 1;
+  min-height: 0;
+}
+.diff-reviewer-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface-raised);
+}
+.diff-reviewer-sidebar > header {
+  justify-content: space-between;
+}
+.diff-reviewer-sidebar > header span {
+  color: var(--text-muted);
+}
+.diff-reviewer-tree {
+  display: block;
+  min-height: 0;
+  padding-top: var(--space-2);
+  overflow: auto;
+}
+.diff-reviewer-tree .workspace-tree-row {
+  grid-template-columns: var(--space-3) var(--space-4) minmax(0, 1fr) var(--space-4);
+  width: 100%;
+  min-height: var(--space-6);
+  font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-status {
+  text-align: center;
+  font: var(--diff-reviewer-caption-size) var(--font-mono);
+  color: var(--diff-reviewer-warning);
+}
+.diff-reviewer-status.is-A,
+.diff-reviewer-status.is-untracked {
+  color: var(--diff-reviewer-added);
+}
+.diff-reviewer-status.is-D {
+  color: var(--diff-reviewer-deleted);
+}
+.diff-reviewer-divider {
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+}
+.diff-reviewer-divider:hover,
+.diff-reviewer-divider:focus-visible {
+  background: var(--border-strong);
+}
+.diff-reviewer-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.diff-reviewer-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diff-reviewer-stats {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-family: var(--font-mono);
+}
+.diff-reviewer-stats b {
+  color: var(--diff-reviewer-added);
+  font-weight: 500;
+}
+.diff-reviewer-stats i {
+  color: var(--diff-reviewer-deleted);
+  font-style: normal;
+}
+.diff-reviewer-file-toolbar nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+.diff-reviewer-file-toolbar output {
+  min-width: var(--diff-reviewer-gutter-width);
+  color: var(--text-secondary);
+  text-align: center;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.diff-reviewer-pane-headings,
+.diff-reviewer-documents {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+}
+.diff-reviewer-pane-headings {
+  flex-shrink: 0;
+  height: var(--control-sm);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+}
+.diff-reviewer-pane-headings span {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-pane-headings span + span,
+.diff-reviewer-document + .diff-reviewer-document {
+  border-left: 1px solid var(--border);
+}
+.diff-reviewer-documents {
+  flex: 1;
+}
+.diff-reviewer-document {
+  position: relative;
+  min-width: 0;
+  overflow: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.diff-reviewer-lines {
+  min-width: 100%;
+  width: max-content;
+  padding-bottom: var(--space-6);
+}
+.diff-reviewer-line {
+  display: grid;
+  grid-template-columns: var(--diff-reviewer-gutter-width) minmax(0, 1fr);
+  height: var(--diff-reviewer-row-height);
+  min-width: 100%;
+  font: var(--diff-reviewer-code-size) / var(--diff-reviewer-row-height) var(--font-mono);
+}
+.diff-reviewer-line-number {
+  padding-right: var(--space-2);
+  color: var(--text-secondary);
+  text-align: right;
+  user-select: none;
+}
+.diff-reviewer-line code {
+  display: block;
+  height: var(--diff-reviewer-row-height);
+  padding-inline: var(--space-3);
+  overflow: hidden;
+  white-space: pre;
+  font: inherit;
+  tab-size: 2;
+}
+.diff-reviewer-line.is-before {
+  background: var(--diff-reviewer-deleted-surface);
+  box-shadow: inset 2px 0 var(--diff-reviewer-deleted);
+}
+.diff-reviewer-line.is-after {
+  background: var(--diff-reviewer-added-surface);
+  box-shadow: inset 2px 0 var(--diff-reviewer-added);
+}
+.diff-reviewer-line.is-before mark {
+  background: var(--diff-reviewer-deleted-word);
+}
+.diff-reviewer-line.is-after mark {
+  background: var(--diff-reviewer-added-word);
+}
+.diff-reviewer-line mark {
+  color: inherit;
+}
+.diff-reviewer-line mark .workspace-editor-token {
+  color: var(--text);
+}
+.diff-reviewer-line.is-placeholder {
+  user-select: none;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent var(--space-1),
+    var(--surface-hover) var(--space-1),
+    var(--surface-hover) calc(var(--space-1) + 1px)
+  );
+}
+.diff-reviewer-block.is-current {
+  outline: 1px solid var(--border-strong);
+  outline-offset: -1px;
+}
+.diff-reviewer-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--diff-reviewer-fold-height);
+  padding-left: calc(var(--diff-reviewer-gutter-width) + var(--space-3));
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  border: 0;
+  border-block: 1px solid var(--border);
+  font: var(--diff-reviewer-caption-size) var(--font-ui);
+  text-align: left;
+  user-select: none;
+}
+.diff-reviewer-fold:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.diff-reviewer-message {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  color: var(--text-secondary);
+  text-align: center;
+}
+.diff-reviewer-message strong {
+  color: var(--text);
+  font-size: var(--space-3);
+}
+.diff-reviewer-message span {
+  font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-message.is-error > .ds-icon {
+  color: var(--danger);
+}
+.diff-reviewer-note {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  background: var(--surface-inset);
+  font-size: var(--diff-reviewer-caption-size);
+  overflow-wrap: anywhere;
+}
+.diff-reviewer-note.is-warning {
+  color: var(--diff-reviewer-warning);
+  background: var(--warning-surface);
+}
+.diff-reviewer-caption {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-contract {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--space-3);
+  line-height: 1.7;
+}
+.diff-reviewer-reopen {
+  display: grid;
+  min-height: var(--diff-reviewer-min-height);
+  place-items: center;
+}
