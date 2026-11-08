@@ -401,7 +401,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: SunCode could inspect local project sources and use an approved shell, but it had no narrow model tool for retrieving public reference pages without delegating the request to a general process. OpenCode exposes a bounded `webfetch` contract with text, Markdown, and HTML output.
 - Decision: Advertise `webfetch(url, format?, timeout?)` and execute it only through the audited Rust operations dispatcher after network approval. Validate arguments before approval and again at execution. Limit redirects to the approved host/port or a standard HTTP-to-HTTPS upgrade, reject embedded credentials and non-text content, bound raw responses to 5 MiB, expose a 64 KiB model preview, and retain larger converted text in managed artifact storage. Use parser-backed HTML conversion and rustls-based HTTP.
 - Consequences: The model-facing registry has seven built-in tools. Web retrieval has visible authority and bounded context impact; invalid calls can be repaired in the same turn without presenting approval. Images and other binary responses remain unsupported until the provider-neutral tool-result contract gains attachments. Full Control can pre-authorize this known network risk but does not bypass URL, redirect, response, audit, or cancellation checks.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/webfetch.rs`, `agent/crates/tools/src/webfetch/mod.rs`
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/network.rs`, `agent/crates/tools/src/webfetch/mod.rs`
 
 ## ADR-20260822-read-only-project-dependencies
 
@@ -429,7 +429,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Context: The model-facing `bash` tool converted every script to `/bin/sh -lc`, so approved process calls could not start on Windows. The same tool also obscured the important distinction between portable argv execution and platform-specific shell syntax.
 - Decision: Advertise separate `process` and `shell` tools. `process` passes a program and explicit argv without implicit shell parsing. `shell` selects Windows PowerShell on Windows and POSIX `/bin/sh` on macOS/Linux. Inject ephemeral host OS, architecture, shell dialect, path style, and local date/time into provider requests. Keep `bash` only as a persisted-call compatibility alias and preserve stable process-start failures through the tool and turn projections.
 - Consequences: Coding commands can use portable argv where possible, scripts use an explicit host dialect, and Windows no longer depends on `/bin/sh`, Git Bash, Cygwin, or WSL. Shell scripts are not portable unless authored for the reported dialect. Process execution remains approval-gated and does not gain OS or network isolation.
-- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/shell.rs`, `agent/crates/tools/src/process/mod.rs`
+- Details: `features/rust-core-phase-1/`, `agent/crates/tools/src/definitions/process.rs`, `agent/crates/tools/src/process/mod.rs`
 
 ## ADR-20260820-configuration-and-provider-adapters
 

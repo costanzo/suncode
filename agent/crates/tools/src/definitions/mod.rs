@@ -1,26 +1,20 @@
 //! Model-facing declarations for the built-in tools.
 
-mod edit;
-mod glob;
-mod grep;
-mod lsp;
-mod question;
-mod read;
-mod shell;
-mod skill;
-mod todowrite;
-mod webfetch;
-mod write;
+mod conversation;
 mod documents;
-mod delete;
+mod filesystem;
+mod lsp;
+mod network;
+mod process;
+mod skills;
 
 pub use suncode_common::tool::ToolDefinition;
 
 pub fn all() -> Vec<ToolDefinition> {
     [
-        read::definition(),
-        glob::definition(),
-        grep::definition(),
+        filesystem::read(),
+        filesystem::glob(),
+        filesystem::grep(),
         documents::inspect(),
         documents::read(),
         documents::search(),
@@ -30,14 +24,14 @@ pub fn all() -> Vec<ToolDefinition> {
         lsp::references(),
         lsp::hover(),
         lsp::symbols(),
-        question::definition(),
-        todowrite::definition(),
-        write::definition(),
-        edit::definition(),
-        delete::definition(),
-        shell::definition(),
-        skill::definition(),
-        webfetch::definition(),
+        conversation::question(),
+        conversation::todowrite(),
+        filesystem::write(),
+        filesystem::edit(),
+        filesystem::delete(),
+        process::bash(),
+        skills::skill(),
+        network::webfetch(),
     ]
     .into_iter()
     .map(|(name, description, parameters)| ToolDefinition {
