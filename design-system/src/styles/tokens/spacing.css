@@ -39,4 +39,9 @@
   --ubuntu-menu-content-width: 280px;
   --ubuntu-menu-project-compact-width: 120px;
   --ubuntu-menu-content-compact-width: 180px;
+  --question-window-width: 840px;
+  --question-window-height: 640px;
+  --question-window-min-width: 560px;
+  --question-window-min-height: 400px;
+  --question-answer-min-height: 80px;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { ReviewPanel } from "../panels/review/index.js";
+import { QuestionWindowSpecimen } from "./QuestionWindowSpecimen.jsx";
 
 const reviewGuides = {
   noSession: {
@@ -121,18 +122,18 @@ const reviewGuides = {
   question: {
     tabs: {
       actions: [
-        "Choose one radio option, including the custom answer path.",
+        "Expand the question card to answer the whole request in a resizable window.",
         "Enter additional context when the provided options are insufficient.",
         "Submit the answer to resume the suspended turn or skip the question.",
       ],
       style: [
         "Waiting for answer uses a success-colored 7px point with a 1.8s pulse.",
-        "Options are stacked vertically with a 6px gap and 10px internal padding.",
-        "Radio controls stay left-aligned while descriptions use 10px secondary text.",
+        "The question window starts at 840 × 640px and fits within the available viewport.",
+        "The header and actions stay visible while the question list scrolls independently.",
       ],
       logic: [
         "The agent needs user input before it can choose the next action.",
-        "A custom answer is valid only when its text is non-empty.",
+        "Both surfaces share option selections and custom text. Closing or pressing Escape retains the draft.",
         "Submitting or skipping resolves the question and resumes turn orchestration.",
       ],
     },
@@ -224,6 +225,13 @@ export function WorkspaceReviewPage() {
         title="Review"
         description="Agent progress, current-turn todos, approval decisions, questions, checkpoints, and undo entry points."
       />
+      <Section
+        id="question-window"
+        title="Question window"
+        description="Expand the question card to answer in a resizable window. Close and reopen it to check draft retention. The controls below simulate the request and its result."
+      >
+        <QuestionWindowSpecimen />
+      </Section>
       <Section id="review-panel" title="Agent sidebar">
         <div className="workspace-state-grid">
           {states.map((state) => (

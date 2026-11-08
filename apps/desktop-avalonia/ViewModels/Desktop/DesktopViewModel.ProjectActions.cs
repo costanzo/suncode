@@ -664,29 +664,43 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         prompt?.Select(option);
     }
 
-    public async Task ReplyQuestionAsync()
+    public Task ReplyQuestionAsync() => ResolveQuestionAsync(skip: false);
+
+    public Task RejectQuestionAsync() => ResolveQuestionAsync(skip: true);
+
+    private Task ResolveQuestionAsync(bool skip)
     {
-        if (!EnsureSdk() || IsSessionLoading || PendingQuestion is null) return;
-        var question = PendingQuestion;
-        var answers = question.Questions
-            .Select(item => (IReadOnlyList<string>)item.Answers)
-            .ToArray();
-        await RunAsync(async () =>
+        if (IsSessionLoading || PendingQuestion is not { IsResolving: false } question) return Task.CompletedTask;
+        if (!EnsureSdk())
         {
-            await _sdk!.ReplyQuestionAsync(new ReplyQuestionRequest(question.RequestId, answers));
-            PendingQuestion = null;
-        }, "Answers submitted");
+            if (question.TryBeginResolution(skip)) question.FinishResolution(failed: true);
+            return Task.CompletedTask;
+        }
+        var sdk = _sdk!;
+        var answers = question.Questions.Select(item => item.Answers).ToArray();
+        return ResolveQuestionAsync(question, skip, () => skip
+            ? sdk.RejectQuestionAsync(question.RequestId)
+            : sdk.ReplyQuestionAsync(new ReplyQuestionRequest(question.RequestId, answers)));
     }
 
-    public async Task RejectQuestionAsync()
+    internal async Task ResolveQuestionAsync(PendingQuestionItem question, bool skip, Func<Task> resolve)
     {
-        if (!EnsureSdk() || IsSessionLoading || PendingQuestion is null) return;
-        var requestId = PendingQuestion.RequestId;
+        if (!ReferenceEquals(PendingQuestion, question) || !question.TryBeginResolution(skip)) return;
         await RunAsync(async () =>
         {
-            await _sdk!.RejectQuestionAsync(requestId);
-            PendingQuestion = null;
-        }, "Question skipped");
+            var failed = true;
+            try
+            {
+                await resolve();
+                failed = false;
+                // Events or another session may already have replaced the pending request.
+                if (ReferenceEquals(PendingQuestion, question)) PendingQuestion = null;
+            }
+            finally
+            {
+                question.FinishResolution(failed);
+            }
+        }, skip ? "Question skipped" : "Answers submitted");
     }
 
     public async Task DisableFullControlAsync()

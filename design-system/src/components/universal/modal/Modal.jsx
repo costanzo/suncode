@@ -12,6 +12,7 @@ export function Modal({
   hideTitle = false,
   ariaLabel,
   hideClose = false,
+  closeOnBackdrop = true,
 }) {
   const dialogRef = useRef(null);
   const titleId = useId();
@@ -27,8 +28,13 @@ export function Modal({
       if (event.key === "Escape") onClose?.();
       if (event.key !== "Tab") return;
       const focusable = [
-        ...dialogRef.current.querySelectorAll("button, input, textarea, select, [href]"),
-      ];
+        ...dialogRef.current.querySelectorAll(
+          "button, input, textarea, select, [href], [tabindex]",
+        ),
+      ].filter(
+        (element) =>
+          !element.matches(":disabled") && element.tabIndex >= 0 && element.getClientRects().length,
+      );
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -49,7 +55,11 @@ export function Modal({
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+    <div
+      className="dialog-backdrop"
+      role="presentation"
+      onMouseDown={closeOnBackdrop ? onClose : undefined}
+    >
       <div
         ref={dialogRef}
         className={`review-dialog ${className}`.trim()}

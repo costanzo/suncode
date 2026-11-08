@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
@@ -12,6 +13,9 @@ namespace SunCode.Desktop.Models;
 public sealed class QuestionPromptItem : ObservableObject
 {
     private string _customAnswer = string.Empty;
+    private int _number;
+    private QuestionOptionItem[] _observedOptions = [];
+    private readonly string _groupName = Guid.NewGuid().ToString("N");
 
     public QuestionPromptItem(string header, string question, bool multiple, bool allowCustom)
     {
@@ -19,9 +23,11 @@ public sealed class QuestionPromptItem : ObservableObject
         Question = question;
         Multiple = multiple;
         AllowCustom = allowCustom;
+        Options.CollectionChanged += (_, _) => ObserveOptions();
     }
 
     public string Header { get; }
+    public string NumberedHeader => $"{_number} · {Header}";
     public string Question { get; }
     public bool Multiple { get; }
     public bool AllowCustom { get; }
@@ -29,24 +35,60 @@ public sealed class QuestionPromptItem : ObservableObject
     public string CustomAnswer
     {
         get => _customAnswer;
-        set => SetProperty(ref _customAnswer, value);
+        set
+        {
+            if (!SetProperty(ref _customAnswer, value)) return;
+            if (!Multiple && !string.IsNullOrWhiteSpace(value))
+                foreach (var option in Options) option.IsSelected = false;
+            NotifyAnswersChanged();
+        }
+    }
+
+    internal void SetNumber(int number)
+    {
+        _number = number;
+        OnPropertyChanged(nameof(NumberedHeader));
+    }
+
+    private void ObserveOptions()
+    {
+        foreach (var option in _observedOptions) option.PropertyChanged -= OptionChanged;
+        _observedOptions = Options.ToArray();
+        foreach (var option in _observedOptions)
+        {
+            option.Multiple = Multiple;
+            option.GroupName = _groupName;
+            option.PropertyChanged += OptionChanged;
+        }
+        NotifyAnswersChanged();
+    }
+
+    private void OptionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(QuestionOptionItem.IsSelected)) return;
+        if (!Multiple && sender is QuestionOptionItem { IsSelected: true } selected)
+        {
+            foreach (var option in Options)
+                if (option != selected) option.IsSelected = false;
+            CustomAnswer = string.Empty;
+        }
+        NotifyAnswersChanged();
+    }
+
+    private void NotifyAnswersChanged()
+    {
+        OnPropertyChanged(nameof(Answers));
+        OnPropertyChanged(nameof(HasAnswer));
     }
 
     public void Select(QuestionOptionItem option)
     {
-        if (!Multiple)
-        {
-            var wasSelected = option.IsSelected;
-            foreach (var item in Options) item.IsSelected = !wasSelected && item == option;
-        }
-        else
-        {
-            option.IsSelected = !option.IsSelected;
-        }
+        if (Options.Contains(option)) option.IsSelected = !option.IsSelected;
     }
 
+    public bool HasAnswer => Answers.Count > 0;
     public IReadOnlyList<string> Answers => Options.Where(option => option.IsSelected).Select(option => option.Label)
-        .Concat(string.IsNullOrWhiteSpace(CustomAnswer) ? [] : [CustomAnswer.Trim()]).ToArray();
+        .Concat(!AllowCustom || string.IsNullOrWhiteSpace(CustomAnswer) ? [] : [CustomAnswer.Trim()]).ToArray();
 }
 
 public sealed class QuestionOptionItem : ObservableObject
@@ -61,26 +103,111 @@ public sealed class QuestionOptionItem : ObservableObject
 
     public string Label { get; }
     public string Description { get; }
+    public bool Multiple { get; internal set; }
+    public string GroupName { get; internal set; } = string.Empty;
     public bool IsSelected
     {
         get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        set
+        {
+            if (SetProperty(ref _isSelected, value)) OnPropertyChanged(nameof(IsSingleSelected));
+        }
+    }
+
+    // Invisible radio controls must stay unchecked for multi-select prompts.
+    public bool IsSingleSelected
+    {
+        get => !Multiple && IsSelected;
+        set { if (!Multiple) IsSelected = value; }
     }
 }
 
-public sealed class PendingQuestionItem
+public sealed class PendingQuestionItem : ObservableObject
 {
+    private QuestionPromptItem[] _observedQuestions = [];
+    private bool _isResolving;
+    private bool _isSkipping;
+    private string? _errorKey;
+
     public PendingQuestionItem(string requestId, string turnId, string toolCallId)
     {
         RequestId = requestId;
         TurnId = turnId;
         ToolCallId = toolCallId;
+        Questions.CollectionChanged += (_, _) => ObserveQuestions();
     }
 
     public string RequestId { get; }
     public string TurnId { get; }
     public string ToolCallId { get; }
     public ObservableCollection<QuestionPromptItem> Questions { get; } = [];
+    public bool IsResolving => _isResolving;
+    public bool IsEditable => !IsResolving;
+    public bool IsSubmitting => IsResolving && !_isSkipping;
+    public bool IsSkipping => IsResolving && _isSkipping;
+    public int AnsweredCount => Questions.Count(question => question.HasAnswer);
+    public bool CanSubmit => IsEditable && AnsweredCount > 0;
+    public bool HasError => _errorKey is not null;
+    public string ErrorText => _errorKey is null ? string.Empty : LocalizationService.GetString(_errorKey,
+        "Couldn't resolve the questions. Your answers are saved. Try again.");
+    public string AnsweredText => string.Format(LocalizationService.GetString("LocQuestionsAnsweredFormat", "{0} of {1} answered"), AnsweredCount, Questions.Count);
+    public string ContextText => string.Format(LocalizationService.GetString(
+        Questions.Count == 1 ? "LocQuestionContextFormat" : "LocQuestionsContextFormat",
+        Questions.Count == 1 ? "{0} question · Current session" : "{0} questions · Current session"), Questions.Count);
+
+    private void ObserveQuestions()
+    {
+        foreach (var question in _observedQuestions) question.PropertyChanged -= QuestionChanged;
+        _observedQuestions = Questions.ToArray();
+        for (var index = 0; index < _observedQuestions.Length; index++)
+        {
+            _observedQuestions[index].SetNumber(index + 1);
+            _observedQuestions[index].PropertyChanged += QuestionChanged;
+        }
+        NotifyAnswerCountChanged();
+        OnPropertyChanged(nameof(ContextText));
+    }
+
+    private void QuestionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QuestionPromptItem.HasAnswer)) NotifyAnswerCountChanged();
+    }
+
+    private void NotifyAnswerCountChanged()
+    {
+        OnPropertyChanged(nameof(AnsweredCount));
+        OnPropertyChanged(nameof(AnsweredText));
+        OnPropertyChanged(nameof(CanSubmit));
+    }
+
+    internal bool TryBeginResolution(bool skip)
+    {
+        if (IsResolving || (!skip && !CanSubmit)) return false;
+        _isSkipping = skip;
+        _isResolving = true;
+        _errorKey = null;
+        NotifyResolutionChanged();
+        return true;
+    }
+
+    internal void FinishResolution(bool failed)
+    {
+        _errorKey = null;
+        if (failed) _errorKey = _isSkipping ? "LocQuestionSkipFailed" : "LocQuestionSubmitFailed";
+        _isResolving = false;
+        NotifyResolutionChanged();
+    }
+
+    private void NotifyResolutionChanged()
+    {
+        OnPropertyChanged(nameof(IsResolving));
+        OnPropertyChanged(nameof(IsEditable));
+        OnPropertyChanged(nameof(IsSubmitting));
+        OnPropertyChanged(nameof(IsSkipping));
+        OnPropertyChanged(nameof(CanSubmit));
+        OnPropertyChanged(nameof(HasError));
+        OnPropertyChanged(nameof(ErrorText));
+    }
 
     public static PendingQuestionItem? FromSdk(PendingQuestion payload)
     {

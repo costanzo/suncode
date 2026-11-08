@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:SunCode.Desktop.Models"
+        xmlns:review="using:SunCode.Desktop.Views.ProjectWorkspace.Review"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.QuestionWindow"
+        x:DataType="models:PendingQuestionItem"
+        Title="{DynamicResource LocAnswerQuestions}"
+        Width="{StaticResource QuestionWindowWidth}" Height="{StaticResource QuestionWindowHeight}"
+        MinWidth="{StaticResource QuestionWindowMinWidth}" MinHeight="{StaticResource QuestionWindowMinHeight}"
+        Background="{DynamicResource SurfaceRaisedBrush}" WindowDecorations="Full" CanResize="True"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto" KeyboardNavigation.TabNavigation="Cycle">
+    <Border Padding="20" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{DynamicResource LocAnswerQuestions}" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ContextText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </StackPanel>
+        <Button x:Name="CloseButton" Grid.Column="1" Classes="sc-button icon-only quiet" Click="CloseClicked"
+                VerticalAlignment="Top" AutomationProperties.Name="{DynamicResource LocClose}" ToolTip.Tip="{DynamicResource LocClose}">
+          <svg:Svg Width="14" Height="14" Path="/Assets/icons/close.svg" Css="{DynamicResource IconSvgCss}" />
+        </Button>
+      </Grid>
+    </Border>
+    <ScrollViewer x:Name="QuestionScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <review:QuestionFields Classes="expanded" Margin="20,24" />
+    </ScrollViewer>
+    <Border x:Name="ActionsFooter" Grid.Row="2" Padding="20,16" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <StackPanel Spacing="12">
+        <Border Padding="12" CornerRadius="6" Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" IsVisible="{Binding HasError}">
+          <TextBlock Text="{Binding ErrorText}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" AutomationProperties.LiveSetting="Assertive" />
+        </Border>
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBlock Text="{Binding AnsweredText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="SubmitButton" Classes="sc-button primary" IsEnabled="{Binding CanSubmit}" Click="SubmitClicked">
+              <Grid>
+                <TextBlock Text="{DynamicResource LocSubmitAnswers}" IsVisible="{Binding !IsSubmitting}" />
+                <TextBlock Text="{DynamicResource LocSubmittingAnswers}" IsVisible="{Binding IsSubmitting}" />
+              </Grid>
+            </Button>
+            <Button x:Name="SkipButton" Classes="sc-button danger" IsEnabled="{Binding IsEditable}" Click="SkipClicked">
+              <Grid>
+                <TextBlock Text="{DynamicResource LocSkip}" IsVisible="{Binding !IsSkipping}" />
+                <TextBlock Text="{DynamicResource LocSkippingQuestions}" IsVisible="{Binding IsSkipping}" />
+              </Grid>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

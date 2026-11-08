@@ -1,14 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../../../components/universal/button/index.js";
 
-import { Radio } from "../../../../../components/universal/radio/index.js";
 import { Icon } from "../../../../../shared/Icon.jsx";
 
+import { singleQuestion } from "../../data/questions.js";
+import { QuestionCard } from "./QuestionCard.jsx";
+
 import { ContextUsage } from "../../shared/ContextUsage.jsx";
-import { IconButton } from "../../shared/IconButton.jsx";
-import { TurnChangeSummary } from "../../shared/TurnChangeSummary.jsx";
 import {
-  changes,
   completedTurnChangeSet,
   completedTurnChanges,
   currentTurnTodos,
@@ -17,10 +16,21 @@ import {
 export function ReviewPanel({
   compact = false,
   standalone = false,
-  state = "approval",
+  state: requestedState = "approval",
+  questions = singleQuestion,
+  questionOutcome = "success",
+  onQuestionResolved,
   initialChangesOpen = false,
   onApprovalDecision,
 }) {
+  const [questionResolution, setQuestionResolution] = useState(null);
+  const headingRef = useRef(null);
+  const state =
+    requestedState === "question" && questionResolution ? "running-no-changes" : requestedState;
+  useEffect(() => setQuestionResolution(null), [requestedState, questions]);
+  useEffect(() => {
+    if (questionResolution) headingRef.current?.focus();
+  }, [questionResolution]);
   const running = state === "running" || state === "running-no-changes";
   const compacting = state === "compacting";
   const waiting = state === "approval" || state === "question";
@@ -60,25 +70,6 @@ export function ReviewPanel({
               : state === "approval"
                 ? "Waiting for approval"
                 : "Waiting for answer";
-  const [questionOption, setQuestionOption] = useState(null);
-  const [customAnswer, setCustomAnswer] = useState("");
-  const questionOptions = [
-    {
-      id: "a",
-      label: "A · Stack list above detail",
-      description: "Keep the focused trace easy to scan on narrow screens.",
-    },
-    {
-      id: "b",
-      label: "B · Keep a narrow split view",
-      description: "Preserve side-by-side context when the viewport allows it.",
-    },
-    {
-      id: "c",
-      label: "C · Custom answer",
-      description: "Provide a different behavior in your own words.",
-    },
-  ];
   const turnChangeRows = completedTurnChangeSet;
   const showTurnChanges =
     !inactive && !noChanges && !failed && !compacting && turnChangeRows.length > 0;
@@ -89,7 +80,9 @@ export function ReviewPanel({
     >
       <div className={`workspace-review-heading is-${statusTone}`}>
         <div className="workspace-review-title-group">
-          <h2>Review</h2>
+          <h2 ref={headingRef} tabIndex={-1}>
+            Review
+          </h2>
           <h3>
             {completed
               ? "Turn completed"
@@ -246,55 +239,14 @@ export function ReviewPanel({
               </Button>
             </div>
           ) : (
-            <div className="workspace-question-card">
-              <div>
-                <span>Clarification needed</span>
-                <b>ANSWER</b>
-              </div>
-              <div className="workspace-question-prompt">
-                <span>Scope</span>
-                <strong>Which responsive behavior should the focused trace use?</strong>
-              </div>
-              <div className="workspace-question-options">
-                {questionOptions.map((option) => (
-                  <label
-                    key={option.id}
-                    className={`workspace-question-option ${questionOption === option.id ? "is-selected" : ""}`}
-                  >
-                    <Radio
-                      className="workspace-question-radio"
-                      name="trace-layout"
-                      value={option.id}
-                      checked={questionOption === option.id}
-                      onChange={() => setQuestionOption(option.id)}
-                    />
-                    <span>
-                      <strong>{option.label}</strong>
-                      <small>{option.description}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <input
-                className="workspace-question-custom"
-                value={customAnswer}
-                onChange={(event) => setCustomAnswer(event.target.value)}
-                placeholder="Add a custom answer"
-                aria-label="Custom answer"
-              />
-              <div className="workspace-question-actions">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!questionOption && !customAnswer.trim()}
-                >
-                  Submit answers
-                </Button>
-                <Button variant="danger" size="sm">
-                  Skip
-                </Button>
-              </div>
-            </div>
+            <QuestionCard
+              questions={questions}
+              outcome={questionOutcome}
+              onResolved={(message) => {
+                setQuestionResolution(message);
+                onQuestionResolved?.(message);
+              }}
+            />
           )}
         </>
       )}

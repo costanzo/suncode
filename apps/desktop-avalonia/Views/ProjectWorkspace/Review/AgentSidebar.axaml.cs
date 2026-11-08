@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using SunCode.Desktop.Models;
@@ -8,9 +10,15 @@ namespace SunCode.Desktop.Views.ProjectWorkspace.Review;
 
 public sealed partial class AgentSidebar : UserControl
 {
+    private QuestionWindow? _questionWindow;
+
+    internal bool HasExpandedQuestion => _questionWindow?.IsVisible == true;
+    internal QuestionWindow? ExpandedQuestionWindow => _questionWindow;
+
     public AgentSidebar()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) => _questionWindow?.Close();
     }
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
@@ -32,25 +40,42 @@ public sealed partial class AgentSidebar : UserControl
     private async void DenyApproval(object? sender, RoutedEventArgs e) =>
         await ViewModel.ResolveApprovalAsync("deny");
 
-    private void SelectQuestionOption(object? sender, PointerPressedEventArgs e)
-    {
-        ToggleQuestionOption(sender);
-        e.Handled = true;
-    }
+    private async void ExpandQuestion(object? sender, RoutedEventArgs e) => await ExpandQuestionAsync();
 
-    private void SelectQuestionOptionOnKey(object? sender, KeyEventArgs e)
+    internal async Task ExpandQuestionAsync()
     {
-        if (e.Key is Key.Space or Key.Enter)
+        if (_questionWindow is { IsVisible: true } existing)
         {
-            ToggleQuestionOption(sender);
-            e.Handled = true;
+            existing.Activate();
+            return;
+        }
+        if (DataContext is not DesktopViewModel viewModel || viewModel.PendingQuestion is not { } question
+            || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var dialog = new QuestionWindow(viewModel, question);
+        _questionWindow = dialog;
+        ToolTip.SetIsOpen(ExpandQuestionButton, false);
+        ToolTip.SetServiceEnabled(ExpandQuestionButton, false);
+        try
+        {
+            await dialog.ShowForAsync(owner);
+        }
+        finally
+        {
+            if (ReferenceEquals(_questionWindow, dialog)) _questionWindow = null;
+            ToolTip.SetServiceEnabled(ExpandQuestionButton, true);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (TopLevel.GetTopLevel(this) is null) return;
+                if (ReferenceEquals(viewModel.PendingQuestion, question)) ExpandQuestionButton.Focus();
+                else ReviewHeading.Focus();
+            }, DispatcherPriority.Input);
         }
     }
-    
-    private void ToggleQuestionOption(object? sender)
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        if ((sender as Control)?.DataContext is QuestionOptionItem option)
-            ViewModel.ToggleQuestionOption(option);
+        _questionWindow?.Close();
+        base.OnDetachedFromVisualTree(e);
     }
 
     private async void ReplyQuestion(object? sender, RoutedEventArgs e) =>

@@ -106,7 +106,7 @@ public sealed partial class ProjectWorkspace : UserControl
     internal void ScrollConversationToEndForSessionEntry() =>
         ChatArea.ScrollConversationToEndForSessionEntry();
 
-    internal bool HasMenuBlockingOverlay => ExpandedComposerModal.IsOpen || LongUserMessageModal.IsOpen;
+    internal bool HasMenuBlockingOverlay => ExpandedComposerModal.IsOpen || LongUserMessageModal.IsOpen || ReviewSidebar.HasExpandedQuestion;
 
     internal bool IsWindowsMenuExpanded => WindowsMenuBar.IsVisible;
 

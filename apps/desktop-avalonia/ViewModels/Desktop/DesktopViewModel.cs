@@ -245,6 +245,9 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         get => _pendingQuestion;
         internal set
         {
+            // A waiting request is immutable. Refreshes of it retain the shared answer draft.
+            if (value is not null && _pendingQuestion?.RequestId == value.RequestId
+                && _pendingQuestion.TurnId == value.TurnId) return;
             if (SetProperty(ref _pendingQuestion, value))
             {
                 OnPropertyChanged(nameof(HasPendingQuestion));

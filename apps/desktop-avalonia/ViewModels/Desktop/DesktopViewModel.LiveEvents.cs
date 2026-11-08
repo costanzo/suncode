@@ -334,7 +334,7 @@ public sealed partial class DesktopViewModel
                 PendingQuestion = PendingQuestionItem.FromSdk(payload);
                 break;
             case AgentEventTypes.QuestionReplied or AgentEventTypes.QuestionRejected:
-                PendingQuestion = null;
+                if (PendingQuestion?.RequestId == payload.RequestId) PendingQuestion = null;
                 break;
         }
         if (live) SyncSelectedSessionAgentStateFromReview();

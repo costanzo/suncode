@@ -254,7 +254,7 @@
               <Border Grid.Column="5" Classes="resize-handle vertical" Tag="Review" IsVisible="{Binding Layout.EffectiveReviewVisible}" />
 
               <Grid Grid.Column="6" IsVisible="{Binding Layout.EffectiveReviewVisible}">
-                <review:AgentSidebar IsVisible="{Binding Layout.EffectiveReviewInspectorVisible}" />
+                <review:AgentSidebar x:Name="ReviewSidebar" IsVisible="{Binding Layout.EffectiveReviewInspectorVisible}" />
                 <review:ChildSessionsPanel IsVisible="{Binding Layout.EffectiveChildSessionsVisible}" />
               </Grid>
             </Grid>

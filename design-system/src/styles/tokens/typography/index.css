@@ -10,4 +10,7 @@
   --markdown-display-math-size: 18px;
   --conversation-queue-size: 12px;
   --conversation-queue-preview-lines: 2;
+  --question-window-text-size: 14px;
+  --question-window-option-size: 12px;
+  --question-window-caption-size: 11px;
 }
