@@ -46,7 +46,8 @@ internal static class ProviderTraceMapper
             (long)item.OutputTokens,
             (long)item.TotalTokens,
             sequence,
-            calls);
+            calls,
+            item.ErrorCode ?? string.Empty);
 
     public static ProviderTraceItem FromSdk(ProviderExchange item)
     {
@@ -131,5 +132,5 @@ internal static class ProviderTraceMapper
     private static string Pretty(JsonElement? node) =>
         node is null || node.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
             ? string.Empty
-            : node.Value.GetRawText();
+            : JsonSerializer.Serialize(node.Value, DisplayJson.Options);
 }

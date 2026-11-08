@@ -11,4 +11,6 @@ internal interface IProviderTraceHost : IViewModelHost
     string? SelectedModelId { get; }
     bool IsSessionContextCurrent(string sessionId, long? loadVersion);
     void UpdateContextUsage(AgentUsage usage);
+    Task<ProviderExchangesResult> GetProviderExchangesAsync(string sessionId) => Sdk!.GetProviderExchangesAsync(sessionId);
+    Task<ProviderExchangeDetails> GetProviderExchangeAsync(string sessionId, string exchangeId) => Sdk!.GetProviderExchangeAsync(sessionId, exchangeId);
 }

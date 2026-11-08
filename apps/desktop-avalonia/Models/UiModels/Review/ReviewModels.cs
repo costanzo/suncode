@@ -108,7 +108,8 @@ public sealed record ProviderTraceTurnItem(
     long OutputTokens,
     long TotalTokens,
     int Sequence,
-    IReadOnlyList<ProviderTraceItem> Calls)
+    IReadOnlyList<ProviderTraceItem> Calls,
+    string ErrorCode = "")
 {
     public bool IsExpanded { get; set; } = true;
     public string Title => $"Turn {Sequence}";

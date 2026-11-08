@@ -164,6 +164,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         private set
         {
             if (ReferenceEquals(_selectedSession, value)) return;
+            var sessionChanged = _selectedSession?.SessionId != value?.SessionId;
             _selectedSession = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SessionTitle));
@@ -178,7 +179,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(ShowChatInput));
             OnPropertyChanged(nameof(ComposerPlaceholder));
             OnPropertyChanged(nameof(IsModelUnavailable));
-            ProviderTrace.OnSessionChanged();
+            if (sessionChanged) ProviderTrace.OnSessionChanged();
             SaveProjectUiState(saved => SaveCurrentContentState(saved));
         }
     }

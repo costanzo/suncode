@@ -227,6 +227,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         foreach (var item in Messages) item.OnPropertyChanged(string.Empty);
         Remote.RefreshLocalizedText();
         OnPropertyChanged(nameof(ReviewStatusText));
+        OnPropertyChanged(nameof(ReviewFailure));
+        ProviderTrace.RefreshLocalizedText();
     }
 
     private async Task LoadSessionControlAsync(string sessionId, long loadVersion)
@@ -300,6 +302,10 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         PendingQuestion = projection.PendingQuestion;
         ActiveTurnId = projection.ActiveTurnId;
         ActiveTurnState = projection.ActiveTurnState;
+        LastTurnId = projection.ToolActivityTurns.LastOrDefault()?.TurnId ?? string.Empty;
+        _latestProviderCall = null;
+        if (!HasFailedTurn) ReviewFailure = null;
+        else if (ReviewFailure?.TurnId != LastTurnId) ReviewFailure = new(LastTurnId, string.Empty, string.Empty);
         var activeActivityTurn = ToolActivity.Turns.LastOrDefault(item => item.TurnId == projection.ActiveTurnId);
         UpdateActiveTurnTiming(projection.ActiveTurnId, activeActivityTurn?.StartedAt);
         OnPropertyChanged(nameof(HasMessages));

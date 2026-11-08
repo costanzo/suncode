@@ -53,6 +53,7 @@ public sealed partial class DesktopViewModel
         if (providerExchange)
         {
             ProviderTraffic.Apply(value);
+            ObserveProviderFailure(type, payload);
             if (payload.Usage is { } usage) UpdateContextUsage(usage);
         }
 
@@ -357,6 +358,8 @@ public sealed partial class DesktopViewModel
         }
         ActiveTurnId = terminal ? string.Empty : turnId;
         ActiveTurnState = state;
+        if (state == "failed") SetReviewFailure(turnId, payload.Reason);
+        else ReviewFailure = null;
         var activityTurn = EnsureToolActivityTurn(turnId);
         activityTurn.SetTiming(
             payload.StartedAt,
@@ -385,7 +388,9 @@ public sealed partial class DesktopViewModel
     private void ScheduleLiveRefreshes(string type, AgentEventPayload payload, bool fileChanged)
     {
         if (type == AgentEventTypes.TurnState) SyncSelectedSessionAgentStateFromReview();
-        if (AgentEventTypes.IsProviderExchange(type) && ProviderTraceVisible) RunInBackground(ProviderTrace.RefreshAsync, "provider_trace.refresh");
+        if (AgentEventTypes.IsProviderExchange(type) && ProviderTraceVisible
+            || type == AgentEventTypes.TurnState && payload.State == "failed")
+            RunInBackground(ProviderTrace.RefreshAsync, "provider_trace.refresh");
         if (type == AgentEventTypes.ToolResult
             || (type == AgentEventTypes.TurnState && IsTerminalTurnState(payload.State ?? string.Empty)))
             RunInBackground(LoadChildSessionsAsync, "child_sessions.load");

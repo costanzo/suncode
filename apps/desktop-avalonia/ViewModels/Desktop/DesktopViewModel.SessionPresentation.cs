@@ -28,6 +28,7 @@ public sealed partial class DesktopViewModel
             ActiveTurnId = ActiveTurnId,
             ActiveTurnState = ActiveTurnState,
             LastTurnId = LastTurnId,
+            ReviewFailure = ReviewFailure,
             FullControlEnabled = FullControlEnabled,
             HasMoreMessages = HasMoreMessages,
             OldestMessageCreatedAt = _oldestMessageCreatedAt,
@@ -59,6 +60,8 @@ public sealed partial class DesktopViewModel
         CurrentTodos.ReplaceAll(state.CurrentTodos);
         FullControlEnabled = state.FullControlEnabled;
         LastTurnId = state.LastTurnId;
+        ReviewFailure = state.ReviewFailure;
+        _latestProviderCall = null;
         ActiveTurnId = state.ActiveTurnId;
         ActiveTurnState = state.ActiveTurnState;
         _hasMoreMessages = state.HasMoreMessages;

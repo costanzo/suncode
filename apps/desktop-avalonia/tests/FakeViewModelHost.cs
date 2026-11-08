@@ -15,7 +15,11 @@ internal sealed class FakeViewModelHost : IProviderTraceHost
     public List<AgentUsage> Usages { get; } = [];
     public AgentSdk? Sdk => null;
     public ProjectItem? SelectedProject { get; set; }
-    public bool EnsureSdk() => false;
+    public Func<string, Task<ProviderExchangesResult>>? ProviderExchangesLoader { get; set; }
+    public Func<string, string, Task<ProviderExchangeDetails>>? ProviderExchangeLoader { get; set; }
+    public bool EnsureSdk() => ProviderExchangesLoader is not null;
+    public Task<ProviderExchangesResult> GetProviderExchangesAsync(string sessionId) => ProviderExchangesLoader!(sessionId);
+    public Task<ProviderExchangeDetails> GetProviderExchangeAsync(string sessionId, string exchangeId) => ProviderExchangeLoader!(sessionId, exchangeId);
     public Task<bool> EnsureSdkReadyAsync() => Task.FromResult(false);
     public string StatusText { get; set; } = string.Empty;
     public void ReportError(Exception exception) { Errors.Add(exception); StatusText = exception.Message; }

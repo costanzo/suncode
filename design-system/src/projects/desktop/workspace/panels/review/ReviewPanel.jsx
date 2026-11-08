@@ -22,6 +22,9 @@ export function ReviewPanel({
   onQuestionResolved,
   initialChangesOpen = false,
   onApprovalDecision,
+  onInspectFailure,
+  inspectingFailure = false,
+  onRetryTurn,
 }) {
   const [questionResolution, setQuestionResolution] = useState(null);
   const headingRef = useRef(null);
@@ -113,13 +116,22 @@ export function ReviewPanel({
             <span>TURN STOPPED</span>
             <b>FAILED</b>
           </div>
-          <strong>Provider request failed</strong>
-          <p>The turn ended before completion. No further tool calls will run.</p>
+          <button
+            type="button"
+            className="workspace-failure-summary"
+            onClick={onInspectFailure}
+            disabled={inspectingFailure}
+            aria-busy={inspectingFailure}
+          >
+            <strong>Provider request failed</strong>
+            <span>OpenAI · gpt-5.6-sol</span>
+            <span className="workspace-failure-reason">Connection reset by peer</span>
+            <span className="workspace-failure-link">
+              {inspectingFailure ? "Loading request details…" : "View request details"}
+              <Icon name="chevron-right" size={12} />
+            </span>
+          </button>
           <dl>
-            <div>
-              <dt>Reason</dt>
-              <dd>Network unavailable</dd>
-            </div>
             <div>
               <dt>Turn</dt>
               <dd>
@@ -127,7 +139,7 @@ export function ReviewPanel({
               </dd>
             </div>
           </dl>
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={onRetryTurn}>
             Retry turn
           </Button>
         </div>

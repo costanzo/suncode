@@ -933,4 +933,11 @@
   <x:String x:Key="LocDiffReadFailed">无法读取对比内容，请刷新重试。</x:String>
   <x:String x:Key="LocDiffRenamedFrom">重命名前的路径</x:String>
   <x:String x:Key="LocDiffStatusLimited">变更文件列表已达到读取上限。</x:String>
+  <x:String x:Key="LocViewRequestDetails">查看请求详情</x:String>
+  <x:String x:Key="LocLoadingRequestDetails">正在加载请求详情…</x:String>
+  <x:String x:Key="LocNoMatchingProviderRequest">此轮没有可查看的对应失败请求。</x:String>
+  <x:String x:Key="LocRequestDetailsLoadFailed">无法加载请求详情，请重试。</x:String>
+  <x:String x:Key="LocRetryLoadingDetails">重新加载详情</x:String>
+  <x:String x:Key="LocFailureReasonUnavailable">暂无具体失败原因。</x:String>
+  <x:String x:Key="LocProviderError">提供商错误</x:String>
 </ResourceDictionary>

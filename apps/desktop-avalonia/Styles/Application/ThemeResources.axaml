@@ -9,6 +9,7 @@
   <!-- Paints nothing visible but keeps a surface hit-testable, for drag
        regions such as the title bar and pane resize handles. -->
   <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />
+  <x:Double x:Key="ProviderTraceMetricRowHeight">58</x:Double>
   <x:Double x:Key="UbuntuTitleBarHeight">36</x:Double>
   <x:Double x:Key="UbuntuCaptionTargetWidth">32</x:Double>
   <x:Double x:Key="UbuntuCaptionCircleSize">20</x:Double>
@@ -85,6 +86,7 @@
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #101317; } [fill='#000'] { fill: #101317; } [stroke='currentColor'] { stroke: #101317; }</x:String>
       <x:String x:Key="GitAccentSvgCss">[stroke='#000'] { stroke: #69c5b0; } [fill='#000'] { fill: #69c5b0; } [stroke='currentColor'] { stroke: #69c5b0; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #d5ad6f; } [fill='#000'] { fill: #d5ad6f; } [stroke='currentColor'] { stroke: #d5ad6f; }</x:String>
+      <x:String x:Key="DangerSvgCss">[stroke='#000'] { stroke: #e68a83; } [fill='#000'] { fill: #e68a83; } [stroke='currentColor'] { stroke: #e68a83; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #78c99b; } [fill='#000'] { fill: #78c99b; } [stroke='currentColor'] { stroke: #78c99b; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #9fb3c3; } [fill='#000'] { fill: #9fb3c3; } [stroke='currentColor'] { stroke: #9fb3c3; }</x:String>
       <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #aeb4ed; } [fill='#000'] { fill: #aeb4ed; } [stroke='currentColor'] { stroke: #aeb4ed; }</x:String>
@@ -199,6 +201,7 @@
       <x:String x:Key="AccentInkSvgCss">[stroke='#000'] { stroke: #ffffff; } [fill='#000'] { fill: #ffffff; } [stroke='currentColor'] { stroke: #ffffff; }</x:String>
       <x:String x:Key="GitAccentSvgCss">[stroke='#000'] { stroke: #2f8f7d; } [fill='#000'] { fill: #2f8f7d; } [stroke='currentColor'] { stroke: #2f8f7d; }</x:String>
       <x:String x:Key="WarningSvgCss">[stroke='#000'] { stroke: #9a6a28; } [fill='#000'] { fill: #9a6a28; } [stroke='currentColor'] { stroke: #9a6a28; }</x:String>
+      <x:String x:Key="DangerSvgCss">[stroke='#000'] { stroke: #b6463f; } [fill='#000'] { fill: #b6463f; } [stroke='currentColor'] { stroke: #b6463f; }</x:String>
       <x:String x:Key="CopySuccessSvgCss">[stroke='#000'] { stroke: #27845b; } [fill='#000'] { fill: #27845b; } [stroke='currentColor'] { stroke: #27845b; }</x:String>
       <x:String x:Key="SuccessSvgCss">[stroke='#000'] { stroke: #4f6d82; } [fill='#000'] { fill: #4f6d82; } [stroke='currentColor'] { stroke: #4f6d82; }</x:String>
       <x:String x:Key="ContentSessionSvgCss">[stroke='#000'] { stroke: #6269a8; } [fill='#000'] { fill: #6269a8; } [stroke='currentColor'] { stroke: #6269a8; }</x:String>

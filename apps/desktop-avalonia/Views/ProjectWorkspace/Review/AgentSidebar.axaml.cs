@@ -84,6 +84,8 @@ public sealed partial class AgentSidebar : UserControl
     private async void RejectQuestion(object? sender, RoutedEventArgs e) =>
         await ViewModel.RejectQuestionAsync();
 
+    private async void InspectFailure(object? sender, RoutedEventArgs e) => await ViewModel.OpenFailureDetailsAsync();
+
     private async void RetryTurn(object? sender, RoutedEventArgs e)
     {
         await ViewModel.RetryLastTurnAsync();

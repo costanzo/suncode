@@ -220,6 +220,7 @@ export function WorkspaceWindow({
   const [currentContent, setCurrentContent] = useState(() => contentItemForSession(sessions[0]));
   const [recentContent, setRecentContent] = useState(initialRecentContent);
   const [rightRegion, setRightRegion] = useState("review");
+  const [traceFocusVersion, setTraceFocusVersion] = useState(0);
   const [drawer, setDrawer] = useState(
     initialDrawer === "git" && !gitAvailable ? null : initialDrawer,
   );
@@ -330,6 +331,10 @@ export function WorkspaceWindow({
               <ReviewPanel
                 compact
                 state={reviewState}
+                onInspectFailure={() => {
+                  setTraceFocusVersion((version) => version + 1);
+                  setDrawer("trace");
+                }}
                 initialChangesOpen={initialChangesOpen}
                 onApprovalDecision={onApprovalDecision}
               />
@@ -351,7 +356,13 @@ export function WorkspaceWindow({
               changeSet={completedTurnChangeSet}
             />
           )}
-          {drawer === "trace" && <ProviderTracePanel onClose={() => setDrawer(null)} />}
+          {drawer === "trace" && (
+            <ProviderTracePanel
+              key={traceFocusVersion}
+              state={reviewState === "failed" ? "failed" : "expanded"}
+              onClose={() => setDrawer(null)}
+            />
+          )}
           {drawer === "tools" && <ToolActivityPanel onClose={() => setDrawer(null)} />}
           {drawer === "terminal" && <TerminalPanel onClose={() => setDrawer(null)} />}
         </div>

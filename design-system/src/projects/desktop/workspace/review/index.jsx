@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { ReviewPanel } from "../panels/review/index.js";
+import { FailureNavigationSpecimen } from "./FailureNavigationSpecimen.jsx";
 import { QuestionWindowSpecimen } from "./QuestionWindowSpecimen.jsx";
 
 const reviewGuides = {
@@ -141,7 +142,7 @@ const reviewGuides = {
   failed: {
     tabs: {
       actions: [
-        "Read the failure reason and turn identifier in the stopped card.",
+        "Activate the failure summary to open its provider call and focus the error details.",
         "Use Retry turn to submit a new attempt after correcting the issue.",
         "Inspect Source Control separately to review any changes made before failure.",
       ],
@@ -225,6 +226,13 @@ export function WorkspaceReviewPage() {
         title="Review"
         description="Agent progress, current-turn todos, approval decisions, questions, checkpoints, and undo entry points."
       />
+      <Section
+        id="failure-navigation"
+        title="Failure details"
+        description="Activate the error summary to open the failed call. Retry turn remains a separate action. Use the controls to review loading and unavailable details."
+      >
+        <FailureNavigationSpecimen />
+      </Section>
       <Section
         id="question-window"
         title="Question window"

@@ -933,4 +933,11 @@
   <x:String x:Key="LocDiffReadFailed">Could not read this comparison. Refresh to retry.</x:String>
   <x:String x:Key="LocDiffRenamedFrom">Renamed from</x:String>
   <x:String x:Key="LocDiffStatusLimited">The changed-file list has reached the reading limit.</x:String>
+  <x:String x:Key="LocViewRequestDetails">View request details</x:String>
+  <x:String x:Key="LocLoadingRequestDetails">Loading request details…</x:String>
+  <x:String x:Key="LocNoMatchingProviderRequest">This turn has no matching failed provider request to inspect.</x:String>
+  <x:String x:Key="LocRequestDetailsLoadFailed">Could not load request details. Try again.</x:String>
+  <x:String x:Key="LocRetryLoadingDetails">Retry loading details</x:String>
+  <x:String x:Key="LocFailureReasonUnavailable">The failure reason is unavailable.</x:String>
+  <x:String x:Key="LocProviderError">Provider error</x:String>
 </ResourceDictionary>

@@ -17,6 +17,7 @@ internal sealed class SessionPresentationState : IDisposable
     internal required string ActiveTurnId { get; init; }
     internal required string ActiveTurnState { get; init; }
     internal required string LastTurnId { get; init; }
+    internal TurnFailureItem? ReviewFailure { get; init; }
     internal bool FullControlEnabled { get; init; }
     internal bool HasMoreMessages { get; init; }
     internal string? OldestMessageCreatedAt { get; init; }

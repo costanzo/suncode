@@ -177,6 +177,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         DisposeSubmittedAttachments();
         ReplaceComposerAttachments([]);
         ProviderTrace.Clear();
+        ReviewFailure = null;
+        _latestProviderCall = null;
         ContextUsage.Reset();
         PendingApproval = null;
         FullControlEnabled = false;

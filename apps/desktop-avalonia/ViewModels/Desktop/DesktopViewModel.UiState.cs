@@ -22,6 +22,7 @@ public sealed partial class DesktopViewModel
         Git = new GitReviewViewModel(this, gitService);
         TurnDiff = new TurnDiffViewModel(this);
         ProviderTrace = new ProviderTraceViewModel(this);
+        ProviderTrace.Refreshed += RefreshReviewFailure;
         Editor = new EditorViewModel(this);
         Explorer = new ExplorerViewModel(this);
         Browser = new BrowserRuntimeViewModel(this);

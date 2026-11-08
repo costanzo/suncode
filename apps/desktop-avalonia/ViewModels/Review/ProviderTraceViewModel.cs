@@ -16,6 +16,15 @@ public sealed class ProviderTraceViewModel : ObservableObject
     private string _state = "idle";
     private string _error = string.Empty;
     private string _filter = string.Empty;
+    private long _contextVersion;
+    private long _refreshVersion;
+    private long _selectionVersion;
+    private long _navigationVersion;
+    private string _failureNavigationState = string.Empty;
+    private (string TurnId, string ExchangeId, string Code)? _failureDestination;
+
+    internal event Action? Refreshed;
+    internal event Action? FailureFocusRequested;
 
     internal ProviderTraceViewModel(IProviderTraceHost host) => _host = host;
 
@@ -28,11 +37,12 @@ public sealed class ProviderTraceViewModel : ObservableObject
         get => _selectedTrace;
         set
         {
-            if (SetProperty(ref _selectedTrace, value))
-            {
-                SelectedTraceDetails = null;
-                NotifySelectionChanged();
-            }
+            if (ReferenceEquals(_selectedTrace, value)) return;
+            _selectedTrace = value;
+            _selectionVersion++;
+            SelectedTraceDetails = null;
+            OnPropertyChanged();
+            NotifySelectionChanged();
         }
     }
 
@@ -56,12 +66,47 @@ public sealed class ProviderTraceViewModel : ObservableObject
         }
     }
     public string Error { get => _error; private set => SetProperty(ref _error, value); }
-    public string Filter { get => _filter; private set { if (SetProperty(ref _filter, value)) OnPropertyChanged(nameof(EmptyMessage)); } }
+    public string Filter
+    {
+        get => _filter;
+        set
+        {
+            if (!SetProperty(ref _filter, value ?? string.Empty)) return;
+            ApplyFilter();
+            OnPropertyChanged(nameof(EmptyMessage));
+        }
+    }
+
+    public string FailureNavigationState
+    {
+        get => _failureNavigationState;
+        private set
+        {
+            if (!SetProperty(ref _failureNavigationState, value)) return;
+            OnPropertyChanged(nameof(IsRevealingFailure));
+            OnPropertyChanged(nameof(ShowFailureNavigationFeedback));
+            OnPropertyChanged(nameof(CanRetryFailureNavigation));
+            OnPropertyChanged(nameof(FailureNavigationMessage));
+            OnPropertyChanged(nameof(ShowSelectedTraceOverview));
+            OnPropertyChanged(nameof(ShowEmptyState));
+        }
+    }
+    public bool IsRevealingFailure => FailureNavigationState == "loading";
+    public bool ShowFailureNavigationFeedback => FailureNavigationState is "loading" or "missing" or "error";
+    public bool CanRetryFailureNavigation => FailureNavigationState == "error";
+    public string FailureNavigationMessage => FailureNavigationState switch
+    {
+        "loading" => LocalizationService.GetString("LocLoadingRequestDetails", "Loading request details…"),
+        "missing" => LocalizationService.GetString("LocNoMatchingProviderRequest", "This turn has no matching failed provider request to inspect."),
+        "error" => LocalizationService.GetString("LocRequestDetailsLoadFailed", "Could not load request details. Try again."),
+        _ => string.Empty
+    };
 
     public bool HasTraces => Traces.Count > 0;
     public bool HasFilteredTraces => FilteredTurns.Count > 0;
     public bool HasSelectedTrace => SelectedTraceDetails is not null;
-    public bool ShowSelectedTraceOverview => HasSelectedTrace;
+    public bool ShowSelectedTraceOverview => HasSelectedTrace && !ShowFailureNavigationFeedback;
+    public bool ShowEmptyState => !HasSelectedTrace && !ShowFailureNavigationFeedback;
     public string CountText => $"{FilteredTurns.Count} turns · {FilteredTurns.Sum(turn => turn.Calls.Count)} calls";
     public bool IsLoading => State == "loading";
     public string Summary => Traces.Count == 0
@@ -84,8 +129,9 @@ public sealed class ProviderTraceViewModel : ObservableObject
 
     public Task RefreshAsync() => RefreshAsync(null, null);
 
-    internal async Task RefreshAsync(string? requestedSessionId, long? loadVersion)
+    internal async Task RefreshAsync(string? requestedSessionId, long? loadVersion, bool loadSelection = true)
     {
+        if (IsRevealingFailure && loadSelection) return;
         if (!_host.EnsureSdk() || _host.SelectedSessionId is not { } selectedSessionId)
         {
             Clear();
@@ -93,12 +139,14 @@ public sealed class ProviderTraceViewModel : ObservableObject
         }
         var sessionId = requestedSessionId ?? selectedSessionId;
         if (!_host.IsSessionContextCurrent(sessionId, loadVersion)) return;
+        var contextVersion = _contextVersion;
+        var refreshVersion = ++_refreshVersion;
         State = "loading";
         Error = string.Empty;
         try
         {
-            var result = await _host.Sdk!.GetProviderExchangesAsync(sessionId);
-            if (!_host.IsSessionContextCurrent(sessionId, loadVersion)) return;
+            var result = await _host.GetProviderExchangesAsync(sessionId);
+            if (!_host.IsSessionContextCurrent(sessionId, loadVersion) || contextVersion != _contextVersion || refreshVersion != _refreshVersion) return;
             Traces.Clear();
             Turns.Clear();
             _details.Clear();
@@ -121,27 +169,40 @@ public sealed class ProviderTraceViewModel : ObservableObject
             }
             ApplyFilter();
             State = "ready";
-            if (SelectedTrace is { } selected)
+            Refreshed?.Invoke();
+            if (loadSelection && !IsRevealingFailure && SelectedTrace is { } selected)
             {
                 await LoadAsync(selected);
             }
         }
         catch (Exception exception)
         {
-            if (!_host.IsSessionContextCurrent(sessionId, loadVersion)) return;
+            if (!_host.IsSessionContextCurrent(sessionId, loadVersion) || contextVersion != _contextVersion || refreshVersion != _refreshVersion) return;
             State = "error";
             Error = exception.Message;
         }
     }
 
-    public async Task LoadAsync(ProviderTraceItem trace)
+    public Task LoadAsync(ProviderTraceItem trace) => LoadAsync(trace, fromFailure: false);
+
+    private async Task LoadAsync(ProviderTraceItem trace, bool fromFailure)
     {
         if (!_host.EnsureSdk() || _host.SelectedSessionId is not { } sessionId) return;
+        if (!fromFailure)
+        {
+            _navigationVersion++;
+            FailureNavigationState = string.Empty;
+        }
         SelectedTrace = trace;
         SelectedTraceDetails = trace;
+        var contextVersion = _contextVersion;
+        var refreshVersion = _refreshVersion;
+        var selectionVersion = ++_selectionVersion;
         if (_details.TryGetValue(trace.ExchangeId, out var cached))
         {
             SelectedTraceDetails = cached;
+            State = "ready";
+            Error = string.Empty;
             return;
         }
         State = "loading";
@@ -149,13 +210,13 @@ public sealed class ProviderTraceViewModel : ObservableObject
         try
         {
             var details = await GetDetailsAsync(sessionId, trace.ExchangeId);
-            if (_host.SelectedSessionId != sessionId || SelectedTrace?.ExchangeId != trace.ExchangeId) return;
+            if (!_host.IsSessionContextCurrent(sessionId, null) || contextVersion != _contextVersion || refreshVersion != _refreshVersion || selectionVersion != _selectionVersion) return;
             SelectedTraceDetails = details;
             State = "ready";
         }
         catch (Exception exception)
         {
-            if (_host.SelectedSessionId != sessionId || SelectedTrace?.ExchangeId != trace.ExchangeId) return;
+            if (!_host.IsSessionContextCurrent(sessionId, null) || contextVersion != _contextVersion || refreshVersion != _refreshVersion || selectionVersion != _selectionVersion) return;
             State = "error";
             Error = exception.Message;
         }
@@ -164,17 +225,23 @@ public sealed class ProviderTraceViewModel : ObservableObject
     public void SetFilter(string filter)
     {
         Filter = filter ?? string.Empty;
-        ApplyFilter();
     }
 
     public void SelectTurn()
     {
+        _navigationVersion++;
+        FailureNavigationState = string.Empty;
         SelectedTrace = null;
         if (State == "loading") State = "ready";
     }
 
     internal void Clear()
     {
+        _contextVersion++;
+        _refreshVersion++;
+        _navigationVersion++;
+        _failureDestination = null;
+        FailureNavigationState = string.Empty;
         Traces.Clear();
         Turns.Clear();
         FilteredTurns.Clear();
@@ -189,7 +256,71 @@ public sealed class ProviderTraceViewModel : ObservableObject
     }
 
     // The empty-state text depends on whether the window has a session selected.
-    internal void OnSessionChanged() => OnPropertyChanged(nameof(EmptyMessage));
+    internal void OnSessionChanged()
+    {
+        Clear();
+        OnPropertyChanged(nameof(EmptyMessage));
+    }
+
+    internal void RefreshLocalizedText() => OnPropertyChanged(nameof(FailureNavigationMessage));
+
+    internal TurnFailureItem? FindFailure(string turnId, string code, string exchangeId = "")
+    {
+        if (code.Length == 0) code = Turns.FirstOrDefault(item => item.TurnId == turnId)?.ErrorCode ?? string.Empty;
+        if (code.Length == 0 && exchangeId.Length == 0) return null;
+        var calls = Traces.Where(item => item.TurnId == turnId)
+            .OrderByDescending(item => item.StartedAt, StringComparer.Ordinal)
+            .ThenByDescending(item => item.CompletedAt, StringComparer.Ordinal)
+            .ToList();
+        if (exchangeId.Length == 0 && calls.Count > 1
+            && calls[0].StartedAt == calls[1].StartedAt && calls[0].CompletedAt == calls[1].CompletedAt)
+            return null;
+        var call = exchangeId.Length > 0
+            ? calls.FirstOrDefault(item => item.ExchangeId == exchangeId)
+            : calls.FirstOrDefault();
+        if (call is not { IsFailed: true, HasError: true }) return null;
+        var failure = TurnFailureItem.FromCall(call);
+        return code.Length == 0 || code == failure.Code ? failure : null;
+    }
+
+    internal async Task RevealFailureAsync(string turnId, string exchangeId, string code)
+    {
+        if (IsRevealingFailure || _host.SelectedSessionId is not { } sessionId) return;
+        var contextVersion = _contextVersion;
+        var navigationVersion = ++_navigationVersion;
+        _failureDestination = (turnId, exchangeId, code);
+        SelectedTrace = null;
+        FailureNavigationState = "loading";
+        await RefreshAsync(sessionId, null, loadSelection: false);
+        if (!_host.IsSessionContextCurrent(sessionId, null) || contextVersion != _contextVersion || navigationVersion != _navigationVersion) return;
+        if (State == "error")
+        {
+            FailureNavigationState = "error";
+            FailureFocusRequested?.Invoke();
+            return;
+        }
+        var failure = FindFailure(turnId, code, exchangeId);
+        if (failure is null)
+        {
+            SelectedTrace = null;
+            FailureNavigationState = "missing";
+            FailureFocusRequested?.Invoke();
+            return;
+        }
+        var trace = Traces.First(item => item.ExchangeId == failure.ExchangeId && item.TurnId == turnId);
+        var turn = Turns.First(item => item.TurnId == turnId);
+        turn.IsExpanded = true;
+        if (!FilteredTurns.SelectMany(item => item.Calls).Any(item => item.ExchangeId == trace.ExchangeId)) Filter = string.Empty;
+        ApplyFilter();
+        await LoadAsync(trace, fromFailure: true);
+        if (!_host.IsSessionContextCurrent(sessionId, null) || contextVersion != _contextVersion || navigationVersion != _navigationVersion) return;
+        FailureNavigationState = State == "error" ? "error" : "ready";
+        FailureFocusRequested?.Invoke();
+    }
+
+    public Task RetryFailureNavigationAsync() => _failureDestination is { } destination
+        ? RevealFailureAsync(destination.TurnId, destination.ExchangeId, destination.Code)
+        : Task.CompletedTask;
 
     // Applies the current filter; exposed for tests that seed Turns directly.
     internal void ApplyFilter()
@@ -221,21 +352,24 @@ public sealed class ProviderTraceViewModel : ObservableObject
             loading = LoadDetailsCoreAsync(sessionId, exchangeId);
             _detailLoads[exchangeId] = loading;
         }
+        var contextVersion = _contextVersion;
+        var refreshVersion = _refreshVersion;
         try
         {
             var details = await loading;
-            _details[exchangeId] = details;
+            if (contextVersion == _contextVersion && refreshVersion == _refreshVersion && _host.IsSessionContextCurrent(sessionId, null))
+                _details[exchangeId] = details;
             return details;
         }
         finally
         {
-            _detailLoads.Remove(exchangeId);
+            if (_detailLoads.TryGetValue(exchangeId, out var current) && ReferenceEquals(current, loading)) _detailLoads.Remove(exchangeId);
         }
     }
 
     private async Task<ProviderTraceItem> LoadDetailsCoreAsync(string sessionId, string exchangeId)
     {
-        var result = await _host.Sdk!.GetProviderExchangeAsync(sessionId, exchangeId);
+        var result = await _host.GetProviderExchangeAsync(sessionId, exchangeId);
         return ProviderTraceMapper.FromSdk(result);
     }
 
@@ -244,6 +378,7 @@ public sealed class ProviderTraceViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedTraceTitle));
         OnPropertyChanged(nameof(HasSelectedTrace));
         OnPropertyChanged(nameof(ShowSelectedTraceOverview));
+        OnPropertyChanged(nameof(ShowEmptyState));
     }
 
     private void NotifyCollectionsChanged()

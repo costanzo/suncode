@@ -36,6 +36,16 @@
       <Setter Property="BorderThickness" Value="0,0,1,0" />
       <Setter Property="Padding" Value="12,7" />
     </Style>
+    <Style Selector="Border.trace-error-heading">
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style Selector="Border.trace-error-heading:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -46,7 +56,7 @@
           <TextBlock Grid.Column="2" Text="{DynamicResource LocProviderTrace}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
           <Border Grid.Column="4" Width="1" Height="18" Background="{DynamicResource BorderBrush}" />
           <TextBlock Grid.Column="6" Text="{Binding ProviderTrace.Summary}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-          <TextBox Grid.Column="7" Width="240" Height="28" MinHeight="28" FontSize="11" VerticalAlignment="Center" Padding="10,5" PlaceholderText="{DynamicResource LocFilterTrace}" TextChanged="TraceFilterChanged" />
+          <TextBox Grid.Column="7" Width="240" Height="28" MinHeight="28" FontSize="11" VerticalAlignment="Center" Padding="10,5" PlaceholderText="{DynamicResource LocFilterTrace}" Text="{Binding ProviderTrace.Filter, Mode=TwoWay}" />
           <Button Grid.Column="9" Classes="icon" Width="26" Height="26" MinHeight="26" Padding="6" Click="RefreshTrace" ToolTip.Tip="{DynamicResource LocRefreshSessionTrace}" AutomationProperties.Name="{DynamicResource LocRefreshSessionTrace}">
             <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
           </Button>
@@ -67,7 +77,7 @@
             </Grid>
             <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
             <Grid Grid.Row="2">
-              <TreeView x:Name="TraceTree" Classes="trace-tree" ItemsSource="{Binding ProviderTrace.FilteredTurns}" SelectionChanged="TraceSelected">
+              <TreeView x:Name="TraceTree" Classes="trace-tree" ItemsSource="{Binding ProviderTrace.FilteredTurns}" SelectedItem="{Binding ProviderTrace.SelectedTrace, Mode=OneWay}" SelectionChanged="TraceSelected">
                 <TreeView.DataTemplates>
                   <TreeDataTemplate DataType="models:ProviderTraceTurnItem" ItemsSource="{Binding Calls}">
                     <Grid Height="36" ColumnDefinitions="12,*,5" Margin="-5,0,8,0">
@@ -118,7 +128,7 @@
 
           <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
 
-          <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}" RowDefinitions="34,1,58,1,*">
+          <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}" RowDefinitions="34,1,Auto,1,*">
             <Grid Grid.Row="0" Margin="12,0" ColumnDefinitions="*,Auto,12,Auto">
               <TextBlock Text="{Binding ProviderTrace.SelectedTraceTitle}" Classes="mono" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
               <TextBlock Grid.Column="1" Text="{Binding ProviderTrace.SelectedTraceDetails.TimingText}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
@@ -126,7 +136,7 @@
             </Grid>
             <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
 
-            <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*,*,*" IsVisible="{Binding ProviderTrace.HasSelectedTrace}">
+            <Grid x:Name="TraceMetrics" Grid.Row="2" ColumnDefinitions="*,*,*,*,*,*" IsVisible="{Binding ProviderTrace.HasSelectedTrace}">
               <Border Classes="trace-metric"><StackPanel><TextBlock Text="INPUT" Classes="eyebrow" /><TextBlock Text="{Binding ProviderTrace.SelectedTraceDetails.InputTokenText}" Classes="mono" FontSize="14" FontWeight="SemiBold" /></StackPanel></Border>
               <Border Grid.Column="1" Classes="trace-metric"><StackPanel><TextBlock Text="OUTPUT" Classes="eyebrow" /><TextBlock Text="{Binding ProviderTrace.SelectedTraceDetails.OutputTokenText}" Classes="mono" FontSize="14" FontWeight="SemiBold" /></StackPanel></Border>
               <Border Grid.Column="2" Classes="trace-metric"><StackPanel><TextBlock Text="CACHE READ" Classes="eyebrow" /><TextBlock Text="{Binding ProviderTrace.SelectedTraceDetails.CacheReadTokenText}" Classes="mono" FontSize="14" FontWeight="SemiBold" /></StackPanel></Border>
@@ -137,7 +147,7 @@
             <Border Grid.Row="3" Background="{DynamicResource BorderBrush}" />
 
             <Grid Grid.Row="4">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ProviderTrace.ShowSelectedTraceOverview}">
+              <ScrollViewer x:Name="TraceDetailScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ProviderTrace.ShowSelectedTraceOverview}">
                 <StackPanel Margin="14,12,16,18" Spacing="16">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel>
@@ -222,15 +232,27 @@
                   </StackPanel>
 
                   <StackPanel Spacing="6" IsVisible="{Binding ProviderTrace.SelectedTraceDetails.HasError}">
-                    <TextBlock Text="Provider Error" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
+                    <Border x:Name="ProviderErrorHeading" Classes="trace-error-heading" Focusable="True" AutomationProperties.Name="{DynamicResource LocProviderError}">
+                      <TextBlock x:Name="ProviderErrorLabel" Text="{DynamicResource LocProviderError}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
+                    </Border>
                     <Border Background="{DynamicResource DangerSurfaceBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
-                      <SelectableTextBlock Text="{Binding ProviderTrace.SelectedTraceDetails.ErrorText}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
+                      <SelectableTextBlock x:Name="ProviderErrorText" Text="{Binding ProviderTrace.SelectedTraceDetails.ErrorText}" Classes="mono" FontSize="10" TextWrapping="Wrap" />
                     </Border>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
 
-              <StackPanel Width="420" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding !ProviderTrace.HasSelectedTrace}">
+              <StackPanel x:Name="FailureNavigationFeedback" Focusable="True" Spacing="10" Margin="20"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                          IsVisible="{Binding ProviderTrace.ShowFailureNavigationFeedback}"
+                          AutomationProperties.LiveSetting="Polite">
+                <ProgressBar Height="3" IsIndeterminate="True" IsVisible="{Binding ProviderTrace.IsRevealingFailure}" />
+                <TextBlock Text="{Binding ProviderTrace.FailureNavigationMessage}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" />
+                <SelectableTextBlock Text="{Binding ProviderTrace.Error}" TextWrapping="Wrap" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding ProviderTrace.CanRetryFailureNavigation}" />
+                <Button Classes="compact" HorizontalAlignment="Left" Content="{DynamicResource LocRetryLoadingDetails}" Click="RetryFailureDetails" IsVisible="{Binding ProviderTrace.CanRetryFailureNavigation}" />
+              </StackPanel>
+
+              <StackPanel Width="420" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding ProviderTrace.ShowEmptyState}">
                 <svg:Svg Width="22" Height="22" Path="/Assets/icons/activity.svg" Css="{DynamicResource IconSvgCss}" HorizontalAlignment="Center" IsVisible="{Binding !ProviderTrace.IsLoading}" />
                 <ProgressBar Width="120" Height="3" IsIndeterminate="True" IsVisible="{Binding ProviderTrace.IsLoading}" />
                 <TextBlock Text="{Binding ProviderTrace.EmptyMessage}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" />

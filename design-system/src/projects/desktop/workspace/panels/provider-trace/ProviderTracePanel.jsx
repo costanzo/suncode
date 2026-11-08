@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "../../../../../shared/Icon.jsx";
 
@@ -6,15 +6,29 @@ import { ContextUsage } from "../../shared/ContextUsage.jsx";
 import { IconButton } from "../../shared/IconButton.jsx";
 import { TurnChangeSummary } from "../../shared/TurnChangeSummary.jsx";
 
-export function ProviderTracePanel({ onClose, standalone = false, state = "expanded" }) {
+export function ProviderTracePanel({
+  onClose,
+  standalone = false,
+  state = "expanded",
+  onRetryDetails,
+}) {
+  const errorRef = useRef(null);
+  const failed = state === "failed";
+  const unavailable = state === "missing" || state === "load-error" || state === "loading";
+  useEffect(() => {
+    if (failed) {
+      errorRef.current?.focus();
+      errorRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [failed]);
   const [selected, setSelected] = useState(state === "context-compaction" ? 1 : 0);
   const [expandedTurn, setExpandedTurn] = useState(state !== "turn-collapsed");
   const traces = [
     {
       title: "Response · gpt-5.6-sol",
       time: "14:32:18",
-      status: "Completed",
-      tokens: "18,420 → 1,284",
+      status: failed ? "Failed" : "Completed",
+      tokens: failed ? "—" : "18,420 → 1,284",
       contents: [
         {
           kind: "user",
@@ -137,7 +151,29 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
           disabled={!onClose}
         />
       </header>
-      {noTurns ? (
+      {unavailable ? (
+        <div className="workspace-trace-empty" role="status">
+          <strong>
+            {state === "loading"
+              ? "Loading request details…"
+              : state === "missing"
+                ? "No matching provider request"
+                : "Could not load request details"}
+          </strong>
+          <span>
+            {state === "missing"
+              ? "This turn has no matching provider call to inspect."
+              : state === "load-error"
+                ? "The local request details could not be read. Try again."
+                : "Opening the failed call for this turn."}
+          </span>
+          {state === "load-error" && (
+            <button type="button" className="btn" onClick={onRetryDetails}>
+              Retry loading details
+            </button>
+          )}
+        </div>
+      ) : noTurns ? (
         <div className="workspace-trace-empty">
           <Icon name="activity" size={24} />
           <strong>No turns yet</strong>
@@ -155,7 +191,7 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
               <Icon name="chevron-right" className={expandedTurn ? "is-open" : ""} size={11} />
               <span>
                 <strong>Turn 0198e82c</strong>
-                <small>Completed · 1.84 s</small>
+                <small>{failed ? "Failed" : "Completed"} · 1.84 s</small>
               </span>
               <b>{traces.length} calls</b>
             </button>
@@ -165,7 +201,7 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
                   <div key={trace.title}>
                     <button
                       type="button"
-                      className={`workspace-trace-call ${trace.kind ? `is-${trace.kind}` : ""} ${selected === index ? "is-selected" : ""}`}
+                      className={`workspace-trace-call ${failed && index === 0 ? "is-failed" : ""} ${trace.kind ? `is-${trace.kind}` : ""} ${selected === index ? "is-selected" : ""}`}
                       onClick={() => setSelected(index)}
                     >
                       <span>
@@ -200,25 +236,49 @@ export function ProviderTracePanel({ onClose, standalone = false, state = "expan
               ].map(([label, value]) => (
                 <div key={label}>
                   <span>{label}</span>
-                  <strong>{value}</strong>
+                  <strong>{failed && selected === 0 && label !== "DURATION" ? "—" : value}</strong>
                 </div>
               ))}
             </div>
             <div className="workspace-trace-content">
               <div>
-                <code>TURN 0198e82c · COMPLETED</code>
+                <code>TURN 0198e82c · {failed ? "FAILED" : "COMPLETED"}</code>
                 <span>
                   {activeTrace.kind === "compaction"
                     ? "event  context.compacted"
                     : "exchange  exch_01JY7F6P8S"}
                 </span>
               </div>
-              <h4>{activeTrace.kind === "compaction" ? "Compaction result" : "Model response"}</h4>
-              <pre>
-                {activeTrace.kind === "compaction"
-                  ? `{"status":"completed","event":"context.compacted","dropped_messages":6,"retained_tokens":12160}`
-                  : `{"status":"completed","role":"assistant"}`}
-              </pre>
+              {failed && selected === 0 ? (
+                <section className="workspace-trace-error" aria-label="Provider error">
+                  <h4 ref={errorRef} tabIndex={-1}>
+                    Provider error
+                  </h4>
+                  <pre>
+                    {JSON.stringify(
+                      {
+                        code: "transient",
+                        message: "OpenAI request transport failed. Connection reset by peer",
+                        retryable: true,
+                        details: { response_started: false },
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </section>
+              ) : (
+                <>
+                  <h4>
+                    {activeTrace.kind === "compaction" ? "Compaction result" : "Model response"}
+                  </h4>
+                  <pre>
+                    {activeTrace.kind === "compaction"
+                      ? `{"status":"completed","event":"context.compacted","dropped_messages":6,"retained_tokens":12160}`
+                      : `{"status":"completed","role":"assistant"}`}
+                  </pre>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -81,6 +81,25 @@
     <Style Selector="ContentPresenter:nth-last-child(1) > Button.turn-change-row">
       <Setter Property="BorderThickness" Value="0"/>
     </Style>
+    <Style Selector="Button.failure-summary">
+      <Setter Property="Padding" Value="8" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.failure-summary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+    </Style>
+    <Style Selector="Button.failure-summary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Button.failure-summary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceActiveBrush}" />
+    </Style>
   </UserControl.Styles>
   <Border Classes="inspector-card">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
@@ -260,15 +279,24 @@
                 <TextBlock Text="{DynamicResource LocFailedCaps}" Classes="mono" FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource DangerSurfaceBrush}" />
               </Border>
             </Grid>
-            <TextBlock Text="{DynamicResource LocProviderRequestFailed}" FontSize="11" FontWeight="SemiBold" />
-            <TextBlock Text="{DynamicResource LocTurnEndedEarly}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
-            <!-- A Horizontal line -->
-            <Border Height="1" Background="{DynamicResource DangerBorderBrush}" Opacity="0.72" HorizontalAlignment="Stretch" />
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,2,0,0">
-              <TextBlock Text="{DynamicResource LocReason}" Classes="eyebrow" />
-              <TextBlock Grid.Column="1" Text="{DynamicResource LocNetworkUnavailable}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
-              <TextBlock Grid.Row="1" Text="{DynamicResource LocTurn}" Classes="eyebrow" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastTurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" />
+            <Button x:Name="FailureSummaryButton" Classes="failure-summary" Click="InspectFailure"
+                    IsEnabled="{Binding !ProviderTrace.IsRevealingFailure}"
+                    AutomationProperties.Name="{DynamicResource LocViewRequestDetails}">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{Binding ReviewFailure.Title}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ReviewFailure.ProviderModel}" IsVisible="{Binding ReviewFailure.HasProviderModel}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ReviewFailure.Summary}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ReviewFailure.Summary}" />
+                <Grid ColumnDefinitions="*,12" ColumnSpacing="8">
+                  <TextBlock Text="{DynamicResource LocViewRequestDetails}" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding !ProviderTrace.IsRevealingFailure}" />
+                  <TextBlock Text="{DynamicResource LocLoadingRequestDetails}" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding ProviderTrace.IsRevealingFailure}" AutomationProperties.LiveSetting="Polite" />
+                  <svg:Svg Grid.Column="1" Width="12" Height="12" Path="/Assets/icons/chevron-right.svg" Css="{DynamicResource DangerSvgCss}" VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+            </Button>
+            <Border Height="1" Background="{DynamicResource DangerBorderBrush}" Opacity="0.72" />
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Text="{DynamicResource LocTurn}" Classes="eyebrow" />
+              <TextBlock Grid.Column="1" Text="{Binding ReviewFailure.TurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" TextTrimming="CharacterEllipsis" />
             </Grid>
             <Button Classes="compact primary" Content="{DynamicResource LocRetryTurn}" Click="RetryTurn" HorizontalAlignment="Stretch"/>
           </StackPanel>
