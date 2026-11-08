@@ -2,6 +2,7 @@ use crate::arguments::{WriteArguments, DeleteArguments};
 use crate::checkpoint;
 use crate::error::{fatal, retryable};
 use crate::scope::safe_relative_path;
+use crate::support::sha256_hex;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
@@ -31,15 +32,15 @@ pub(crate) fn write(
     }
     let (relative, candidate, current) = target(root, path)?;
     let existed = current.is_some();
-    match (current.as_deref(), &args.expected_base64) {
+    match (current.as_deref(), &args.expected_sha256) {
         (Some(actual), Some(expected)) => check_unchanged(actual, expected)?,
         (Some(_), None) => {
             return Err(fatal(
                 "precondition_required",
-                "expected_base64 is required for an existing file",
+                "expected_sha256 is required for an existing file",
             ))
         }
-        (None, Some(_)) => return Err(fatal("conflict", "file appeared before the write")),
+        (None, Some(_)) => return Err(fatal("write_conflict", "file no longer exists")),
         (None, None) => {}
     }
     if let Some(parent) = candidate.parent() {
@@ -63,6 +64,7 @@ pub(crate) fn write(
         "path": path,
         "bytes": bytes.len(),
         "created": !existed,
+        "sha256": current_sha256,
         "checkpoint": {
             "path": checkpoint::change_path(&relative),
             "stored_on": day,
@@ -86,7 +88,7 @@ pub(crate) fn delete(
     let path = args.path.as_str();
     let (relative, candidate, current) = target(root, path)?;
     let current = current.ok_or(fatal("not_found", "file does not exist", ))?;
-    check_unchanged(&current, &args.expected_base64)?;
+    check_unchanged(&current, &args.expected_sha256)?;
     let checkpoint_root = checkpoint_root.ok_or(fatal(
         "project_unconfigured",
         "checkpoint storage is not configured",
@@ -142,11 +144,11 @@ fn target(root: &Path, path: &str) -> Result<(PathBuf, PathBuf, Option<Vec<u8>>)
     Ok((relative, candidate, Some(current)))
 }
 
-fn check_unchanged(actual: &[u8], expected_base64: &str) -> Result<(), BusinessError> {
-    let expected = STANDARD
-        .decode(expected_base64)
-        .map_err(|_| fatal("invalid_arguments", "expected_base64 is invalid"))?;
-    if actual != expected {
+fn check_unchanged(actual: &[u8], expected_sha256: &str) -> Result<(), BusinessError> {
+    if expected_sha256.len() != 64 || !expected_sha256.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(fatal("invalid_arguments", "expected_sha256 is invalid"));
+    }
+    if !sha256_hex(actual).eq_ignore_ascii_case(expected_sha256) {
         return Err(fatal("write_conflict", "file content has changed since the last read", ));
     }
     Ok(())

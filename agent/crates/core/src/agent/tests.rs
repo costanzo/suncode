@@ -645,11 +645,11 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
         ]
     } else if user_text.contains("write again") {
         vec![
-            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-again-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated again\",\"expected_base64\":\"dXBkYXRlZA==\"}"}}]},"finish_reason":"tool_calls"}]}),
+            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-again-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated again\",\"expected_sha256\":\"27eb5e51506c911f6fc4bb345c0d9db6f60415fceab7c18e1e9b862637415777\"}"}}]},"finish_reason":"tool_calls"}]}),
         ]
     } else if user_text.contains("write") {
         vec![
-            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated\",\"expected_base64\":\"aGVsbG8=\"}"}}]},"finish_reason":"tool_calls"}]}),
+            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-call","function":{"name":"write","arguments":"{\"path\":\"README.md\",\"content\":\"updated\",\"expected_sha256\":\"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\"}"}}]},"finish_reason":"tool_calls"}]}),
         ]
     } else {
         vec![

@@ -1,22 +1,12 @@
 use crate::arguments::{EditArguments, WriteArguments};
 use crate::error::fatal;
 use crate::scope::{existing_file, require_project};
+use crate::support::sha256_hex;
 use crate::write;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::path::Path;
 use suncode_common::BusinessError;
-
-fn verify_expected(current: &[u8], args: &EditArguments) -> Result<(), BusinessError> {
-    let expected = args.expected_base64.as_str();
-    let bytes = STANDARD
-        .decode(expected)
-        .map_err(|_| fatal("invalid_arguments", "expected_base64 is invalid"))?;
-    if current != bytes {
-        return Err(fatal("conflict", "file changed since it was read"));
-    }
-    Ok(())
-}
 
 pub(crate) fn edit(
     project_root: Option<&Path>,
@@ -26,7 +16,6 @@ pub(crate) fn edit(
     let root = require_project(project_root)?;
     let path = args.path.as_str();
     let (_, current) = existing_file(root, path)?;
-    verify_expected(&current, args)?;
     let raw_text = String::from_utf8(current.clone())
         .map_err(|_| fatal("encoding_unsupported", "edit requires UTF-8 text"))?;
     let has_bom = raw_text.starts_with('\u{feff}');
@@ -38,6 +27,9 @@ pub(crate) fn edit(
     };
     let normalized = text_without_bom.replace("\r\n", "\n").replace('\r', "\n");
     let replacements = &args.replacements;
+    if replacements.is_empty() {
+        return Err(fatal("invalid_arguments", "replacements must not be empty"));
+    }
     if replacements.len() > 200 {
         return Err(fatal("resource_limit", "too many replacements"));
     }
@@ -69,6 +61,14 @@ pub(crate) fn edit(
             found += 1;
             search_from = end;
             if !replace_all {
+                // Count overlapping occurrences when checking uniqueness.
+                let next_start = start + old.chars().next().unwrap().len_utf8();
+                if normalized[next_start..].contains(&old) {
+                    return Err(fatal(
+                        "edit_conflict",
+                        "replacement text matches more than once; include more context or use replaceAll",
+                    ));
+                }
                 break;
             }
         }
@@ -98,7 +98,7 @@ pub(crate) fn edit(
     let write_args = WriteArguments {
         path: path.to_string(),
         content_base64: STANDARD.encode(final_text.as_bytes()),
-        expected_base64: Some(STANDARD.encode(current)),
+        expected_sha256: Some(sha256_hex(&current)),
     };
     let mut result = write::write(project_root, checkpoint_root, &write_args)?;
     result["operation"] = json!("edit");

@@ -28,7 +28,7 @@ const KEEP_CHANGES_FOCUSED: &str =
 const KEEP_TODOS_CURRENT: &str =
     "- For multi-step work, use todowrite and keep its statuses current.";
 const VERIFY_CHANGES: &str = "- After changes, run the most relevant focused tests, lint, or typecheck when available, and report exactly what was run.";
-const WRITE_GUIDANCE: &str = "- When updating an existing file, read its current contents first and pass the latest expected_base64 to write.";
+const WRITE_GUIDANCE: &str = "- When overwriting an existing file with write, pass its latest sha256 as expected_sha256. A read or successful file mutation supplies the digest.";
 const EDIT_GUIDANCE: &str = "- Use edit for targeted exact-text replacements; include enough surrounding text to make each match unique, and set replaceAll only when every match should change.";
 const PRESERVE_OTHERS_WORK: &str = "- Do not revert, reset, or discard changes you did not make.";
 const NO_BROAD_DESTRUCTION: &str = "- Unless the user clearly asked, do not run `git reset --hard`, `git checkout --`, or recursive deletes on broad paths.";

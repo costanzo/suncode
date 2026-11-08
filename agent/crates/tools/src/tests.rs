@@ -2,6 +2,7 @@
 
 use crate::context::{ExecutionContext, NetworkSettings};
 use crate::scope::{open_project, safe_relative_path};
+use crate::support::sha256_hex;
 use crate::Operations;
 use suncode_documents::Documents;
 use base64::engine::general_purpose::STANDARD;
@@ -266,22 +267,34 @@ fn writes_only_when_the_precondition_matches() {
     let checkpoints = root.join("checkpoint-storage");
     fs::create_dir_all(&checkpoints).unwrap();
     fs::write(root.join("file.txt"), b"before").unwrap();
-    let expected = STANDARD.encode(b"before");
+    for (precondition, expected_code) in [
+        (Value::Null, "precondition_required"),
+        (json!("invalid"), "invalid_arguments"),
+    ] {
+        let failure = dispatch(
+            request("tool/write", json!({"path":"file.txt","content_base64":STANDARD.encode(b"after"),"expected_sha256":precondition})),
+            Some(&root),
+            Some(&checkpoints),
+        ).unwrap();
+        assert_eq!(failure["error"]["code"], expected_code);
+        assert_eq!(fs::read(root.join("file.txt")).unwrap(), b"before");
+    }
+    let expected = sha256_hex(b"before").to_ascii_uppercase();
     let write = request(
         "tool/write",
-        json!({"path":"file.txt","content_base64":STANDARD.encode(b"after"),"expected_base64":expected}),
+        json!({"path":"file.txt","content_base64":STANDARD.encode(b"after"),"expected_sha256":expected}),
     );
     let response = dispatch(write, Some(&root), Some(&checkpoints)).unwrap();
     assert_eq!(response["result"]["created"], false);
-    assert!(response["result"]["checkpoint_id"].is_string());
+    assert_eq!(response["result"]["sha256"], sha256_hex(b"after"));
     assert_eq!(fs::read_to_string(root.join("file.txt")).unwrap(), "after");
     let conflict = request(
         "tool/write",
-        json!({"path":"file.txt","content_base64":STANDARD.encode(b"third"),"expected_base64":expected}),
+        json!({"path":"file.txt","content_base64":STANDARD.encode(b"third"),"expected_sha256":expected}),
     );
     assert_eq!(
         dispatch(conflict, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
-        "conflict"
+        "write_conflict"
     );
     fs::remove_dir_all(root).unwrap();
 }
@@ -295,7 +308,7 @@ fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
             json!({
                 "path":"nested/file.txt",
                 "content_base64":STANDARD.encode(b"\xef\xbb\xbfone\r\ntwo\r\n"),
-                "expected_base64":null
+                "expected_sha256":null
             }),
         ),
         Some(&root),
@@ -303,13 +316,11 @@ fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
     )
     .unwrap();
     assert_eq!(write["result"]["created"], true);
-    let current = fs::read(root.join("nested/file.txt")).unwrap();
     let edit = dispatch(
         request(
             "tool/edit",
             json!({
                 "path":"nested/file.txt",
-                "expected_base64":STANDARD.encode(&current),
                 "replacements":[
                     {"old":"one","new":"uno","replace_all":false},
                     {"old":"two","new":"dos","replace_all":false}
@@ -320,7 +331,10 @@ fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
         Some(&checkpoints),
     )
     .unwrap();
-    assert!(edit["result"]["checkpoint_id"].is_string());
+    assert_eq!(
+        edit["result"]["checkpoint"]["baseline_sha256"],
+        sha256_hex(b"\xef\xbb\xbfone\r\ntwo\r\n")
+    );
     assert_eq!(
         fs::read(root.join("nested/file.txt")).unwrap(),
         b"\xef\xbb\xbfuno\r\ndos\r\n"
@@ -330,7 +344,6 @@ fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
             "tool/edit",
             json!({
                 "path":"nested/file.txt",
-                "expected_base64":STANDARD.encode(b"\xef\xbb\xbfuno\r\ndos\r\n"),
                 "replacements":[
                     {"old":"uno","new":"x","replace_all":false},
                     {"old":"uno\r\ndos","new":"y","replace_all":false}
@@ -346,153 +359,162 @@ fn write_creates_nested_parent_and_edit_preserves_bom_and_crlf() {
 }
 
 #[test]
-fn restores_existing_file_and_consumes_checkpoint() {
-    let (root, checkpoints) = temporary_roots("restore-existing");
-    fs::write(root.join("file.txt"), b"before").unwrap();
-    let write = request(
-        "tool/write",
-        json!({
-            "path":"file.txt",
-            "content_base64":STANDARD.encode(b"after"),
-            "expected_base64":STANDARD.encode(b"before")
-        }),
-    );
-    let response = dispatch(write, Some(&root), Some(&checkpoints)).unwrap();
-    let checkpoint_id = response["result"]["checkpoint_id"].as_str().unwrap();
-    let restore = request(
-        "checkpoint/restore",
-        json!({"checkpoint_id": checkpoint_id}),
-    );
-    let restored = dispatch(restore, Some(&root), Some(&checkpoints)).unwrap();
-    assert_eq!(restored["result"]["removed"], false);
-    assert_eq!(fs::read(root.join("file.txt")).unwrap(), b"before");
-
-    let repeated = request(
-        "checkpoint/restore",
-        json!({"checkpoint_id": checkpoint_id}),
+fn writes_capture_before_and_after_versions_for_diff_review() {
+    let (root, checkpoints) = temporary_roots("write-versions");
+    fs::write(root.join("file.txt"), b"before\n").unwrap();
+    let response = dispatch(
+        request(
+            "tool/write",
+            json!({
+                "path":"file.txt",
+                "content_base64":STANDARD.encode(b"after\n"),
+                "expected_sha256":sha256_hex(b"before\n")
+            }),
+        ),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    let version = &response["result"]["checkpoint"];
+    let day = version["stored_on"].as_str().unwrap();
+    let baseline = version["baseline_sha256"].as_str().unwrap();
+    let current = version["current_sha256"].as_str().unwrap();
+    assert_eq!(
+        crate::checkpoint::load(&checkpoints, day, baseline).unwrap(),
+        b"before\n"
     );
     assert_eq!(
-        dispatch(repeated, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
-        "checkpoint_unavailable"
+        crate::checkpoint::load(&checkpoints, day, current).unwrap(),
+        b"after\n"
     );
+    let operations = Operations::new(checkpoints.clone()).unwrap();
+    let diff = operations
+        .checkpoint_diff(Some((day, baseline)), Some((day, current)))
+        .unwrap();
+    assert_eq!((diff.additions, diff.deletions), (1, 1));
     cleanup(&root, &checkpoints);
 }
 
 #[test]
-fn restore_removes_file_created_by_write() {
-    let (root, checkpoints) = temporary_roots("restore-created");
-    let write = request(
-        "tool/write",
-        json!({
-            "path":"created.txt",
-            "content_base64":STANDARD.encode(b"created"),
-            "expected_base64":null
-        }),
-    );
-    let response = dispatch(write, Some(&root), Some(&checkpoints)).unwrap();
-    let checkpoint_id = response["result"]["checkpoint_id"].as_str().unwrap();
-    let restore = request(
-        "checkpoint/restore",
-        json!({"checkpoint_id": checkpoint_id}),
-    );
-    let restored = dispatch(restore, Some(&root), Some(&checkpoints)).unwrap();
-    assert_eq!(restored["result"]["removed"], true);
-    assert!(!root.join("created.txt").exists());
-    cleanup(&root, &checkpoints);
-}
-
-#[test]
-fn restore_rejects_external_post_write_change() {
-    let (root, checkpoints) = temporary_roots("restore-conflict");
+fn deletes_require_the_current_hash_and_capture_the_deleted_version() {
+    let (root, checkpoints) = temporary_roots("delete-precondition");
     fs::write(root.join("file.txt"), b"before").unwrap();
-    let write = request(
-        "tool/write",
-        json!({
-            "path":"file.txt",
-            "content_base64":STANDARD.encode(b"after"),
-            "expected_base64":STANDARD.encode(b"before")
-        }),
-    );
-    let response = dispatch(write, Some(&root), Some(&checkpoints)).unwrap();
-    let checkpoint_id = response["result"]["checkpoint_id"].as_str().unwrap();
-    fs::write(root.join("file.txt"), b"external change").unwrap();
-    let restore = request(
-        "checkpoint/restore",
-        json!({"checkpoint_id": checkpoint_id}),
-    );
+    for (arguments, expected_code) in [
+        (json!({"path":"file.txt"}), "invalid_arguments"),
+        (
+            json!({"path":"file.txt","expected_sha256":"invalid"}),
+            "invalid_arguments",
+        ),
+        (
+            json!({"path":"file.txt","expected_sha256":sha256_hex(b"stale")}),
+            "write_conflict",
+        ),
+    ] {
+        let failure = dispatch(
+            request("tool/delete", arguments),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert_eq!(failure["error"]["code"], expected_code);
+        assert_eq!(fs::read(root.join("file.txt")).unwrap(), b"before");
+    }
+    let response = dispatch(
+        request(
+            "tool/delete",
+            json!({"path":"file.txt","expected_sha256":sha256_hex(b"before")}),
+        ),
+        Some(&root),
+        Some(&checkpoints),
+    )
+    .unwrap();
+    assert_eq!(response["result"]["deleted"], true);
+    assert!(!root.join("file.txt").exists());
+    let version = &response["result"]["checkpoint"];
+    assert!(version["current_sha256"].is_null());
     assert_eq!(
-        dispatch(restore, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
-        "restore_conflict"
+        crate::checkpoint::load(
+            &checkpoints,
+            version["stored_on"].as_str().unwrap(),
+            version["baseline_sha256"].as_str().unwrap(),
+        )
+        .unwrap(),
+        b"before"
     );
-    assert_eq!(fs::read(root.join("file.txt")).unwrap(), b"external change");
     cleanup(&root, &checkpoints);
 }
 
 #[cfg(unix)]
 #[test]
-fn restore_rejects_target_replaced_by_external_symlink() {
+fn mutations_reject_symbolic_links() {
     use std::os::unix::fs::symlink;
 
-    let (root, checkpoints) = temporary_roots("restore-symlink");
-    let write = request(
-        "tool/write",
-        json!({
-            "path":"created.txt",
-            "content_base64":STANDARD.encode(b"created"),
-            "expected_base64":null
-        }),
-    );
-    let response = dispatch(write, Some(&root), Some(&checkpoints)).unwrap();
-    let checkpoint_id = response["result"]["checkpoint_id"].as_str().unwrap();
-    let outside = std::env::temp_dir().join(format!("suncode-outside-{}", checkpoint_id));
-    fs::write(&outside, b"created").unwrap();
-    fs::remove_file(root.join("created.txt")).unwrap();
-    symlink(&outside, root.join("created.txt")).unwrap();
-
-    let restore = request(
-        "checkpoint/restore",
-        json!({"checkpoint_id": checkpoint_id}),
-    );
-    assert_eq!(
-        dispatch(restore, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
-        "restore_conflict"
-    );
-    let write_through_link = request(
-        "tool/write",
-        json!({
-            "path":"created.txt",
-            "content_base64":STANDARD.encode(b"changed"),
-            "expected_base64":STANDARD.encode(b"created")
-        }),
-    );
-    assert_eq!(
-        dispatch(write_through_link, Some(&root), Some(&checkpoints)).unwrap()["error"]["code"],
-        "scope_denied"
-    );
-    assert_eq!(fs::read(&outside).unwrap(), b"created");
+    let (root, checkpoints) = temporary_roots("mutation-symlink");
+    let outside = tempfile::NamedTempFile::new().unwrap();
+    fs::write(outside.path(), b"created").unwrap();
+    symlink(outside.path(), root.join("created.txt")).unwrap();
+    for (method, arguments) in [
+        (
+            "tool/write",
+            json!({
+                "path":"created.txt",
+                "content_base64":STANDARD.encode(b"changed"),
+                "expected_sha256":sha256_hex(b"created")
+            }),
+        ),
+        (
+            "tool/delete",
+            json!({"path":"created.txt","expected_sha256":sha256_hex(b"created")}),
+        ),
+        (
+            "tool/edit",
+            json!({"path":"created.txt","replacements":[{"old":"created","new":"changed"}]}),
+        ),
+    ] {
+        let failure =
+            dispatch(request(method, arguments), Some(&root), Some(&checkpoints)).unwrap();
+        assert_eq!(failure["error"]["code"], "scope_denied");
+        assert_eq!(fs::read(outside.path()).unwrap(), b"created");
+    }
     cleanup(&root, &checkpoints);
-    fs::remove_file(outside).unwrap();
 }
 
 #[test]
-fn journals_write_and_reconciles_known_completion() {
-    let (root, checkpoints) = temporary_roots("journal");
-    let params = json!({"path":"file.txt","content_base64":STANDARD.encode(b"after"),"expected_base64":null,"idempotency_key":"write-once"});
-    let first = dispatch(
-        request("tool/write", params.clone()),
+fn edits_reject_missing_ambiguous_and_overlapping_text_before_writing() {
+    let (root, checkpoints) = temporary_roots("edit-matches");
+    let original = "ééé one one\ntwo\n";
+    fs::write(root.join("file.txt"), original).unwrap();
+    for replacements in [
+        json!([]),
+        json!([{"old":"","new":"x"}]),
+        json!([{"old":"missing","new":"x"}]),
+        json!([{"old":"one","new":"x"}]),
+        json!([{"old":"éé","new":"x"}]),
+        json!([{"old":"two","new":"x"},{"old":"missing","new":"y"}]),
+        json!([{"old":"two","new":"x"},{"old":"two\n","new":"y"}]),
+    ] {
+        let failure = dispatch(
+            request(
+                "tool/edit",
+                json!({"path":"file.txt","replacements":replacements}),
+            ),
+            Some(&root),
+            Some(&checkpoints),
+        )
+        .unwrap();
+        assert!(failure.get("error").is_some(), "{failure}");
+        assert_eq!(fs::read_to_string(root.join("file.txt")).unwrap(), original);
+        assert_eq!(fs::read_dir(&checkpoints).unwrap().count(), 0);
+    }
+    let result = dispatch(
+        request("tool/edit", json!({"path":"file.txt","replacements":[{"old":"one","new":"changed","replace_all":true}]})),
         Some(&root),
         Some(&checkpoints),
-    )
-    .unwrap();
-    let second = dispatch(
-        request("tool/write", params),
-        Some(&root),
-        Some(&checkpoints),
-    )
-    .unwrap();
+    ).unwrap();
+    assert!(result.get("result").is_some(), "{result}");
     assert_eq!(
-        first["result"]["checkpoint_id"],
-        second["result"]["checkpoint_id"]
+        fs::read_to_string(root.join("file.txt")).unwrap(),
+        "ééé changed changed\ntwo\n"
     );
     cleanup(&root, &checkpoints);
 }
@@ -537,12 +559,39 @@ fn truncated_read_stores_full_artifact_and_keeps_utf8_boundary() {
     assert_eq!(result["bytes"], 3);
     assert_eq!(result["total_bytes"], 5);
     assert_eq!(result["truncated"], true);
+    assert_eq!(result["sha256"], sha256_hex("aéé".as_bytes()));
     let artifact_id = result["artifact_id"].as_str().unwrap();
     let artifact =
         crate::artifacts::artifact_directory(&checkpoints).join(format!("{artifact_id}.bin"));
     assert_eq!(fs::read(&artifact).unwrap(), "aéé".as_bytes());
     fs::remove_file(artifact).ok();
     cleanup(&root, &checkpoints);
+}
+
+#[test]
+fn read_omits_full_file_hash_when_the_source_exceeds_the_read_bound() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().canonicalize().unwrap();
+    let path = root.join("large.txt");
+    let file = fs::File::create(&path).unwrap();
+    let bound = 16 * 1024 * 1024;
+    file.set_len(bound).unwrap();
+    let complete = dispatch(
+        request("tool/read", json!({"path":"large.txt","max_bytes":1})),
+        Some(&root),
+        None,
+    )
+    .unwrap();
+    assert!(complete["result"]["sha256"].as_str().is_some());
+    file.set_len(bound + 1).unwrap();
+    let incomplete = dispatch(
+        request("tool/read", json!({"path":"large.txt","max_bytes":1})),
+        Some(&root),
+        None,
+    )
+    .unwrap();
+    assert_eq!(incomplete["result"]["truncated"], true);
+    assert!(incomplete["result"].get("sha256").is_none());
 }
 
 #[test]

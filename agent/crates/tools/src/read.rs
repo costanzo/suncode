@@ -2,6 +2,7 @@ use crate::arguments::ReadArguments;
 use crate::artifacts::write_artifact;
 use crate::error::{fatal, retryable};
 use crate::scope::safe_relative_path;
+use crate::support::sha256_hex;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::{json, Value};
 use std::fs;
@@ -12,7 +13,7 @@ use suncode_common::BusinessError;
 /// Bytes returned inline when `max_bytes` is not given.
 const DEFAULT_PREVIEW_BYTES: u64 = 64 * 1024;
 const MAX_PREVIEW_BYTES: u64 = 1024 * 1024;
-/// Upper bound on bytes read into memory; larger files are previewed only.
+/// Maximum retained source bytes; one extra byte detects truncation.
 const MAX_SOURCE_BYTES: u64 = 16 * 1024 * 1024;
 
 pub(crate) fn read(
@@ -49,9 +50,10 @@ pub(crate) fn read(
     let (bytes, source_complete) = if offset == 1 && limit.is_none() {
         let mut bytes = Vec::new();
         fs::File::open(&canonical)
-            .and_then(|file| file.take(MAX_SOURCE_BYTES).read_to_end(&mut bytes))
+            .and_then(|file| file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes))
             .map_err(|_| retryable("read_failed", "file could not be read"))?;
-        let complete = metadata.len() <= MAX_SOURCE_BYTES;
+        let complete = bytes.len() as u64 <= MAX_SOURCE_BYTES;
+        bytes.truncate(MAX_SOURCE_BYTES as usize);
         (bytes, complete)
     } else {
         (read_line_range(&canonical, offset, limit)?, true)
@@ -72,6 +74,9 @@ pub(crate) fn read(
         "offset": offset,
         "limit": limit,
     });
+    if offset == 1 && limit.is_none() && source_complete {
+        result["sha256"] = json!(sha256_hex(&bytes));
+    }
     if truncated && source_complete {
         if let Some(checkpoint_root) = checkpoint_root {
             result["artifact_id"] = json!(write_artifact(checkpoint_root, &bytes)?);

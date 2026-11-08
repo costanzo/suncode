@@ -43,7 +43,6 @@ pub(crate) struct ReplacementArguments {
 #[derive(Debug, Deserialize)]
 pub(crate) struct EditArguments {
     pub(crate) path: String,
-    pub(crate) expected_base64: String,
     pub(crate) replacements: Vec<ReplacementArguments>,
 }
 
@@ -52,13 +51,13 @@ pub(crate) struct WriteArguments {
     pub(crate) path: String,
     pub(crate) content_base64: String,
     #[serde(default)]
-    pub(crate) expected_base64: Option<String>,
+    pub(crate) expected_sha256: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DeleteArguments {
     pub(crate) path: String,
-    pub(crate) expected_base64: String,
+    pub(crate) expected_sha256: String,
 }
 
 #[derive(Debug, Deserialize)]

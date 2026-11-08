@@ -138,7 +138,6 @@ fn edit_translation_accepts_multiple_disjoint_edits() {
         "edit",
         &json!({
             "path":"file.txt",
-            "expected_base64":"YmVmb3Jl",
             "edits":[
                 {"oldText":"one","newText":"two"},
                 {"oldText":"three","newText":"four"}
@@ -391,6 +390,114 @@ mod execute {
             ))
             .map(|result| result.value)
         }
+    }
+
+    #[test]
+    fn file_tools_use_text_edits_and_chain_full_file_hashes() {
+        let directory = tempfile::tempdir().unwrap();
+        let project = directory.path().canonicalize().unwrap();
+        let tools = BuiltinTools::new(Arc::new(
+            crate::Operations::new(project.join("versions")).unwrap(),
+        ));
+        let cancellation = Flag::default();
+        let call = Call {
+            tools: &tools,
+            project: &project,
+            dependency: &project,
+            timeout_ceiling: None,
+            output: Arc::default(),
+            cancellation: &cancellation,
+        };
+        fs::write(project.join("file.txt"), "one\ntwo\n").unwrap();
+        let read = call.run("read", json!({"path":"file.txt"})).unwrap();
+        assert_eq!(read["content"], "one\ntwo\n");
+        assert!(read["limit"].is_null());
+        assert_eq!(read["sha256"], crate::support::sha256_hex(b"one\ntwo\n"));
+        assert!(!read.to_string().contains("base64"));
+
+        let partial = call
+            .run("read", json!({"path":"file.txt","offset":2,"limit":1}))
+            .unwrap();
+        assert_eq!(partial["content"], "two\n");
+        assert!(partial.get("sha256").is_none());
+        let preview = call
+            .run("read", json!({"path":"file.txt","max_bytes":2}))
+            .unwrap();
+        assert_eq!(preview["truncated"], true);
+        assert_eq!(preview["sha256"], read["sha256"]);
+
+        fs::write(project.join("file.txt"), "one\ntwo\nexternal\n").unwrap();
+        let edited = call
+            .run(
+                "edit",
+                json!({"path":"file.txt","oldString":"two","newString":"second"}),
+            )
+            .unwrap();
+        assert_eq!(
+            fs::read_to_string(project.join("file.txt")).unwrap(),
+            "one\nsecond\nexternal\n"
+        );
+        for tool in ["write", "delete"] {
+            let mut arguments = json!({"path":"file.txt","expected_sha256":read["sha256"]});
+            if tool == "write" {
+                arguments["content"] = json!("overwrite");
+            }
+            assert_eq!(
+                call.run(tool, arguments).unwrap_err().code,
+                "write_conflict"
+            );
+        }
+        let written = call
+            .run(
+                "write",
+                json!({"path":"file.txt","content":"final\n","expected_sha256":edited["sha256"]}),
+            )
+            .unwrap();
+        assert_eq!(written["sha256"], crate::support::sha256_hex(b"final\n"));
+        let deleted = call
+            .run(
+                "delete",
+                json!({"path":"file.txt","expected_sha256":written["sha256"]}),
+            )
+            .unwrap();
+        assert_eq!(deleted["deleted"], true);
+        assert!(!project.join("file.txt").exists());
+        assert_eq!(
+            call.run(
+                "write",
+                json!({"path":"file.txt","content":"overwrite","expected_sha256":written["sha256"]}),
+            )
+            .unwrap_err()
+            .code,
+            "write_conflict"
+        );
+
+        let created = call
+            .run("write", json!({"path":"file.txt","content":"new"}))
+            .unwrap();
+        assert_eq!(created["created"], true);
+        assert_eq!(
+            call.run("write", json!({"path":"file.txt","content":"overwrite"}))
+                .unwrap_err()
+                .code,
+            "precondition_required"
+        );
+        let edited = call
+            .run(
+                "edit",
+                json!({"path":"file.txt","edits":[{"oldText":"new","newText":"next"}]}),
+            )
+            .unwrap();
+        assert_eq!(edited["sha256"], crate::support::sha256_hex(b"next"));
+        call.run(
+            "edit",
+            json!({"path":"file.txt","oldString":"next","newString":"last"}),
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read_to_string(project.join("file.txt")).unwrap(),
+            "last"
+        );
     }
 
     #[test]

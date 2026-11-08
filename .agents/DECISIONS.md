@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261108-file-tool-preconditions
+
+- Date: 2026-11-08
+- Status: Accepted
+- Context: Model-facing file mutations required the complete previous file as Base64. This added file-sized arguments to targeted edits and conflicted with bounded reads.
+- Decision: Match `edit` against current exact text, requiring unique matches unless `replaceAll` is explicit. Use `expected_sha256` for full-file overwrites and deletions. Return full-file `sha256` from complete-source reads and successful writes or edits. Keep the shared Rust mutation path and content-addressed version capture.
+- Consequences: Local edits can follow partial reads and preserve changes outside their matching text. Overwrites and deletions retain whole-file conflict checks with fixed-size arguments. Tool JSON uses the current contract directly without legacy argument conversion or database schema changes.
+- Details: `specs/rust-core-phase-1.md`, `agent/crates/tools/`, `agent/crates/agents/src/prompt.rs`
+
 ## ADR-20261107-current-sqlite-storage
 
 - Date: 2026-11-07

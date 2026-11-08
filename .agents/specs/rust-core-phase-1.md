@@ -23,7 +23,11 @@ The Rust operations package has no Git implementation or libgit2 dependency. For
 
 The Rust operations module is provided by the `suncode-tool` package, linked into the runtime, and called in-process.
 
-It enforces canonical project paths, bounded reads and search, preconditioned file mutations, checkpoint capture and restore, bounded process execution with filtered environment handling, and bounded approval-gated HTTP(S) text retrieval with same-origin redirect enforcement.
+It enforces canonical project paths, bounded reads and search, preconditioned file mutations, content-addressed file version capture, bounded process execution with filtered environment handling, and bounded approval-gated HTTP(S) text retrieval with same-origin redirect enforcement.
+
+`edit` accepts exact old/new text, either one replacement or a batch against the original file. Each old text must match exactly once unless the single-replacement call sets `replaceAll`. Empty, missing, ambiguous (including overlapping occurrences), or overlapping batch replacements fail before any write. Edits match the current file and preserve unrelated content, so a prior full-file read or model-supplied file version is unnecessary. Rust rechecks the digest of the edit's source before writing through the shared mutation implementation.
+
+`read` returns `sha256` for the complete raw file bytes when reading from line 1 without a line limit and the source fits within 16 MiB. A truncated inline preview still carries the full-file hash when the complete source was read. Line-range reads and sources exceeding that bound omit the hash. Existing-file `write` and `delete` require `expected_sha256`, a 64-character hexadecimal digest from `read`, `write`, or `edit`; a stale digest fails with `write_conflict`. Creation requires an omitted or null precondition and refuses to overwrite an existing file. Successful writes and edits return the resulting `sha256` for subsequent mutations. Tool parameters and results use existing JSON storage and add no database schema or compatibility path.
 
 Content search is implemented with embedded ripgrep crates (`ignore`, `globset`, `grep-regex`, and `grep-searcher`). `search/find` uses Rust regular expressions, ripgrep-style standard ignore/hidden-file traversal, project-relative include globs, and a 2 MiB per-file bound. It returns relative paths, one-based byte columns, line previews, and bounded `truncated` results without requiring an external `rg` executable.
 

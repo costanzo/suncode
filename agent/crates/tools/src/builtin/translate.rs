@@ -249,12 +249,6 @@ pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Opti
             if let Ok(bytes) = STANDARD.decode(&encoded) {
                 if let Ok(text) = String::from_utf8(bytes) {
                     value["content"] = json!(text);
-                    let complete = value.get("truncated").and_then(Value::as_bool) != Some(true)
-                        && value.get("offset").and_then(Value::as_u64).unwrap_or(1) == 1
-                        && value.get("limit").is_none();
-                    if complete && value.get("precondition_base64").is_none() {
-                        value["precondition_base64"] = json!(encoded);
-                    }
                 }
             }
         }
