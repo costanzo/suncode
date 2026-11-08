@@ -272,6 +272,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         Terminal.Dispose();
         Remote.Dispose();
         Git.Dispose();
+        TurnDiff.Clear();
         AppSettings.LanguageChanged -= OnAppLanguageChanged;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ProviderTraffic.Clear();

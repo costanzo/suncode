@@ -25,9 +25,13 @@ internal sealed record DiffDisplayRow(DiffReviewBlock Block, DiffReviewRow? Row)
     public string Text(bool before) => IsFold ? "\uFFFC" : Line(before)?.Text ?? string.Empty;
 }
 
-// Git owns the edit script. This bounded presentation projection adds alignment and folding only.
+// The comparison source owns the edit script. This projection adds alignment and folding only.
 internal sealed class DiffReviewDocument
 {
+    internal static bool CanCompareFile(string path, bool binary) => !binary && Path.GetExtension(path).ToLowerInvariant() is not
+        (".pdf" or ".xls" or ".xlsx" or ".xlsm" or ".xlsb" or ".doc" or ".docx" or ".docm" or
+        ".ppt" or ".pptx" or ".pptm" or ".odt" or ".ods" or ".odp");
+
     private DiffReviewDocument(IReadOnlyList<DiffReviewBlock> blocks) => Blocks = blocks;
     private int[] _changeLines = [];
     public IReadOnlyList<DiffReviewBlock> Blocks { get; }

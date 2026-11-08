@@ -197,6 +197,8 @@ export const comparisons = [
     ],
   ),
   comparison("assets/review-preview.png", "M", "image", ["unstaged"], [], { binary: true }),
+  comparison("reports/summary.pdf", "M", "file", ["unstaged"], [], { binary: true }),
+  comparison("reports/budget.xlsx", "M", "file", ["unstaged"], [], { binary: true }),
 ];
 
 // The first edit is staged. The other two are worktree-only, so both Index views agree.

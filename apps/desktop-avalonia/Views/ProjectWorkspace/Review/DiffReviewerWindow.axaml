@@ -12,6 +12,7 @@
     <Style Selector="TreeViewItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="24" />
+      <Setter Property="CornerRadius" Value="4" />
       <Setter Property="IsExpanded" Value="{ReflectionBinding Entry.IsExpanded, Mode=TwoWay}" />
     </Style>
     <Style Selector="TreeViewItem /template/ ContentPresenter#PART_HeaderPresenter">
@@ -23,7 +24,6 @@
       <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
-      <Setter Property="CornerRadius" Value="4" />
       <Setter Property="Margin" Value="6,0" />
     </Style>
     <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
@@ -53,16 +53,17 @@
   <Grid RowDefinitions="36,*">
     <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SurfaceRaisedBrush}">
       <Grid Margin="12,0" ColumnDefinitions="Auto,*,Auto,12,Auto">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <TextBlock Text="{DynamicResource LocTurnChanges}" FontSize="11" VerticalAlignment="Center" IsVisible="{Binding !IsGitComparison}" />
+        <StackPanel x:Name="GitRangeSelector" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding IsGitComparison}">
           <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocAll}" IsChecked="{Binding ScopeAll, Mode=OneWay}" Click="AllClicked" />
           <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocStaged}" IsChecked="{Binding ScopeStaged, Mode=OneWay}" Click="StagedClicked" />
           <ToggleButton Classes="scope" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="{DynamicResource LocUnstaged}" IsChecked="{Binding ScopeUnstaged, Mode=OneWay}" Click="UnstagedClicked" />
         </StackPanel>
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding IsGitComparison}">
           <svg:Svg Width="14" Height="14" Path="/Assets/icons/git-branch.svg" Css="{DynamicResource IconSvgCss}" />
           <TextBlock Text="{Binding Branch}" Classes="mono" FontSize="11" MaxWidth="200" TextTrimming="CharacterEllipsis" />
         </StackPanel>
-        <Button Grid.Column="4" x:Name="RefreshButton" Classes="icon diff-action" Click="RefreshClicked" IsEnabled="{Binding !IsLoading}" ToolTip.Tip="{DynamicResource LocRefreshGitStatus}" AutomationProperties.Name="{DynamicResource LocRefreshGitStatus}">
+        <Button Grid.Column="4" x:Name="RefreshButton" Classes="icon diff-action" Click="RefreshClicked" IsEnabled="{Binding !IsLoading}" ToolTip.Tip="{DynamicResource LocDiffRefresh}" AutomationProperties.Name="{DynamicResource LocDiffRefresh}">
           <svg:Svg Path="/Assets/icons/refresh.svg" Css="{DynamicResource IconSvgCss}" />
         </Button>
       </Grid>
@@ -96,10 +97,10 @@
       <GridSplitter Grid.Column="1" Background="{DynamicResource BorderBrush}" ResizeDirection="Columns" AutomationProperties.Name="{DynamicResource LocDiffResizeFiles}" />
       <Grid Grid.Column="2" RowDefinitions="36,Auto,Auto,*">
         <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-          <Grid Margin="12,0" ColumnDefinitions="*,Auto,8,Auto,12,Auto,Auto,Auto" VerticalAlignment="Center">
-            <TextBlock Text="{Binding SelectedPath}" Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedPath}" />
-            <TextBlock Grid.Column="1" Text="{Binding AdditionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DiffReviewerAddedBrush}" IsVisible="{Binding ShowStats}" />
-            <TextBlock Grid.Column="3" Text="{Binding DeletionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ShowStats}" />
+          <Grid x:Name="FileToolbar" Margin="12,0" ColumnDefinitions="*,Auto,8,Auto,12,Auto,Auto,Auto" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedPath}" Classes="mono" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedPath}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding AdditionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DiffReviewerAddedBrush}" IsVisible="{Binding ShowStats}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="{Binding DeletionsText}" Classes="mono" FontSize="11" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding ShowStats}" VerticalAlignment="Center" />
             <Button Grid.Column="5" x:Name="PreviousButton" Classes="icon diff-action" Click="PreviousClicked" IsEnabled="{Binding CanPrevious}" ToolTip.Tip="{DynamicResource LocDiffPrevious}" AutomationProperties.Name="{DynamicResource LocDiffPrevious}"><svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}" /></Button>
             <TextBlock Grid.Column="6" Text="{Binding ChangePosition}" Classes="mono" FontSize="11" Width="42" TextAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{DynamicResource LocDiffPosition}" />
             <Button Grid.Column="7" x:Name="NextButton" Classes="icon diff-action" Click="NextClicked" IsEnabled="{Binding CanNext}" ToolTip.Tip="{DynamicResource LocDiffNext}" AutomationProperties.Name="{DynamicResource LocDiffNext}"><svg:Svg Path="/Assets/icons/arrow-up.svg" Css="{DynamicResource IconSvgCss}" RenderTransform="rotate(180deg)" /></Button>
@@ -113,7 +114,7 @@
         <Grid Grid.Row="3">
           <Grid RowDefinitions="30,*" IsVisible="{Binding HasDocument}">
             <Border Background="{DynamicResource SurfaceRaisedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-              <Grid ColumnDefinitions="*,1,*"><TextBlock Margin="12,0" Text="{Binding BeforeTitle}" FontSize="11" VerticalAlignment="Center" /><Border Grid.Column="1" Background="{DynamicResource BorderBrush}" /><TextBlock Grid.Column="2" Margin="12,0" Text="{Binding AfterTitle}" FontSize="11" VerticalAlignment="Center" /></Grid>
+              <Grid x:Name="VersionHeadings" ColumnDefinitions="*,1,*"><TextBlock Margin="12,0" Text="{Binding BeforeTitle}" FontSize="11" VerticalAlignment="Center" /><Border Grid.Column="1" Background="{DynamicResource BorderBrush}" /><TextBlock Grid.Column="2" Margin="12,0" Text="{Binding AfterTitle}" FontSize="11" VerticalAlignment="Center" /></Grid>
             </Border>
             <Grid Grid.Row="1" ColumnDefinitions="*,1,*">
               <controls:DiffCodePane x:Name="BeforeEditor" AutomationProperties.Name="{DynamicResource LocDiffOldVersion}" />

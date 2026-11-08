@@ -71,7 +71,7 @@ export function SourceControlPanel({
           disabled={unavailable}
           onClick={() =>
             window.open(
-              "#/projects/desktop/workspace/diff-reviewer",
+              "?reviewSource=git#/projects/desktop/workspace/diff-reviewer",
               "_blank",
               "noopener,noreferrer",
             )

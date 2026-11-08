@@ -20,7 +20,12 @@ function Action({ icon, label, disabled, onClick }) {
   );
 }
 
-export function DiffReviewerWindow({ initialState = "ready", platform = "macos", onClose }) {
+export function DiffReviewerWindow({
+  initialState = "ready",
+  platform = "macos",
+  source = "git",
+  onClose,
+}) {
   const [scope, setScope] = useState("all");
   const [state, setState] = useState(initialState);
   const [selectedPath, setSelectedPath] = useState(
@@ -54,7 +59,8 @@ export function DiffReviewerWindow({ initialState = "ready", platform = "macos",
     displayed &&
     !displayed.binary &&
     (state === "ready" || state === "binary" || state === "limited");
-  const [leftTitle, rightTitle] = comparisonSides[scope];
+  const [leftTitle, rightTitle] =
+    source === "turn" ? ["Before turn", "After turn"] : comparisonSides[scope];
 
   function selectFile(path) {
     clearTimeout(refreshTimer.current);
@@ -139,15 +145,21 @@ export function DiffReviewerWindow({ initialState = "ready", platform = "macos",
 
   let message;
   if (state === "loading")
-    message = ["activity", "Reading changes…", "Loading the selected Git comparison."];
+    message = ["activity", "Reading changes…", "Loading the selected comparison."];
   else if (state === "error")
     message = [
       "warning",
       "Could not read this comparison",
-      "Refresh to retry the repository read.",
+      "Refresh to retry the comparison read.",
     ];
   else if (state === "clean")
-    message = ["check", "No changes", "There are no changed files in this Git range."];
+    message = [
+      "check",
+      "No changes",
+      source === "turn"
+        ? "This turn changed no files, or its changes have expired."
+        : "There are no changed files in this Git range.",
+    ];
   else if (!file)
     message = [
       "files",
@@ -155,7 +167,11 @@ export function DiffReviewerWindow({ initialState = "ready", platform = "macos",
       "Choose a file in the tree to compare its versions.",
     ];
   else if (file.binary)
-    message = ["file", "Binary file", "This file has changes that cannot be displayed as text."];
+    message = [
+      "file",
+      "Cannot compare this file",
+      "Text comparison is unavailable for binary files and document formats such as PDF and Excel.",
+    ];
 
   return (
     <NativeWindowFrame
@@ -167,25 +183,33 @@ export function DiffReviewerWindow({ initialState = "ready", platform = "macos",
     >
       <section className="diff-reviewer" aria-label="Diff reviewer">
         <header className="diff-reviewer-toolbar">
-          <div className="workspace-scope" role="group" aria-label="Git range">
-            {[
-              ["all", "All"],
-              ["staged", "Staged"],
-              ["unstaged", "Unstaged"],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={scope === value}
-                className={scope === value ? "is-selected" : ""}
-                onClick={() => changeScope(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {source === "turn" ? (
+            <span>Turn changes</span>
+          ) : (
+            <div className="workspace-scope" role="group" aria-label="Git range">
+              {[
+                ["all", "All"],
+                ["staged", "Staged"],
+                ["unstaged", "Unstaged"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={scope === value}
+                  className={scope === value ? "is-selected" : ""}
+                  onClick={() => changeScope(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <span className="diff-reviewer-branch">
-            <Icon name="git" size={14} /> main
+            {source === "git" && (
+              <>
+                <Icon name="git" size={14} /> main
+              </>
+            )}
           </span>
           <Action
             icon="refresh"

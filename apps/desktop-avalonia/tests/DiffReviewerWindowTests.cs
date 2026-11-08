@@ -9,6 +9,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SunCode.Desktop.Controls;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Infrastructure.Git;
@@ -53,6 +54,18 @@ public sealed class DiffReviewerWindowTests(AvaloniaUiFixture ui)
             var before = window.FindControl<DiffCodePane>("BeforeEditor")!;
             var after = window.FindControl<DiffCodePane>("AfterEditor")!;
             var tree = window.FindControl<TreeView>("ChangedFilesTree")!;
+            var selectedItem = tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item => item.IsSelected);
+            var selectionBorder = selectedItem.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_LayoutRoot");
+            Assert.Equal(new CornerRadius(4), selectedItem.CornerRadius);
+            Assert.Equal(new CornerRadius(4), selectionBorder.CornerRadius);
+            foreach (var header in new[] { window.FindControl<Grid>("FileToolbar")!, window.FindControl<Grid>("VersionHeadings")! })
+            {
+                foreach (var label in header.Children.OfType<TextBlock>())
+                {
+                    var textTop = label.TranslatePoint(default, header)!.Value.Y;
+                    Assert.InRange(Math.Abs(textTop + label.Bounds.Height / 2 - header.Bounds.Height / 2), 0, 0.5);
+                }
+            }
             Assert.NotEqual(Avalonia.Media.Colors.Transparent, Assert.IsType<Avalonia.Media.SolidColorBrush>(before.Brush("TextBrush")).Color);
             Assert.NotEqual(Avalonia.Media.Colors.Transparent, Assert.IsType<Avalonia.Media.SolidColorBrush>(before.Brush("DiffReviewerAddedSurfaceBrush")).Color);
             Assert.True(tree.IsEffectivelyVisible);
@@ -68,7 +81,12 @@ public sealed class DiffReviewerWindowTests(AvaloniaUiFixture ui)
             after.TextArea.TextView.EnsureVisualLines();
             var firstVisual = before.TextArea.TextView.VisualLines.First(line => line.FirstDocumentLine.LineNumber == 1);
             Assert.InRange(firstVisual.Height, 32, 34);
-            Assert.Equal(32, Assert.IsType<Button>(Assert.IsType<AvaloniaEdit.Rendering.InlineObjectElement>(firstVisual.Elements[0]).Element).Height);
+            var fold = Assert.IsType<Button>(Assert.IsType<AvaloniaEdit.Rendering.InlineObjectElement>(firstVisual.Elements[0]).Element);
+            Assert.Equal(32, fold.Height);
+            Assert.Equal(Avalonia.Layout.VerticalAlignment.Center, fold.VerticalContentAlignment);
+            var foldLabel = Assert.Single(fold.GetVisualDescendants().OfType<TextBlock>());
+            var labelTop = foldLabel.TranslatePoint(default, fold)!.Value.Y;
+            Assert.InRange(Math.Abs(labelTop - (fold.Bounds.Height - foldLabel.Bounds.Height) / 2), 0, 1);
             model.ToggleContext(model.Document!.Blocks[0]);
             Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
             Assert.True(((IScrollable)before.TextArea.TextView).Extent.Height > ((IScrollable)before.TextArea.TextView).Viewport.Height);
@@ -97,6 +115,33 @@ public sealed class DiffReviewerWindowTests(AvaloniaUiFixture ui)
             before.Copy();
             Dispatcher.UIThread.RunJobs();
             Assert.Equal("me\nme\nme", await window.Clipboard!.TryGetTextAsync());
+
+            // Exercise grammar-backed text -> unsupported documents -> plain text -> text.
+            service.Files = [new("src/code.cs", "modified", false, true, false),
+                new("reports/Budget.XLSX", "modified", false, true, false),
+                new("reports/summary.pdf", "modified", false, true, false),
+                new("assets/data.bin", "modified", false, true, false, Binary: true),
+                new("notes.txt", "modified", false, true, false)];
+            await model.RefreshAsync("src/code.cs");
+            var reads = service.ReadCount;
+            foreach (var path in new[] { "reports/Budget.XLSX", "reports/summary.pdf", "assets/data.bin" })
+            {
+                var file = model.Roots.SelectMany(node => node.Children).Single(node => node.File?.Path == path);
+                await model.SelectAsync(file);
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                Assert.Null(model.Document);
+                Assert.Null(before.ReviewDocument);
+                Assert.Empty(before.Text);
+                Assert.Empty(after.Text);
+                Assert.False(before.IsEffectivelyVisible);
+                Assert.False(window.FindControl<Button>("NextButton")!.IsEffectivelyEnabled);
+                Assert.Equal(reads, service.ReadCount);
+            }
+            await model.SelectAsync(model.Roots.Single(node => node.File?.Path == "notes.txt"));
+            Assert.True(model.HasDocument, model.Message);
+            Assert.NotEmpty(before.Text);
+            await model.SelectAsync(model.Roots.Single(node => node.Entry.Path == "src").Children[0]);
+            Assert.NotEmpty(before.Text);
             owner.Close();
             Assert.False(window.IsVisible);
 
@@ -120,6 +165,36 @@ public sealed class DiffReviewerWindowTests(AvaloniaUiFixture ui)
                 Assert.Null(desktop.Git.Reviewer);
             }
             finally { sourceOwner.Close(); }
+
+            TurnDiffViewModelTests.Seeded(model: desktop.TurnDiff);
+            desktop.TurnDiff.SelectedFile = desktop.TurnDiff.Files[0];
+            var turnSource = new TurnDiffViewer { DataContext = desktop };
+            var turnOwner = new Window { Width = 620, Height = 500, Content = turnSource };
+            try
+            {
+                turnOwner.Show(); Dispatcher.UIThread.RunJobs(); turnOwner.UpdateLayout();
+                var launch = turnSource.FindControl<Button>("TurnDiffReviewerButton")!;
+                Assert.True(launch.IsEffectivelyEnabled);
+                launch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var opened = Assert.Single(turnOwner.OwnedWindows.OfType<DiffReviewerWindow>());
+                var reviewer = desktop.TurnDiff.Reviewer!;
+                for (var attempt = 0; attempt < 100 && reviewer.IsLoading; attempt++) await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs(); opened.UpdateLayout();
+                Assert.True(reviewer.HasDocument);
+                Assert.Equal("sort.py", reviewer.SelectedPath);
+                Assert.False(opened.FindControl<StackPanel>("GitRangeSelector")!.IsEffectivelyVisible);
+                launch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Same(opened, Assert.Single(turnOwner.OwnedWindows.OfType<DiffReviewerWindow>()));
+                opened.Close();
+                Assert.Null(desktop.TurnDiff.Reviewer);
+                launch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var reopened = Assert.Single(turnOwner.OwnedWindows.OfType<DiffReviewerWindow>());
+                Assert.NotSame(opened, reopened);
+                desktop.TurnDiff.Clear();
+                Assert.False(reopened.IsVisible);
+                Assert.False(launch.IsEffectivelyEnabled);
+            }
+            finally { turnOwner.Close(); }
         }
         finally
         {

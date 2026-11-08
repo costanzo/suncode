@@ -19,6 +19,32 @@ public sealed class TurnDiffViewModel : ObservableObject
     private string _error = string.Empty;
     
     internal TurnDiffViewModel(IViewModelHost host) => _host = host;
+
+    internal DiffReviewerViewModel? Reviewer { get; private set; }
+    internal event Action<DiffReviewerViewModel>? ReviewerRequested;
+
+    internal void OpenReviewer()
+    {
+        if (!CanOpenReviewer || _host.SelectedProject is not { } project) return;
+        if (Reviewer is null)
+        {
+            var sessionId = SessionId;
+            var turnId = TurnId;
+            var reviewer = new DiffReviewerViewModel(project, new TurnDiff(sessionId, turnId, _diffs.Values.ToArray()),
+                () => _host.Sdk!.GetTurnDiffAsync(sessionId, turnId));
+            Reviewer = reviewer;
+            ReviewerRequested?.Invoke(reviewer);
+            _ = reviewer.OpenAsync("all", SelectedFile?.Path);
+        }
+        else ReviewerRequested?.Invoke(Reviewer);
+    }
+
+    internal void ReleaseReviewer(DiffReviewerViewModel reviewer)
+    {
+        if (Reviewer != reviewer) return;
+        Reviewer = null;
+        reviewer.Dispose();
+    }
     
     public ObservableCollection<TurnChangeItem> Files { get; } = [];
     public ObservableCollection<DiffLineItem> DiffLines { get; } = [];
@@ -47,6 +73,7 @@ public sealed class TurnDiffViewModel : ObservableObject
     
     public string Error { get => _error; private set { if (SetProperty(ref _error, value)) OnPropertyChanged(nameof(EmptyMessage)); } }
     public bool IsLoading => State == "loading";
+    public bool CanOpenReviewer => State == "ready" && Files.Count > 0;
     public bool HasDiffLines => State == "ready" && DiffLines.Count > 0;
     public bool ShowDiffEmpty => !HasDiffLines;
     public bool ShowDiffStats => State == "ready" && SelectedFile is { Binary: false };
@@ -71,6 +98,8 @@ public sealed class TurnDiffViewModel : ObservableObject
     public async Task LoadAsync(string sessionId, string turnId, string? path = null)
     {
         if (!_host.EnsureSdk()) return;
+        if ((sessionId != _sessionId || turnId != _turnId) && Reviewer is { } reviewer)
+            ReleaseReviewer(reviewer);
         _load?.Cancel();
         _load?.Dispose();
         var request = new CancellationTokenSource();
@@ -111,6 +140,7 @@ public sealed class TurnDiffViewModel : ObservableObject
 
     internal void Clear()
     {
+        if (Reviewer is { } reviewer) ReleaseReviewer(reviewer);
         _load?.Cancel();
         _load?.Dispose();
         _load = null;
@@ -149,6 +179,7 @@ public sealed class TurnDiffViewModel : ObservableObject
 
     private void NotifyPresentationChanged()
     {
+        OnPropertyChanged(nameof(CanOpenReviewer));
         OnPropertyChanged(nameof(IsLoading));
         OnPropertyChanged(nameof(HasDiffLines));
         OnPropertyChanged(nameof(ShowDiffEmpty));

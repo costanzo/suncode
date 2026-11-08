@@ -49,6 +49,7 @@ public sealed class DiffCodePane : TextEditor
         TextArea.Caret.CaretBrush = Brushes.Transparent;
         TextArea.RightClickMovesCaret = false;
         _margin = new OriginalLineMargin(this);
+        TextArea.TextView.VisualLinesChanged += (_, _) => _margin.InvalidateVisual();
         TextArea.LeftMargins.Clear();
         TextArea.LeftMargins.Add(_margin);
         TextArea.TextView.ElementGenerators.Add(new ContextGenerator(this));
@@ -70,13 +71,18 @@ public sealed class DiffCodePane : TextEditor
 
     internal void SetReview(DiffReviewDocument? document, bool before, string path)
     {
+        var text = document?.Text(before) ?? string.Empty;
+        if (Text != text) TextArea.ClearSelection();
         foreach (var section in _collapsed) section.Uncollapse();
         _collapsed.Clear();
-        ReviewDocument = document;
+        // Text changes can synchronously request visual lines before native folds are installed.
+        ReviewDocument = null;
         Before = before;
         _path = path;
-        var text = document?.Text(before) ?? string.Empty;
+        if (document is null || string.IsNullOrEmpty(EditorLanguage.FromFileName(path).GrammarExtension))
+            DisposeSyntax();
         if (Text != text) Text = text;
+        ReviewDocument = document;
         if (document is not null)
         {
             for (var index = 0; index < document.DisplayRows.Count; index++)
@@ -129,7 +135,8 @@ public sealed class DiffCodePane : TextEditor
         _margin.Width = ResourceDouble("DiffReviewerGutterWidth", 42) + 12;
         var height = TextArea.TextView.DefaultLineHeight;
         if (height > 0) Options.LineHeightFactor *= ResourceDouble("DiffReviewerRowHeight", 22) / height;
-        if (this.IsAttachedToVisualTree())
+        var extension = EditorLanguage.FromFileName(_path).GrammarExtension;
+        if (ReviewDocument is not null && !string.IsNullOrEmpty(extension) && this.IsAttachedToVisualTree())
         {
             var theme = ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark ? ThemeName.DarkPlus : ThemeName.LightPlus;
             if (_syntax is null)
@@ -139,8 +146,7 @@ public sealed class DiffCodePane : TextEditor
                     exceptionHandler: exception => DiagnosticLog.Error("diff.syntax", $"TextMate failure type={exception.GetType().Name}"));
             }
             _syntax.SetTheme(_registry!.LoadTheme(theme));
-            var extension = EditorLanguage.FromFileName(_path).GrammarExtension;
-            _syntax.SetGrammar(string.IsNullOrEmpty(extension) ? null : _registry.GetScopeByExtension(extension));
+            _syntax.SetGrammar(_registry.GetScopeByExtension(extension));
         }
         TextArea.TextView.LineTransformers.Remove(_wordForeground);
         TextArea.TextView.LineTransformers.Add(_wordForeground);
@@ -178,6 +184,7 @@ public sealed class DiffCodePane : TextEditor
                 Content = label, Height = pane.ResourceDouble("DiffReviewerFoldHeight", 32), MinHeight = 0,
                 Width = Math.Max(140, pane.TextArea.TextView.Bounds.Width), Padding = new Thickness(0),
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 FontSize = 11, Background = pane.Brush("FieldBrush"), Foreground = pane.Brush("TextSecondaryBrush"),
                 BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(0)
             };
@@ -193,14 +200,14 @@ public sealed class DiffCodePane : TextEditor
     {
         public override void Render(DrawingContext context)
         {
-            if (TextView is null) return;
-            TextView.EnsureVisualLines();
+            if (TextView is not { VisualLinesValid: true }) return;
             foreach (var visual in TextView.VisualLines)
             {
                 var row = pane.Row(visual.FirstDocumentLine.LineNumber);
                 if (row is null) continue;
                 var rectangle = new Rect(0, visual.VisualTop - TextView.ScrollOffset.Y, Bounds.Width, visual.Height);
                 PaintRow(pane, context, row, rectangle);
+                PaintActiveBlockEdges(pane, context, row, rectangle, isMargin: true);
                 if (row.IsFold || row.Line(pane.Before) is not { } line) continue;
                 var text = new FormattedText(line.Number.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight, new Typeface(pane.FontFamily), pane.FontSize, pane.Brush("TextSecondaryBrush"));
@@ -224,12 +231,24 @@ public sealed class DiffCodePane : TextEditor
             context.FillRectangle(pane.Brush(pane.Before ? "DiffReviewerDeletedSurfaceBrush" : "DiffReviewerAddedSurfaceBrush"), rectangle);
     }
 
+    private static void PaintActiveBlockEdges(DiffCodePane pane, DrawingContext context, DiffDisplayRow row, Rect rectangle, bool isMargin)
+    {
+        if (!row.Block.Changed || row.Block.ChangeIndex != pane.CurrentChange) return;
+        var border = new Pen(pane.Brush("BorderStrongBrush"), 1);
+        if (ReferenceEquals(row.Row, row.Block.Rows[0]))
+            context.DrawLine(border, new Point(rectangle.Left, rectangle.Top + 0.5), new Point(rectangle.Right, rectangle.Top + 0.5));
+        if (ReferenceEquals(row.Row, row.Block.Rows[^1]))
+            context.DrawLine(border, new Point(rectangle.Left, rectangle.Bottom - 0.5), new Point(rectangle.Right, rectangle.Bottom - 0.5));
+        var edge = isMargin ? rectangle.Left + 0.5 : rectangle.Right - 0.5;
+        context.DrawLine(border, new Point(edge, rectangle.Top), new Point(edge, rectangle.Bottom));
+    }
+
     private sealed class DifferenceBackground(DiffCodePane pane) : IBackgroundRenderer
     {
         public KnownLayer Layer => KnownLayer.Background;
         public void Draw(TextView textView, DrawingContext context)
         {
-            textView.EnsureVisualLines();
+            if (!textView.VisualLinesValid) return;
             foreach (var visual in textView.VisualLines)
             {
                 var line = visual.FirstDocumentLine;
@@ -242,8 +261,7 @@ public sealed class DiffCodePane : TextEditor
                 foreach (var word in ranges.Where(word => word.Length > 0))
                     foreach (var area in BackgroundGeometryBuilder.GetRectsForSegment(textView, new TextSegment { StartOffset = line.Offset + word.Start, Length = word.Length }))
                         context.FillRectangle(pane.Brush(pane.Before ? "DiffReviewerDeletedWordBrush" : "DiffReviewerAddedWordBrush"), area);
-                if (row.Block.Changed && row.Block.ChangeIndex == pane.CurrentChange)
-                    context.DrawLine(new Pen(pane.Brush("BorderStrongBrush"), 1), rectangle.TopLeft, rectangle.TopRight);
+                PaintActiveBlockEdges(pane, context, row, rectangle, isMargin: false);
             }
         }
     }

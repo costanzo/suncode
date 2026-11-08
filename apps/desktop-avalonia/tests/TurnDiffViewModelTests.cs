@@ -8,6 +8,34 @@ namespace SunCode.Desktop.Tests;
 public sealed class TurnDiffViewModelTests
 {
     [Fact]
+    public async Task ReviewerReopensTheSameTurnAndClearEndsItsLifetime()
+    {
+        var host = new FakeViewModelHost { SelectedProject = new("project", "Project", Path.GetTempPath()) };
+        var model = Seeded(model: new TurnDiffViewModel(host));
+        model.SelectedFile = model.Files[0];
+        var requests = new List<DiffReviewerViewModel>();
+        model.ReviewerRequested += requests.Add;
+        model.OpenReviewer();
+        var reviewer = Assert.Single(requests);
+        for (var attempt = 0; attempt < 100 && reviewer.IsLoading; attempt++) await Task.Delay(10);
+        Assert.True(reviewer.HasDocument);
+        Assert.False(reviewer.IsGitComparison);
+        Assert.Equal("sort.py", reviewer.SelectedPath);
+        model.OpenReviewer();
+        Assert.Same(reviewer, requests[1]);
+        model.ReleaseReviewer(reviewer);
+        Assert.Null(model.Reviewer);
+        model.OpenReviewer();
+        Assert.NotSame(reviewer, model.Reviewer);
+        var closed = false;
+        model.Reviewer!.CloseRequested += () => closed = true;
+        model.Clear();
+        Assert.True(closed);
+        Assert.Null(model.Reviewer);
+        Assert.False(model.CanOpenReviewer);
+    }
+
+    [Fact]
     public async Task LoadWithoutSdkKeepsDrawerIdle()
     {
         var model = new TurnDiffViewModel(new FakeViewModelHost());
@@ -62,9 +90,9 @@ public sealed class TurnDiffViewModelTests
         Assert.Equal("Binary files cannot be displayed as text.", model.EmptyMessage);
     }
 
-    private static TurnDiffViewModel Seeded(bool binary = false)
+    internal static TurnDiffViewModel Seeded(bool binary = false, TurnDiffViewModel? model = null)
     {
-        var model = new TurnDiffViewModel(new FakeViewModelHost());
+        model ??= new TurnDiffViewModel(new FakeViewModelHost());
         var file = new TurnFileDiff("sort.py", "modified", 1, 1, binary,
         [
             new TurnDiffHunk(1, 2, 1, 2,

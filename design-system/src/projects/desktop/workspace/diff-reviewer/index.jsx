@@ -2,12 +2,18 @@ import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { DiffReviewerWindow } from "./DiffReviewerWindow.jsx";
 import "../styles/diff-reviewer.css";
+import { Icon } from "../../../../shared/Icon.jsx";
+import { comparisons } from "./data.js";
 
 export function DiffReviewerPage() {
   const [preview, setPreview] = useState("ready");
   const [platform, setPlatform] = useState("macos");
   const [constrained, setConstrained] = useState(false);
   const [open, setOpen] = useState(true);
+  const [source, setSource] = useState(() =>
+    new URLSearchParams(window.location.search).get("reviewSource") === "turn" ? "turn" : "git",
+  );
+  const [entryOpen, setEntryOpen] = useState(true);
   return (
     <>
       <PageHeader
@@ -16,6 +22,19 @@ export function DiffReviewerPage() {
       />
       <Section title="Change review window" id="diff-reviewer-window">
         <div className="diff-reviewer-preview-controls">
+          <label>
+            Comparison source{" "}
+            <select
+              value={source}
+              onChange={(event) => {
+                setSource(event.target.value);
+                setOpen(true);
+              }}
+            >
+              <option value="git">Source control</option>
+              <option value="turn">Turn Diff</option>
+            </select>
+          </label>
           <label>
             Preview state{" "}
             <select
@@ -59,8 +78,9 @@ export function DiffReviewerPage() {
         <div className={`diff-reviewer-preview ${constrained ? "is-constrained" : ""}`}>
           {open ? (
             <DiffReviewerWindow
-              key={preview}
+              key={`${source}-${preview}`}
               initialState={preview}
+              source={source}
               platform={platform}
               onClose={() => setOpen(false)}
             />
@@ -73,15 +93,64 @@ export function DiffReviewerPage() {
           )}
         </div>
         <p className="diff-reviewer-caption">
-          Illustrative Git data. Select a file, expand unchanged lines, and use the arrows to move
-          between difference blocks.
+          Illustrative comparison data. Select a file, expand unchanged lines, and use the arrows to
+          move between difference blocks.
         </p>
+      </Section>
+      <Section title="Turn Diff entry" id="turn-diff-entry">
+        {entryOpen ? (
+          <div className="diff-reviewer-toolbar">
+            <Icon name="files" size={16} />
+            <strong>Turn changes</strong>
+            <span className="diff-reviewer-branch">{comparisons.length} files</span>
+            <button
+              type="button"
+              className="workspace-icon-button"
+              title="Open Diff Reviewer"
+              aria-label="Open Diff Reviewer"
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("reviewSource", "turn");
+                url.hash = "/projects/desktop/workspace/diff-reviewer";
+                window.open(url.href, "_blank", "noopener,noreferrer");
+              }}
+            >
+              <Icon name="expand" size={15} />
+            </button>
+            <button
+              type="button"
+              className="workspace-icon-button"
+              title="Close turn changes"
+              aria-label="Close turn changes"
+              onClick={() => setEntryOpen(false)}
+            >
+              <Icon name="close" size={15} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="button button-neutral"
+            onClick={() => setEntryOpen(true)}
+          >
+            Open Turn Diff
+          </button>
+        )}
       </Section>
       <Section title="Interaction contract" id="diff-reviewer-contract">
         <ul className="diff-reviewer-contract">
           <li>
             Source control opens one non-modal reviewer per project, carrying its Git range and
             selected file. Reopening activates that project’s reviewer.
+          </li>
+          <li>
+            Turn Diff’s expand action immediately before Close opens a separate reviewer for that
+            turn’s retained changes. Its headings are Before turn and After turn. Refresh reloads
+            the same historical turn. Changing turns or closing the project closes this reviewer.
+          </li>
+          <li>
+            Binary files and PDF or Office documents show Cannot compare this file, with disabled
+            difference navigation and empty text editors.
           </li>
           <li>
             The changed-file tree contains changed paths and their parent folders. File selection

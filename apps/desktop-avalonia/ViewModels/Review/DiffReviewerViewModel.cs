@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Infrastructure.Git;
 using SunCode.Desktop.Models;
+using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
@@ -18,8 +19,11 @@ public sealed class DiffReviewerNode(ExplorerNode entry, GitFileItem? file = nul
 
 public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
 {
-    private readonly IGitService _service;
+    private readonly IGitService? _service;
     private readonly ProjectItem _project;
+    private readonly Func<Task<TurnDiff>>? _reloadTurn;
+    private TurnDiff? _initialTurn;
+    private IReadOnlyDictionary<string, TurnFileDiff> _turnFiles = new Dictionary<string, TurnFileDiff>();
     private CancellationTokenSource? _request;
     private bool _disposed;
     private string _state = "idle";
@@ -36,6 +40,13 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
         _project = project;
     }
 
+    internal DiffReviewerViewModel(ProjectItem project, TurnDiff snapshot, Func<Task<TurnDiff>> reload)
+    {
+        _project = project;
+        _initialTurn = snapshot;
+        _reloadTurn = reload;
+    }
+
     public event Action? CloseRequested;
     public event Action? DocumentChanged;
     public event Action<int>? ChangeRequested;
@@ -44,12 +55,18 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
     public string ProjectName => _project.DisplayName;
     public string Branch => _branch;
     public string Scope => _scope;
+    public bool IsGitComparison => _service is not null;
     public bool ScopeAll => Scope == "all";
     public bool ScopeStaged => Scope == "staged";
     public bool ScopeUnstaged => Scope == "unstaged";
-    public string BeforeTitle => ScopeUnstaged && _selected?.File?.Conflicted != true
-        ? LocalizationService.GetString("LocGitIndex", "Index") : "HEAD";
-    public string AfterTitle => Scope == "staged" ? LocalizationService.GetString("LocGitIndex", "Index") : LocalizationService.GetString("LocGitWorkingTree", "Working tree");
+    public string BeforeTitle => !IsGitComparison
+        ? LocalizationService.GetString("LocDiffBeforeTurn", "Before turn")
+        : ScopeUnstaged && _selected?.File?.Conflicted != true
+            ? LocalizationService.GetString("LocGitIndex", "Index") : "HEAD";
+    public string AfterTitle => !IsGitComparison
+        ? LocalizationService.GetString("LocDiffAfterTurn", "After turn")
+        : Scope == "staged" ? LocalizationService.GetString("LocGitIndex", "Index")
+            : LocalizationService.GetString("LocGitWorkingTree", "Working tree");
     public DiffReviewerNode? SelectedNode
     {
         get => _selected;
@@ -80,8 +97,9 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
     {
         "loading" => LocalizationService.GetString("LocDiffLoading", "Reading changes…"),
         "error" => _error,
+        _ when _selected is null && FileCount == 0 && !IsGitComparison => LocalizationService.GetString("LocDiffNoTurnChanges", "This turn changed no files, or its changes have expired."),
         _ when _selected is null => LocalizationService.GetString(FileCount == 0 ? "LocDiffNoChanges" : "LocDiffSelectFile", FileCount == 0 ? "No changes in this Git range." : "Select a changed file."),
-        _ when _diff?.Binary == true => LocalizationService.GetString("LocDiffBinary", "Binary files cannot be displayed as text."),
+        _ when _diff?.Binary == true => LocalizationService.GetString("LocDiffBinary", "Cannot compare this file. Text comparison is unavailable for binary files and document formats such as PDF and Excel."),
         _ when IsLimited => LocalizationService.GetString("LocDiffTruncated", "Diff truncated at the review limit"),
         _ => LocalizationService.GetString("LocDiffNoTextChanges", "No textual differences.")
     };
@@ -95,6 +113,7 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
 
     public async Task SetScopeAsync(string scope)
     {
+        if (!IsGitComparison) return;
         var normalized = NormalizeScope(scope);
         if (_scope == normalized) return;
         _scope = normalized;
@@ -115,18 +134,45 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
         Notify();
         try
         {
-            if (!await _service.CheckAvailabilityAsync(token))
-                throw new GitException("git_missing", LocalizationService.GetString("LocDiffGitMissing", "Git is unavailable."));
-            var status = await _service.StatusAsync(_project.CanonicalRoot, token);
+            IReadOnlyList<GitChange> files;
+            if (_service is { } service)
+            {
+                if (!await service.CheckAvailabilityAsync(token))
+                    throw new GitException("git_missing", LocalizationService.GetString("LocDiffGitMissing", "Git is unavailable."));
+                var status = await service.StatusAsync(_project.CanonicalRoot, token);
+                token.ThrowIfCancellationRequested();
+                _branch = status.Branch ?? LocalizationService.GetString("LocGitDetachedHead", "Detached HEAD");
+                StatusLimited = status.Truncated;
+                files = status.Files;
+            }
+            else
+            {
+                var snapshot = _initialTurn ?? await _reloadTurn!().WaitAsync(token);
+                token.ThrowIfCancellationRequested();
+                _initialTurn = null;
+                _turnFiles = snapshot.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
+                files = snapshot.Files.Select(file => new GitChange(file.Path, file.Status, false, true, false,
+                    Binary: file.Binary, Additions: Count(file.Additions), Deletions: Count(file.Deletions))).ToArray();
+            }
             token.ThrowIfCancellationRequested();
-            _branch = status.Branch ?? LocalizationService.GetString("LocGitDetachedHead", "Detached HEAD");
-            StatusLimited = status.Truncated;
-            BuildTree(status.Files);
+            BuildTree(files);
             _selected = Flatten(Roots).FirstOrDefault(node => node.File?.Path == selectedPath)
                 ?? Flatten(Roots).FirstOrDefault(node => node.File is not null);
             await ReadSelectedAsync(token, change);
         }
         catch (Exception exception) { HandleFailure(exception, token); }
+    }
+
+    private static int Count(ulong count) => (int)Math.Min(count, int.MaxValue);
+
+    private GitDiffResult ReadTurnFile(string path)
+    {
+        var file = _turnFiles[path];
+        // The retained turn owns the edit script. Never read current Git or live file contents here.
+        return new(string.Empty, file.Binary, Count(file.Additions), Count(file.Deletions),
+            file.Hunks.Select(hunk => new GitDiffHunk(
+                $"@@ -{hunk.OldStart},{hunk.OldLines} +{hunk.NewStart},{hunk.NewLines} @@",
+                hunk.Lines.Select(line => new GitDiffLine(line.Kind, line.OldLine, line.NewLine, line.Text)).ToArray())).ToArray(), false);
     }
 
     private void BuildTree(IReadOnlyList<GitChange> files)
@@ -186,8 +232,16 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
         DiffReviewDocument? document = null;
         if (_selected?.File is { } file)
         {
-            diff = await _service.DiffAsync(_project.CanonicalRoot, Scope, file.Path, token, includeUnchanged: true);
-            document = await Task.Run(() => DiffReviewDocument.Create(diff, token), token);
+            if (!DiffReviewDocument.CanCompareFile(file.Path, file.Binary))
+                diff = new(string.Empty, true, 0, 0, [], false);
+            else
+            {
+                diff = _service is { } service
+                    ? await service.DiffAsync(_project.CanonicalRoot, Scope, file.Path, token, includeUnchanged: true)
+                    : ReadTurnFile(file.Path);
+                if (!diff.Binary)
+                    document = await Task.Run(() => DiffReviewDocument.Create(diff, token), token);
+            }
         }
         token.ThrowIfCancellationRequested();
         _diff = diff;

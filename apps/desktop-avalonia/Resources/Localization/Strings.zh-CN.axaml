@@ -923,7 +923,11 @@
   <x:String x:Key="LocDiffLoading">正在读取变更…</x:String>
   <x:String x:Key="LocDiffNoChanges">当前 Git 范围内没有变更。</x:String>
   <x:String x:Key="LocDiffSelectFile">请选择变更文件。</x:String>
-  <x:String x:Key="LocDiffBinary">二进制文件无法显示文本差异。</x:String>
+  <x:String x:Key="LocDiffBinary">无法比较此文件。二进制文件及 PDF、Excel 等文档格式不支持文本对比。</x:String>
+  <x:String x:Key="LocDiffBeforeTurn">本轮修改前</x:String>
+  <x:String x:Key="LocDiffAfterTurn">本轮修改后</x:String>
+  <x:String x:Key="LocDiffNoTurnChanges">本轮未修改文件，或修改记录已过期。</x:String>
+  <x:String x:Key="LocDiffRefresh">刷新变更</x:String>
   <x:String x:Key="LocDiffNoTextChanges">没有文本差异。</x:String>
   <x:String x:Key="LocDiffGitMissing">Git 不可用。</x:String>
   <x:String x:Key="LocDiffReadFailed">无法读取对比内容，请刷新重试。</x:String>

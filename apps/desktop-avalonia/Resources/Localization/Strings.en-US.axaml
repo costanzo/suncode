@@ -923,7 +923,11 @@
   <x:String x:Key="LocDiffLoading">Reading changes…</x:String>
   <x:String x:Key="LocDiffNoChanges">No changes in this Git range.</x:String>
   <x:String x:Key="LocDiffSelectFile">Select a changed file.</x:String>
-  <x:String x:Key="LocDiffBinary">Binary files cannot be displayed as text.</x:String>
+  <x:String x:Key="LocDiffBinary">Cannot compare this file. Text comparison is unavailable for binary files and document formats such as PDF and Excel.</x:String>
+  <x:String x:Key="LocDiffBeforeTurn">Before turn</x:String>
+  <x:String x:Key="LocDiffAfterTurn">After turn</x:String>
+  <x:String x:Key="LocDiffNoTurnChanges">This turn changed no files, or its changes have expired.</x:String>
+  <x:String x:Key="LocDiffRefresh">Refresh changes</x:String>
   <x:String x:Key="LocDiffNoTextChanges">No textual differences.</x:String>
   <x:String x:Key="LocDiffGitMissing">Git is unavailable.</x:String>
   <x:String x:Key="LocDiffReadFailed">Could not read this comparison. Refresh to retry.</x:String>
