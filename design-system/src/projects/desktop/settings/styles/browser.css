@@ -1,0 +1,153 @@
+.browser-settings-window .settings-body {
+  min-height: 0;
+  overflow: hidden;
+}
+.browser-settings-window .settings-global-status {
+  position: static;
+  margin: 0 var(--space-8) var(--space-5);
+  overflow-wrap: anywhere;
+}
+.settings-browser-content .settings-panel-section {
+  gap: var(--space-3);
+}
+.settings-browser-content .settings-panel-heading {
+  margin-bottom: var(--space-5);
+}
+.settings-browser-content .settings-divider {
+  margin-block: var(--space-5);
+}
+.browser-install-heading,
+.browser-project-status,
+.browser-install-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.browser-install-heading h3,
+.browser-section-heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.browser-install > p,
+.browser-install-message p,
+.browser-project-message,
+.browser-check-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.browser-install-status,
+.browser-project-status .browser-runtime-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 11px;
+}
+.browser-install-status[data-tone="success"] {
+  color: var(--success);
+}
+.browser-install-status[data-tone="warning"] {
+  color: var(--warning);
+}
+.browser-install-status[data-tone="danger"] {
+  color: var(--danger);
+}
+.browser-install-status[data-tone="muted"] {
+  color: var(--text-muted);
+}
+.browser-install-identity {
+  justify-content: flex-start;
+  margin-block: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.browser-install-identity code,
+.browser-source-url code {
+  font-family: var(--font-mono);
+}
+.browser-source {
+  width: 100%;
+  max-width: 240px;
+}
+.browser-source-url {
+  overflow-wrap: anywhere;
+}
+.browser-source-url code {
+  user-select: text;
+}
+.browser-install-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: 0;
+}
+.browser-install-message p {
+  margin: 0;
+}
+.browser-install-message[data-tone="danger"],
+.browser-install-message[data-tone="danger"] p {
+  color: var(--danger);
+}
+.browser-install-message > .ds-icon {
+  flex-shrink: 0;
+  margin-top: var(--space-1);
+}
+.browser-install-progress {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: 0;
+  color: var(--text-secondary);
+  font: 10px/1.5 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.browser-install-progress progress {
+  width: 100%;
+  height: var(--space-1);
+  appearance: none;
+  border: 0;
+  background: var(--surface-active);
+  accent-color: var(--accent);
+}
+.browser-install-progress progress::-webkit-progress-bar {
+  background: var(--surface-active);
+}
+.browser-install-progress progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.browser-install-progress progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.browser-install-progress progress:indeterminate {
+  opacity: 0.55;
+}
+.browser-install-actions {
+  margin-block: 0;
+}
+.browser-install-actions > span {
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.browser-project-status {
+  margin-top: 0;
+  font-size: 11px;
+}
+.settings-browser-content .browser-runtime-actions {
+  margin-top: 0;
+  flex-wrap: wrap;
+}
+.settings-browser-content .browser-component-row > code {
+  user-select: text;
+}
+.browser-authority-copy {
+  margin-top: var(--space-5);
+}
+.settings-browser-content .settings-switch input:focus-visible + .settings-switch-track,
+.browser-source:focus-visible {
+  box-shadow: var(--focus-ring);
+}

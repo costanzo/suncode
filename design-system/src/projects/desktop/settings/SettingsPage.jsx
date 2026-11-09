@@ -18,6 +18,7 @@ import {
   ProvidersPanel,
 } from "./sections/AgentProviderPanels.jsx";
 import { BrowserUsePanel } from "./sections/BrowserUsePanel.jsx";
+import { BrowserReviewControls } from "./components/BrowserReviewControls.jsx";
 import { ComputerUsePanel } from "./sections/ComputerUsePanel.jsx";
 import { initialLanguageServers, LanguageServersPanel } from "./sections/LanguageServersPanel.jsx";
 import { LoggingPanel } from "./sections/LoggingPanel.jsx";
@@ -32,6 +33,7 @@ import "../styles/remote-server.css";
 import "./styles/provider-credentials.css";
 import "./styles/terminal.css";
 import "./styles/updates.css";
+import "./styles/browser.css";
 
 export function SettingsPage({
   initialPage = "defaults",
@@ -48,6 +50,8 @@ export function SettingsPage({
   const [shellWindowSize, setShellWindowSize] = useState("default");
   const [updateScenario, setUpdateScenario] = useState("sdk");
   const [updateWindowSize, setUpdateWindowSize] = useState("default");
+  const [browserScenario, setBrowserScenario] = useState("missing");
+  const [browserWindowSize, setBrowserWindowSize] = useState("default");
   const [issue, setIssue] = useState("none");
   const [reviewVersion, setReviewVersion] = useState(0);
   const [credentials, setCredentials] = useState(() =>
@@ -74,13 +78,12 @@ export function SettingsPage({
   };
   const save = (message = "Saved to the local agent.") => setStatus(message);
   const renderPanel = () => {
-    if (page === "terminal" || page === "updates") return null;
+    if (page === "terminal" || page === "updates" || page === "browser") return null;
     if (page === "appearance") return <AppearancePanel onSave={save} />;
     if (page === "shortcuts") return <ShortcutsPanel />;
     if (page === "network") return <NetworkPanel onSave={save} />;
     if (page === "remote-server") return <RemoteServerPanel onSave={save} />;
     if (page === "computer") return <ComputerUsePanel onSave={save} />;
-    if (page === "browser") return <BrowserUsePanel onSave={save} />;
     if (page === "mcp")
       return <McpServersPanel servers={mcpServers} setServers={setMcpServers} onSave={save} />;
     if (page === "lsp")
@@ -170,6 +173,19 @@ export function SettingsPage({
           setWindowSize={setUpdateWindowSize}
         />
       )}
+      {page === "browser" && (
+        <BrowserReviewControls
+          scenario={browserScenario}
+          setScenario={(next) => {
+            setBrowserScenario(next);
+            setStatus("");
+          }}
+          platform={platform}
+          setPlatform={setPlatform}
+          windowSize={browserWindowSize}
+          setWindowSize={setBrowserWindowSize}
+        />
+      )}
       {credentialReview && (
         <div className="credential-review-controls" aria-label="Credential specimen controls">
           <div>
@@ -231,17 +247,19 @@ export function SettingsPage({
             title="Settings"
             width={
               (page === "terminal" && shellWindowSize === "minimum") ||
-              (page === "updates" && updateWindowSize === "minimum")
+              (page === "updates" && updateWindowSize === "minimum") ||
+              (page === "browser" && browserWindowSize === "minimum")
                 ? "720px"
                 : "900px"
             }
             height={
               (page === "terminal" && shellWindowSize === "minimum") ||
-              (page === "updates" && updateWindowSize === "minimum")
+              (page === "updates" && updateWindowSize === "minimum") ||
+              (page === "browser" && browserWindowSize === "minimum")
                 ? "552px"
                 : "672px"
             }
-            className={`settings-window${page === "terminal" ? " terminal-settings-window" : ""}${page === "updates" ? " updates-settings-window" : ""}`}
+            className={`settings-window${page === "terminal" ? " terminal-settings-window" : ""}${page === "updates" ? " updates-settings-window" : ""}${page === "browser" ? " browser-settings-window" : ""}`}
           >
             <div className="settings-toolbar">
               <strong>Settings</strong>
@@ -264,6 +282,14 @@ export function SettingsPage({
                 setProvidersExpanded={setProvidersExpanded}
               />
               <main className="settings-panel">
+                <div hidden={page !== "browser"}>
+                  <BrowserUsePanel
+                    key={`${platform}-${browserScenario}`}
+                    scenario={browserScenario}
+                    platform={platform}
+                    onSave={save}
+                  />
+                </div>
                 <div hidden={page !== "updates"}>
                   <UpdatesPanel key={updateScenario} scenario={updateScenario} />
                 </div>

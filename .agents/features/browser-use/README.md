@@ -6,6 +6,8 @@ These are two separate capabilities. Each has its own profile, and they do not s
 
 Desktop builds exclude CEF by default (`SunCodeBundleCef=false`), including the CefGlue project reference and CEF-dependent code. They do not require a local CefGlue fork, and browser entry points remain hidden. Enabling CEF requires `SunCodeBundleCef=true` and an explicit `CefGlueForkRoot` pointing to an Avalonia 12-compatible fork matching the declared CEF 156.0.15 runtime. The runtime package references and native copy paths are aligned at that version; external CefGlue and installed-runtime conformance require separate validation.
 
+The Browser Use Settings specimen and its section in `DESIGN.md` describe a design-only on-demand Chromium installation flow using NuGet.org or Huawei Cloud (China), trusted-manifest SHA-256 verification, and simulated runtime controls. Production CEF availability continues to follow the build configuration above.
+
 ## Browser Use (CEF CDP)
 
 The Rust `suncode-browser` client uses `chromiumoxide` to connect over WebSocket to the CEF remote debugging endpoint configured by the Avalonia client. CEF is not initialized at desktop startup. When an enabled Browser Use tool first executes, Rust asks the Avalonia host to initialize CEF and create a page for that project, then connects to the matching opaque CDP target. The agent owns policy, lifecycle, request timeouts, and artifacts; CEF owns Chromium and UI. `suncode-browser` owns the tool contract (`tools`), per-project runtime (`runtime`), and CDP transport (`cdp`); the agent core only reads the enablement setting and routes `browser_*` calls to `BrowserRuntime`.

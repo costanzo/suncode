@@ -250,6 +250,11 @@ export const primaryModules = [
                   "agent shell terminal powershell windows path install download validation",
               },
               {
+                path: "/projects/desktop/settings/browser",
+                label: "Browser use",
+                keywords: "cef chromium plugin nuget mirror download sha256 install repair browser",
+              },
+              {
                 path: "/projects/desktop/settings/remote-server",
                 label: "Remote Server",
                 keywords: "remote server pairing code mobile qr sse connection",

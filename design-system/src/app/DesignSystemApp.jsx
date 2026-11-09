@@ -170,6 +170,7 @@ const routes = {
     <SettingsPage initialPage="provider:deepseek" credentialReview />
   ),
   "/projects/desktop/settings/remote-server": () => <SettingsPage initialPage="remote-server" />,
+  "/projects/desktop/settings/browser": () => <SettingsPage initialPage="browser" />,
   "/projects/desktop/settings/language-servers": () => <SettingsPage initialPage="lsp" />,
   "/projects/desktop/settings/language-servers/no-project": () => (
     <SettingsPage initialPage="lsp" languageServerHasProject={false} />
