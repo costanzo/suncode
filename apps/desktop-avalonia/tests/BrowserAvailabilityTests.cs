@@ -8,6 +8,7 @@ using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectWorkspace;
+using SunCode.Desktop.Views.Settings;
 
 namespace SunCode.Desktop.Tests;
 
@@ -66,6 +67,7 @@ public sealed class BrowserAvailabilityTests(AvaloniaUiFixture ui)
         model.Layout.UpdateLayoutSize(width, height);
         var workspace = new ProjectWorkspace { DataContext = model };
         var window = new Window { Width = width, Height = height, Content = workspace, RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light };
+        var settingsWindow = new SettingsWindow { DataContext = model };
         try
         {
             var menus = new DesktopMenuController(() => window, () => model, () => workspace, () => Task.CompletedTask);
@@ -82,6 +84,8 @@ public sealed class BrowserAvailabilityTests(AvaloniaUiFixture ui)
             Assert.True(gutter.IsVisible);
             Assert.True(nativeBrowser.IsVisible);
             Assert.True(compactBrowser.IsVisible);
+            var browserNavigation = settingsWindow.FindControl<Button>("BrowserNavigation")!;
+            Assert.True(browserNavigation.IsVisible);
             model.Layout.PreviewVisible = true;
 
             settings.SetBrowserUseEnabled(false);
@@ -91,6 +95,11 @@ public sealed class BrowserAvailabilityTests(AvaloniaUiFixture ui)
             Assert.False(nativeBrowser.IsVisible);
             Assert.False(compactBrowser.IsVisible);
             Assert.False(model.Layout.PreviewVisible);
+            Assert.True(browserNavigation.IsVisible);
+            Assert.True(browserNavigation.IsEnabled);
+            browserNavigation.Command!.Execute(browserNavigation.CommandParameter);
+            var settingsModel = Assert.IsType<SettingsWindowViewModel>(settingsWindow.FindControl<Grid>("SettingsRoot")!.DataContext);
+            Assert.Equal(SettingsPage.Browser, settingsModel.Navigation.SelectedPage);
             workspace.ToggleBrowserPanel();
             Assert.False(model.Layout.PreviewVisible);
 
@@ -101,9 +110,11 @@ public sealed class BrowserAvailabilityTests(AvaloniaUiFixture ui)
             Assert.True(nativeBrowser.IsVisible);
             Assert.True(compactBrowser.IsVisible);
             Assert.False(model.Layout.PreviewVisible);
+            Assert.True(browserNavigation.IsVisible);
         }
         finally
         {
+            settingsWindow.Close();
             window.Close();
             application.Resources.MergedDictionaries.Remove(language);
             application.Resources.MergedDictionaries.Remove(resources);

@@ -31,10 +31,14 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
   );
   const [clearOpen, setClearOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
+  const [uninstallOpen, setUninstallOpen] = useState(false);
+  const [loaded, setLoaded] = useState(Boolean(preset.runtime) || preset.phase === "restart_required");
   const [profileCleared, setProfileCleared] = useState(false);
   const hasProject = scenario !== "no_project";
-  const busy = ["downloading", "verifying", "installing"].includes(phase);
-  const broken = ["corrupt", "incompatible", "restart_required"].includes(phase);
+  const busy = ["downloading", "verifying", "installing", "uninstalling"].includes(phase);
+  const uninstallPending = ["uninstall_restart_required", "uninstall_failed"].includes(phase);
+  const restartRequired = ["restart_required", "uninstall_restart_required"].includes(phase);
+  const broken = ["corrupt", "incompatible", "restart_required", "uninstall_restart_required", "uninstall_failed"].includes(phase);
   const usable = installed && !broken && phase !== "unsupported";
   const active = ["background", "user_controlled", "starting"].includes(runtime);
   const canStart = enabled && usable && !busy && hasProject;
@@ -44,6 +48,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
     "corrupt",
     "incompatible",
     "source_missing",
+    "uninstall_failed",
   ].includes(phase);
   const target = browserTargets[platform];
   const runtimeLabels = {
@@ -72,6 +77,11 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
           setInstalledVersion(browserVersion);
           setPhase("ready");
           setPlaying(false);
+        } else if (phase === "uninstalling") {
+          setInstalled(false);
+          setPhase("missing");
+          setPlaying(false);
+          onSave("Chromium uninstalled. Saved browser data is retained.");
         } else if (runtime === "starting") {
           setRuntime("background");
           setPlaying(false);
@@ -80,7 +90,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
       phase === "downloading" ? 400 : 1000,
     );
     return () => clearTimeout(timer);
-  }, [playing, phase, progress, runtime, operation, previousPhase]);
+  }, [playing, phase, progress, runtime, operation, previousPhase, onSave]);
 
   const download = () => {
     setPreviousPhase(phase);
@@ -111,6 +121,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
     );
   };
   const start = () => {
+    setLoaded(true);
     setRuntime("starting");
     setPlaying(true);
   };
@@ -174,7 +185,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
             data-tone={
               error
                 ? "danger"
-                : busy || phase === "restart_required"
+                : busy || restartRequired
                   ? "warning"
                   : usable
                     ? "success"
@@ -200,7 +211,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
           <select
             className="field browser-source"
             aria-label="Chromium download source"
-            disabled={busy || phase === "unsupported" || phase === "restart_required"}
+            disabled={busy || phase === "unsupported" || restartRequired || uninstallPending}
             value={source}
             onChange={(event) => setSource(event.target.value)}
           >
@@ -251,16 +262,16 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
           </div>
         )}
         <div className="settings-actions browser-install-actions">
-          {busy ? (
+          {busy && phase !== "uninstalling" ? (
             <Button size="sm" onClick={cancel}>
               {operation === "verify" ? "Cancel verification" : "Cancel installation"}
             </Button>
-          ) : phase === "restart_required" ? (
+          ) : restartRequired ? (
             <Button size="sm" variant="primary" onClick={() => setRestartOpen(true)}>
               Restart SunCode
             </Button>
           ) : (
-            phase !== "unsupported" && (
+            !busy && !uninstallPending && phase !== "unsupported" && (
               <>
                 <Button
                   size="sm"
@@ -278,9 +289,14 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
                           ? "Repair Chromium"
                           : "Download Chromium"}
                 </Button>
-                {active && <span>Stop the browser before repairing.</span>}
+                {active && <span>Stop the browser before repairing or uninstalling Chromium.</span>}
               </>
             )
+          )}
+          {installed && !busy && phase !== "uninstall_restart_required" && (
+            <Button size="sm" variant="danger" disabled={active} onClick={() => setUninstallOpen(true)}>
+              {phase === "uninstall_failed" ? "Retry uninstall" : "Uninstall Chromium"}
+            </Button>
           )}
         </div>
         <p className="browser-check-note">
@@ -370,6 +386,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
                 busy ||
                 active ||
                 phase === "restart_required" ||
+                uninstallPending ||
                 phase === "unsupported"
               }
               onClick={verify}
@@ -434,16 +451,37 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
         }}
       />
       <ConfirmationDialog
+        open={uninstallOpen}
+        title="Uninstall Chromium?"
+        description="Remove the downloaded Chromium runtime and temporary packages. Saved browser data is retained. Download Chromium again to use browser features. A loaded runtime is removed after restarting SunCode."
+        confirmLabel="Uninstall Chromium"
+        onCancel={() => setUninstallOpen(false)}
+        onConfirm={() => {
+          setUninstallOpen(false);
+          setRuntime("not_started");
+          if (loaded) {
+            setPhase("uninstall_restart_required");
+          } else {
+            setPhase("uninstalling");
+            setPlaying(true);
+          }
+        }}
+      />
+      <ConfirmationDialog
         open={restartOpen}
         title="Restart SunCode?"
-        description="Restart to activate the verified Chromium component. Active turns must finish or be stopped first."
+        description={uninstallPending
+          ? "Restart to finish removing Chromium. Active turns must finish or be stopped first."
+          : "Restart to activate the verified Chromium component. Active turns must finish or be stopped first."}
         confirmLabel="Restart SunCode"
         onCancel={() => setRestartOpen(false)}
         onConfirm={() => {
           setRestartOpen(false);
-          setPhase("ready");
+          setPhase(uninstallPending ? "missing" : "ready");
+          setInstalled(!uninstallPending);
+          setLoaded(false);
           setRuntime("not_started");
-          onSave("Design preview restarted. Chromium is ready.");
+          onSave(uninstallPending ? "Chromium uninstalled. Saved browser data is retained." : "Design preview restarted. Chromium is ready.");
         }}
       />
     </div>

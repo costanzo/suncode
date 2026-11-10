@@ -11,6 +11,7 @@ export const settingsGuide = {
       "Use Remote Server to connect this desktop with a server pairing code and generate a one-time phone pairing QR code.",
       "Use Computer use to inspect selected-model support, enable the built-in desktop backend, and review real-desktop permission and control state.",
       "Use Browser use to enable the capability and hand an active project browser between the agent and the user; runtime verification and CEF/CDP details live under Advanced diagnostics.",
+      "Browser use stays visible in Settings navigation while disabled or Chromium is absent, keeping enablement and component management accessible.",
       "Use Terminal to configure Agent shell and Terminal shell independently; custom paths are checked before saving.",
       "On Windows, download PowerShell 7 and optionally apply it to both shells after verification succeeds.",
       "Use the folder buttons in Logging to choose log and image storage directories.",

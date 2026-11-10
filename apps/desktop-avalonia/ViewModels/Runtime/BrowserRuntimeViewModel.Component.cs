@@ -35,10 +35,11 @@ public sealed partial class BrowserRuntimeViewModel
     {
         "ready" => StatusTone.Success,
         "missing" or "unsupported" => StatusTone.Muted,
-        "downloading" or "verifying" or "verifying_files" or "installing" or "restart_required" => StatusTone.Warning,
+        "downloading" or "verifying" or "verifying_files" or "installing" or "uninstalling" or "restart_required" or "uninstall_restart_required" => StatusTone.Warning,
         _ => StatusTone.Danger,
     };
     public bool ComponentBusy => _component.Busy;
+    public bool CanCancelComponent => ComponentBusy && _componentStatus.State != "uninstalling";
     public bool ComponentIndeterminate => _componentStatus.State != "downloading" || _componentStatus.Total is null;
     public double ComponentProgress => _componentStatus.Total is > 0 ? Math.Clamp(_componentStatus.Downloaded * 100.0 / _componentStatus.Total.Value, 0, 100) : 0;
     public string ComponentProgressText => _componentStatus.State == "downloading"
@@ -48,7 +49,7 @@ public sealed partial class BrowserRuntimeViewModel
     {
         get
         {
-            if (_componentStatus.Error == "browser_active" || CefPreviewRuntime.ActiveViews != 0) return L("LocBrowserStopBeforeRepair", "Stop all project browsers and built-in previews before repairing Chromium.");
+            if (_componentStatus.Error == "browser_active" || CefPreviewRuntime.ActiveViews != 0) return L("LocBrowserStopBeforeRepair", "Stop all project browsers and built-in previews before repairing or uninstalling Chromium.");
             var message = L("LocBrowserComponentMessage_" + _componentStatus.State, "");
             if (_componentInspection.State == "ready" && _componentStatus.State is "hash_mismatch" or "download_failed" or "source_missing")
                 message += " " + L("LocBrowserPreviousRetained", "The previously installed component is still available.");
@@ -57,11 +58,16 @@ public sealed partial class BrowserRuntimeViewModel
     }
     public string RequiredComponentText => $"{BrowserComponentCatalog.Target} · {BrowserComponentCatalog.Version}";
     public string DownloadSourceUrl => BrowserComponentCatalog.SourceUrl(_component.Source);
-    public bool CanSelectDownloadSource => !ComponentBusy && BrowserComponentCatalog.Current is not null && !ComponentRestartRequired;
-    public bool ShowComponentInstall => !ComponentBusy && !ComponentRestartRequired && BrowserComponentCatalog.Current is not null;
+    public bool CanSelectDownloadSource => !ComponentBusy && BrowserComponentCatalog.Current is not null && !ComponentRestartRequired && !_component.UninstallPending;
+    public bool ShowComponentInstall => !ComponentBusy && !ComponentRestartRequired && !_component.UninstallPending && BrowserComponentCatalog.Current is not null;
     public bool CanInstallComponent => ShowComponentInstall && CefPreviewRuntime.ActiveViews == 0;
+    public bool ShowComponentUninstall => !ComponentBusy && _componentInspection.State != "uninstall_restart_required" && _component.HasInstallation;
+    public bool CanUninstallComponent => ShowComponentUninstall && CefPreviewRuntime.ActiveViews == 0;
     public bool InstallComponentPrimary => _componentInspection.State != "ready";
-    public bool ComponentRestartRequired => _componentInspection.State == "restart_required";
+    public bool ComponentRestartRequired => _componentInspection.State is "restart_required" or "uninstall_restart_required";
+    public string UninstallComponentLabel => _componentStatus.State == "uninstall_failed"
+        ? L("LocBrowserRetryUninstall", "Retry uninstall")
+        : L("LocBrowserUninstall", "Uninstall Chromium");
     public string InstallComponentLabel => _componentStatus.State switch
     {
         "incompatible" => L("LocBrowserInstallCompatible", "Install compatible version"),
@@ -94,6 +100,7 @@ public sealed partial class BrowserRuntimeViewModel
     public ICommand InstallComponentCommand { get; private set; } = null!;
     public ICommand CancelComponentCommand { get; private set; } = null!;
     public ICommand RestartComponentCommand { get; private set; } = null!;
+    public ICommand UninstallComponentCommand { get; private set; } = null!;
     private void InitializeComponentCommands()
     {
         InstallComponentCommand = new AsyncRelayCommand(async () =>
@@ -116,11 +123,29 @@ public sealed partial class BrowserRuntimeViewModel
             finally { RefreshPresentation(); }
         });
         CancelComponentCommand = new RelayCommand(() => _component.Cancel());
+        UninstallComponentCommand = new RelayCommand(() =>
+        {
+            if (!CanUninstallComponent) return;
+            _dialogs?.Confirm(new(
+                L("LocBrowserUninstallTitle", "Uninstall Chromium?"),
+                L("LocBrowserUninstallMessage", "Remove the downloaded Chromium runtime and temporary packages. Saved browser data is retained. Download Chromium again to use browser features. A loaded runtime is removed after restarting SunCode."),
+                "Chromium", "", L("LocBrowserUninstall", "Uninstall Chromium")), () => _ = UninstallComponentAsync());
+        });
         RestartComponentCommand = new RelayCommand(() => _dialogs?.Confirm(new(
             L("LocBrowserRestartTitle", "Restart SunCode?"),
-            L("LocBrowserRestartMessage", "Restart to activate the verified Chromium component. Active turns must finish or be stopped first."),
+            _component.UninstallPending
+                ? L("LocBrowserUninstallRestartMessage", "Restart to finish removing Chromium. Active turns must finish or be stopped first.")
+                : L("LocBrowserRestartMessage", "Restart to activate the verified Chromium component. Active turns must finish or be stopped first."),
             "Chromium", "", L("LocBrowserRestartAction", "Restart SunCode"), Destructive: false), () => _ = RestartComponentAsync()));
         RefreshComponent();
+    }
+    internal async Task UninstallComponentAsync()
+    {
+        if (!CanUninstallComponent) return;
+        var uninstall = _component.UninstallAsync();
+        RefreshPresentation();
+        await uninstall;
+        RefreshPresentation();
     }
     private async Task RestartComponentAsync()
     {
@@ -140,6 +165,7 @@ public sealed partial class BrowserRuntimeViewModel
         foreach (var name in new[] { nameof(ComponentStateText), nameof(ComponentTone), nameof(ComponentBusy), nameof(ComponentIndeterminate),
             nameof(ComponentProgress), nameof(ComponentProgressText), nameof(ComponentMessage), nameof(RequiredComponentText), nameof(DownloadSourceUrl),
             nameof(CanSelectDownloadSource), nameof(ShowComponentInstall), nameof(CanInstallComponent), nameof(ComponentRestartRequired),
+            nameof(CanCancelComponent), nameof(ShowComponentUninstall), nameof(CanUninstallComponent), nameof(UninstallComponentLabel),
             nameof(InstallComponentLabel), nameof(InstallComponentPrimary), nameof(ComponentDiagnostics), nameof(SelectedDownloadSource) }) OnPropertyChanged(name);
     }
 }

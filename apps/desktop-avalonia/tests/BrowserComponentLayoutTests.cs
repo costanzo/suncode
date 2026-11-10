@@ -62,6 +62,26 @@ public sealed class BrowserComponentLayoutTests(AvaloniaUiFixture ui)
             Assert.True(copyProfile.IsEffectivelyVisible);
             Assert.True(copyProfile.IsEffectivelyEnabled);
             Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible && text.Text == model.VisibilityText);
+            var uninstall = Assert.Single(panel.GetVisualDescendants().OfType<Button>(), button => ReferenceEquals(button.Command, model.UninstallComponentCommand));
+            Assert.False(uninstall.IsVisible);
+            if (!failed)
+            {
+                await service.InstallAsync(BrowserComponentTests.Network);
+                model.RefreshPresentation();
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(uninstall.IsVisible);
+                Assert.True(uninstall.IsEnabled);
+                service.MarkLoaded(service.RequireReady());
+                await service.UninstallAsync();
+                model.RefreshPresentation();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(model.ComponentRestartRequired);
+                Assert.False(download.IsVisible);
+                Assert.False(uninstall.IsVisible);
+                Assert.False(source.IsEffectivelyEnabled);
+                Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
+            }
         }
         finally
         {

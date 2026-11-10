@@ -155,8 +155,7 @@
                 <TextBlock Grid.Column="1" Text="{DynamicResource LocComputerUse}" VerticalAlignment="Center" />
               </Grid>
             </Button>
-            <Button Classes="navigation"
-                    IsVisible="{Binding Desktop.IsBrowserAvailable}"
+            <Button x:Name="BrowserNavigation" Classes="navigation"
                     Classes.selected="{Binding Navigation.HighlightedNavigation, Converter={x:Static local:SettingsConverters.EqualsParameter}, ConverterParameter={x:Static vm:SettingsPage.Browser}}"
                     Command="{Binding Navigation.NavigateCommand}"
                     CommandParameter="{x:Static vm:SettingsPage.Browser}">

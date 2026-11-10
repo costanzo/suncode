@@ -11,6 +11,7 @@ internal sealed record BrowserComponentInspection(string State, string? Director
 // One owner across every Settings/project window. Closing Settings retains the download.
 internal sealed class BrowserComponentService
 {
+    private const string UninstallMarker = "uninstall.pending";
     internal static BrowserComponentService Current { get; } = new(Path.Combine(AppDataPaths.DataDirectory, "browser-components"));
     private readonly string _root;
     private readonly BrowserComponentPackage? _package;
@@ -24,6 +25,22 @@ internal sealed class BrowserComponentService
     private bool _closed;
     internal string Source { get; private set; } = "official";
     internal bool Busy { get { lock (_gate) return _operation is { IsCompleted: false }; } }
+    internal bool UninstallPending => File.Exists(Path.Combine(_root, UninstallMarker));
+    internal bool HasInstallation
+    {
+        get
+        {
+            if (UninstallPending || File.Exists(Path.Combine(_root, "active.json"))) return true;
+            try
+            {
+                var installed = Path.Combine(_root, "installed");
+                return Directory.Exists(installed) && Directory.EnumerateDirectories(installed)
+                    .Any(directory => Guid.TryParseExact(Path.GetFileName(directory), "N", out _));
+            }
+            catch (IOException) { return true; }
+            catch (UnauthorizedAccessException) { return true; }
+        }
+    }
     internal BrowserComponentService(string root, BrowserComponentPackage? package = null,
         Func<DownloadNetworkConfiguration, HttpMessageHandler>? handler = null)
     {
@@ -86,6 +103,7 @@ internal sealed class BrowserComponentService
     }
     internal BrowserComponentInspection Inspect()
     {
+        if (UninstallPending) return new(_loadedDirectory is null ? "uninstall_failed" : "uninstall_restart_required");
         var package = _package;
         if (package is null) return new("unsupported");
         var pointer = Path.Combine(_root, "active.json");
@@ -141,6 +159,7 @@ internal sealed class BrowserComponentService
         lock (_gate)
         {
             if (_closed || Busy) return _operation ?? Task.CompletedTask;
+            if (UninstallPending) { _status = new(Inspect().State); return Task.CompletedTask; }
             var package = _package;
             if (package is null) { _status = new("unsupported"); return Task.CompletedTask; }
             if (CefPreviewRuntime.ActiveViews != 0) { _status = new(Inspect().State, Error: "browser_active"); return Task.CompletedTask; }
@@ -205,6 +224,59 @@ internal sealed class BrowserComponentService
             if (!committed && destination is not null) TryDelete(destination);
         }
     }
+    internal Task UninstallAsync()
+    {
+        lock (_gate)
+        {
+            if (_closed || Busy) return _operation ?? Task.CompletedTask;
+            if (CefPreviewRuntime.ActiveViews != 0) { _status = new(Inspect().State, Error: "browser_active"); return Task.CompletedTask; }
+            if (!HasInstallation) { _status = new(Inspect().State); return Task.CompletedTask; }
+            _cancellation?.Dispose();
+            _cancellation = null;
+            _status = new("uninstalling");
+            _operation = Task.Run(() =>
+            {
+                try
+                {
+                    EnsureRoot();
+                    var lockPath = Inside(_root, "install.lock");
+                    using var installLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                    WriteAtomic(Inside(_root, UninstallMarker), "true");
+                    if (Volatile.Read(ref _loadedDirectory) is null) RemoveDownloadedFiles();
+                    Set(new(Inspect().State));
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or BrowserComponentException)
+                {
+                    Set(new("uninstall_failed", Error: "uninstall_failed"));
+                    DiagnosticLog.Error("browser.uninstall", exception, "component_uninstall_failed=true");
+                }
+            });
+            return _operation;
+        }
+    }
+
+    private void RemoveDownloadedFiles()
+    {
+        var installed = Inside(_root, "installed");
+        if (Directory.Exists(installed))
+        {
+            foreach (var directory in Directory.EnumerateDirectories(installed))
+            {
+                var id = Path.GetFileName(directory);
+                if (Guid.TryParseExact(id, "N", out _)) Directory.Delete(Inside(_root, "installed/" + id), true);
+            }
+            if (!Directory.EnumerateFileSystemEntries(installed).Any()) Directory.Delete(installed);
+        }
+        foreach (var directory in Directory.EnumerateDirectories(_root, ".staging-*"))
+        {
+            var name = Path.GetFileName(directory);
+            if (Guid.TryParseExact(name[9..], "N", out _)) Directory.Delete(Inside(_root, name), true);
+        }
+        File.Delete(Inside(_root, "active.json"));
+        File.Delete(Inside(_root, UninstallMarker));
+        Volatile.Write(ref _invalidDirectory, null);
+    }
+
     // Called by the primary Desktop process after it acquires the data-directory
     // instance lock. CEF subprocesses must never collect their parent's runtime.
     internal void CleanupUnusedInstallations()
@@ -218,6 +290,12 @@ internal sealed class BrowserComponentService
                 var lockPath = Path.Combine(_root, "install.lock");
                 if (File.Exists(lockPath)) RejectLink(lockPath);
                 using var installLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                if (UninstallPending)
+                {
+                    if (Volatile.Read(ref _loadedDirectory) is null) RemoveDownloadedFiles();
+                    Set(new(Inspect().State));
+                    return;
+                }
                 var active = Inspect();
                 if (active.State is "ready" or "restart_required" && active.Directory is not null)
                     CleanupInactiveInstallations(active.Directory);
@@ -225,6 +303,7 @@ internal sealed class BrowserComponentService
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or BrowserComponentException)
         {
+            if (UninstallPending) Set(new("uninstall_failed", Error: "uninstall_failed"));
             DiagnosticLog.Error("browser.cleanup", exception, "unused_installation_cleanup_deferred=true");
         }
     }

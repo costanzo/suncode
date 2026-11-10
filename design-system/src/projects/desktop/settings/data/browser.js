@@ -59,6 +59,9 @@ export const browserScenarios = [
     installed: true,
   },
   { value: "unsupported", label: "Unsupported platform", phase: "unsupported" },
+  { value: "uninstalling", label: "Uninstalling", phase: "uninstalling", installed: true },
+  { value: "uninstall_failed", label: "Uninstall failed", phase: "uninstall_failed", installed: true },
+  { value: "uninstall_restart_required", label: "Uninstall pending restart", phase: "uninstall_restart_required", installed: true },
   { value: "no_project", label: "No project selected", phase: "ready", installed: true },
   {
     value: "runtime_failed",
@@ -81,6 +84,9 @@ export const browserPhaseLabels = {
   incompatible: "Version incompatible",
   restart_required: "Restart required",
   unsupported: "Unavailable on this platform",
+  uninstalling: "Uninstalling",
+  uninstall_failed: "Uninstall failed",
+  uninstall_restart_required: "Restart to finish uninstalling",
 };
 export const browserPhaseMessages = {
   missing: "Install Chromium to use Browser Use and the built-in browser.",
@@ -99,4 +105,7 @@ export const browserPhaseMessages = {
     "The installed Chromium version is incompatible with this SunCode desktop client. Install the compatible version.",
   restart_required: "The verified component is staged. Restart SunCode to activate it.",
   unsupported: "A compatible Chromium package is unavailable for this platform.",
+  uninstalling: "Removing the downloaded Chromium runtime and temporary packages.",
+  uninstall_failed: "Chromium could not be completely removed. Check folder permissions and retry uninstalling.",
+  uninstall_restart_required: "Chromium is scheduled for removal. Restart SunCode to release its loaded files and finish uninstalling.",
 };

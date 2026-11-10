@@ -43,10 +43,14 @@
         <StackPanel Spacing="8" IsVisible="{Binding ComponentBusy}">
           <ProgressBar Value="{Binding ComponentProgress}" IsIndeterminate="{Binding ComponentIndeterminate}" Maximum="100" Height="4" AutomationProperties.Name="{Binding ComponentStateText}" />
           <TextBlock Text="{Binding ComponentProgressText}" Classes="mono" FontSize="10" />
-          <Button Classes="compact sc-button" Content="{DynamicResource LocBrowserCancelInstallation}" Command="{Binding CancelComponentCommand}" HorizontalAlignment="Left" />
+          <Button Classes="compact sc-button" Content="{DynamicResource LocBrowserCancelInstallation}" Command="{Binding CancelComponentCommand}" IsVisible="{Binding CanCancelComponent}" HorizontalAlignment="Left" />
         </StackPanel>
-        <Button Classes="compact sc-button" Classes.primary="{Binding InstallComponentPrimary}" Content="{Binding InstallComponentLabel}" Command="{Binding InstallComponentCommand}"
-                IsVisible="{Binding ShowComponentInstall}" IsEnabled="{Binding CanInstallComponent}" HorizontalAlignment="Left" />
+        <WrapPanel>
+          <Button Classes="compact sc-button" Classes.primary="{Binding InstallComponentPrimary}" Content="{Binding InstallComponentLabel}" Command="{Binding InstallComponentCommand}"
+                  IsVisible="{Binding ShowComponentInstall}" IsEnabled="{Binding CanInstallComponent}" Margin="0,0,10,0" />
+          <Button Classes="compact danger sc-button" Content="{Binding UninstallComponentLabel}" Command="{Binding UninstallComponentCommand}"
+                  IsVisible="{Binding ShowComponentUninstall}" IsEnabled="{Binding CanUninstallComponent}" />
+        </WrapPanel>
         <Button Classes="compact primary sc-button" Content="{DynamicResource LocBrowserRestartAction}" Command="{Binding RestartComponentCommand}"
                 IsVisible="{Binding ComponentRestartRequired}" HorizontalAlignment="Left" />
         <TextBlock Text="{DynamicResource LocBrowserComponentChecks}" Classes="settings-row-hint" TextWrapping="Wrap" />
