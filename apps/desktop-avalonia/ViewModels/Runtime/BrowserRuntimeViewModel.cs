@@ -5,7 +5,7 @@ using static SunCode.Desktop.ViewModels.SettingsFormatting;
 
 namespace SunCode.Desktop.ViewModels;
 
-public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
+public sealed partial class BrowserRuntimeViewModel : ObservableObject, IPolledPage
 {
     private static readonly string[] PresentationProperties =
     [
@@ -20,15 +20,19 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
     ];
 
     private readonly IViewModelHost _host;
+    private readonly AppSettingsViewModel? _appSettings;
     private BrowserRuntimeInfo? _runtime;
     private bool _enabledChecked;
     private bool _loading;
     private string _statusText = string.Empty;
     private ISettingsDialogs? _dialogs;
 
-    internal BrowserRuntimeViewModel(IViewModelHost host)
+    internal BrowserRuntimeViewModel(IViewModelHost host, BrowserComponentService? component = null, AppSettingsViewModel? appSettings = null)
     {
         _host = host;
+        _appSettings = appSettings;
+        _component = component ?? BrowserComponentService.Current;
+        InitializeComponentCommands();
         SetEnabledCommand = Command(() => SetBrowserUseEnabledAsync(EnabledChecked));
         VerifyCommand = Command(VerifyBrowserRuntimeAsync);
         StartCommand = Command(StartBrowserProjectAsync);
@@ -78,7 +82,8 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
     private bool Loaded => Runtime is not null;
     private bool UserControlled => Runtime?.RuntimeState == "user_controlled";
     private bool NotStarted => Runtime?.RuntimeState == "not_started";
-    private bool InstallationReady => Runtime is { Enabled: true, InstallationState: "ready" };
+    private bool BrowserUseEnabled => _appSettings?.BrowserUseEnabled ?? Runtime?.Enabled == true;
+    private bool InstallationReady => BrowserUseEnabled && Runtime?.InstallationState == "ready" && _componentInspection.State == "ready" && !ComponentBusy;
 
     public string InstallationStateText => Runtime is null ? L("LocDisabled", "Disabled") : BrowserState(Runtime.InstallationState);
     public StatusTone InstallationTone => BrowserStateTone(Runtime?.InstallationState);
@@ -124,16 +129,16 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
     public string ErrorText => Runtime?.Error ?? string.Empty;
     public bool HasError => !string.IsNullOrWhiteSpace(Runtime?.Error);
 
-    public bool CanVerify => !Loaded || Runtime!.Enabled;
-    public bool IsStartVisible => !Loaded || (HasProject && NotStarted);
-    public bool CanStart => !Loaded || InstallationReady;
+    public bool CanVerify => _componentInspection.Directory is not null && !ComponentBusy && CefPreviewRuntime.ActiveViews == 0;
+    public bool IsStartVisible => HasProject && Runtime?.RuntimeState is "not_started" or "failed";
+    public bool CanStart => HasProject && InstallationReady;
     public bool IsTakeControlVisible => !Loaded || (HasProject && Runtime!.RuntimeState == "background");
     public bool CanTakeControl => !Loaded || InstallationReady;
     public bool IsReturnControlVisible => HasProject && UserControlled;
     public bool IsRestartVisible => !Loaded || HasProject;
     public bool CanRestart => !Loaded || (InstallationReady && !NotStarted && !UserControlled);
-    public bool CanStop => !Loaded || (HasProject && !NotStarted);
-    public bool CanClear => !Loaded || (HasProject && NotStarted);
+    public bool CanStop => HasProject && (!NotStarted || CefPreviewRuntime.HasProjectBrowser(_host.SelectedProject!.ProjectId));
+    public bool CanClear => HasProject && NotStarted && !ComponentBusy && !CefPreviewRuntime.HasProjectBrowser(_host.SelectedProject!.ProjectId);
 
     Task IPolledPage.ActivateAsync() => LoadAsync();
     Task IPolledPage.PollAsync() => LoadAsync();
@@ -144,7 +149,8 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
     // Re-reads derived state after a language or project change.
     internal void RefreshPresentation()
     {
-        if (Runtime is { } runtime) EnabledChecked = runtime.Enabled;
+        RefreshComponent();
+        EnabledChecked = BrowserUseEnabled;
         foreach (var name in PresentationProperties) OnPropertyChanged(name);
     }
 
@@ -181,7 +187,9 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
 
     public async Task LoadAsync()
     {
-        if (_loading || !await _host.EnsureSdkReadyAsync()) return;
+        if (_loading) return;
+        RefreshPresentation();
+        if (!await _host.EnsureSdkReadyAsync()) return;
         _loading = true;
         try
         {
@@ -199,15 +207,26 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
         }
     }
 
-    public Task<bool> SetBrowserUseEnabledAsync(bool enabled) => RunMutationAsync(
-        async () => Runtime = await _host.Sdk!.SetBrowserUseEnabledAsync(enabled),
-        enabled
-            ? LocalizationService.GetString("LocBrowserUseEnabledStatus", "Browser Use enabled. Chromium starts only when a project needs it.")
-            : LocalizationService.GetString("LocBrowserUseDisabledStatus", "Browser Use disabled. Active browser runtimes were stopped."));
+    public async Task<bool> SetBrowserUseEnabledAsync(bool enabled)
+    {
+        var result = await RunMutationAsync(
+            async () =>
+            {
+                Runtime = await _host.Sdk!.SetBrowserUseEnabledAsync(enabled);
+                _appSettings?.SetBrowserUseEnabled(Runtime.Enabled);
+            },
+            enabled
+                ? LocalizationService.GetString("LocBrowserUseEnabledStatus", "Browser Use enabled. Chromium starts only when a project needs it.")
+                : LocalizationService.GetString("LocBrowserUseDisabledStatus", "Browser Use disabled. Active browser runtimes were stopped."));
+        return result;
+    }
 
-    public Task<bool> VerifyBrowserRuntimeAsync() => RunMutationAsync(
-        async () => Runtime = await _host.Sdk!.VerifyBrowserRuntimeAsync(_host.SelectedProject?.ProjectId),
-        LocalizationService.GetString("LocBrowserRuntimeVerified", "Bundled browser runtime verified."));
+    public async Task<bool> VerifyBrowserRuntimeAsync()
+    {
+        await _component.VerifyAsync();
+        RefreshPresentation();
+        return _componentInspection.State == "ready";
+    }
 
     public Task<bool> StartBrowserProjectAsync() => RunProjectMutationAsync(
         projectId => _host.Sdk!.StartBrowserProjectAsync(projectId),
@@ -225,9 +244,14 @@ public sealed class BrowserRuntimeViewModel : ObservableObject, IPolledPage
         projectId => _host.Sdk!.RestartBrowserRuntimeAsync(projectId),
         LocalizationService.GetString("LocProjectBrowserRestarted", "Project browser restarted with its persistent profile."));
 
-    public Task<bool> StopBrowserRuntimeAsync() => RunProjectMutationAsync(
-        projectId => _host.Sdk!.StopBrowserRuntimeAsync(projectId),
-        LocalizationService.GetString("LocProjectBrowserStopped", "Project browser stopped. Its profile was preserved."));
+    public async Task<bool> StopBrowserRuntimeAsync()
+    {
+        var result = await RunProjectMutationAsync(projectId => _host.Sdk!.StopBrowserRuntimeAsync(projectId),
+            LocalizationService.GetString("LocProjectBrowserStopped", "Project browser stopped. Its profile was preserved."));
+        if (result && _host.SelectedProject is { } project)
+            (Avalonia.Application.Current as App)?.CloseProjectBrowser(project.ProjectId);
+        return result;
+    }
 
     public async Task<bool> ClearBrowserProfileAsync()
     {

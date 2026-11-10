@@ -22,6 +22,7 @@ public sealed class AppSettingsViewModelTests
             ("log_level", "debug"),
             ("log_directory", "/tmp/logs"),
             ("image_directory", "/tmp/images"),
+            ("browser_use_enabled", true),
             ("log_max_bytes", 2048L),
             ("log_retention", 7L)));
 
@@ -30,6 +31,7 @@ public sealed class AppSettingsViewModelTests
         Assert.Equal("DEBUG", settings.LogLevel);
         Assert.Equal("/tmp/logs", settings.EffectiveLogDirectory);
         Assert.Equal("/tmp/images", settings.EffectiveImageDirectory);
+        Assert.True(settings.BrowserUseEnabled);
         Assert.Equal(2048, settings.LogMaxBytes);
         Assert.Equal(7, settings.LogRetention);
         Assert.Equal(["dark"], themes);
@@ -55,6 +57,7 @@ public sealed class AppSettingsViewModelTests
         Assert.Equal("INFO", settings.LogLevel);
         Assert.Equal(10 * 1024 * 1024, settings.LogMaxBytes);
         Assert.Equal(5, settings.LogRetention);
+        Assert.False(settings.BrowserUseEnabled);
         Assert.Empty(locales);
     }
 

@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261109-browser-component
+
+- Date: 2026-11-09
+- Status: Accepted
+- Context: The CEF build flag excluded the browser binding and UI from baseline builds, preventing installation-time enablement.
+- Decision: Compile the managed CEF binding directly into `apps/desktop-avalonia/`, with browser host, views and installation code owned by that project. Desktop explicitly installs compatible Chromium from NuGet.org or Huawei Cloud, verifies the same application-pinned SHA-256, stages immutable payloads, and switches an atomic activation pointer. Every browser call reuses the existing Browser Host request to prepare its page, including cached CDP sessions. Avalonia owns component checks and CEF management; Rust owns CDP connections and operations.
+- Consequences: Builds need no local CefGlue checkout or Chromium payload. Loaded native versions require application restart before replacement. SDK/tool execution never installs components. Existing approvals, project profiles, and CDP ownership remain Rust-owned. The current binding cannot activate external macOS Framework resources and reports unsupported. Windows x64 has isolated native-host checks; Linux and ARM64 require native conformance.
+- Amendment (2026-11-10): The user requested direct Desktop integration. The initially separated adapter/abstraction projects and dynamic assembly loading were removed. Managed binding dependencies ship as ordinary Desktop dependencies. The subsequent ownership correction removes the added component-availability callback and installation-state propagation from Rust and all bindings, retaining ABI 28 and the existing Browser Host interface.
+- Details: `contracts/browser-cdp.md`, `apps/desktop-avalonia/Infrastructure/Browser/`, `apps/desktop-avalonia/Infrastructure/CefPreviewRuntime.cs`.
+
 ## ADR-20261108-file-tool-preconditions
 
 - Date: 2026-11-08

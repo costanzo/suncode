@@ -66,8 +66,7 @@ impl BrowserRuntime {
 
     pub(super) async fn start_project_locked(&self, project_id: &str) -> Result<(), BusinessError> {
         self.require_enabled()?;
-        // CEF is host-owned; reaching this point is the integrity check.
-        self.inner.verified.store(true, Ordering::SeqCst);
+        self.ensure_host(project_id).await?;
         {
             let mut projects = self.inner.projects.lock().await;
             if projects
@@ -122,6 +121,7 @@ impl BrowserRuntime {
             return Err(shutting_down());
         }
         projects.insert(project_id.into(), BrowserSlot::running(session));
+        self.inner.verified.store(true, Ordering::SeqCst);
         Ok(())
     }
 

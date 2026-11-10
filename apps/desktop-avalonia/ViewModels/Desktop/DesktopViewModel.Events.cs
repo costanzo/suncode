@@ -276,6 +276,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         Git.Dispose();
         TurnDiff.Clear();
         AppSettings.LanguageChanged -= OnAppLanguageChanged;
+        AppSettings.BrowserUseEnabledChanged -= OnBrowserUseEnabledChanged;
         _conversationDurationTimer.Tick -= ConversationDurationTick;
         ProviderTraffic.Clear();
         Interlocked.Increment(ref _sessionLoadVersion);

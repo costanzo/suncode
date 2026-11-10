@@ -21,7 +21,18 @@ public sealed partial class DesktopViewModel
         }
     }
     private string BrowserGutterTip => IsBrowserConnected ? "Show built-in browser (connected)" : "Show built-in browser";
-    public bool IsBrowserAvailable => CefPreviewRuntime.Bundled;
+    public bool IsBrowserAvailable => AppSettings.BrowserUseEnabled;
+
+    private void OnBrowserUseEnabledChanged(bool enabled)
+    {
+        OnPropertyChanged(nameof(IsBrowserAvailable));
+        Browser.RefreshPresentation();
+        if (!enabled)
+        {
+            Layout.PreviewVisible = false;
+            IsBrowserConnected = false;
+        }
+    }
 
     public async Task<bool> StartConfiguredPreviewAsync(string requestedUrl)
     {

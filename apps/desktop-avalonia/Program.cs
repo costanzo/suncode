@@ -3,9 +3,6 @@ using Avalonia.Threading;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.Infrastructure.Updates;
 using SunCode.Sdk;
-#if SUNCODE_CEF
-using Xilium.CefGlue.BrowserProcess;
-#endif
 
 namespace SunCode.Desktop;
 
@@ -16,20 +13,19 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
-#if SUNCODE_CEF
-        // CEF relaunches this executable with --type=... for its renderer, GPU,
-        // and utility processes on every platform. Divert them before any app
-        // startup work (logging, single-instance IPC, Avalonia).
-        if (CefPreviewRuntime.Bundled && args.Any(arg => arg.StartsWith("--type=", StringComparison.Ordinal)))
+        if (args.Length == 2 && args[0] == "--suncode-browser-restart" && int.TryParse(args[1], out var parentId))
         {
-            CefSubProcess.Run(args, true);
+            try { using var parent = System.Diagnostics.Process.GetProcessById(parentId); if (!parent.WaitForExit(60000)) return; }
+            catch (ArgumentException) { }
+            if (Environment.ProcessPath is { } executable) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true });
             return;
         }
-#endif
+        if (args.Any(arg => arg.StartsWith("--type=", StringComparison.Ordinal)))
+        {
+            CefPreviewRuntime.RunSubprocess(args);
+            return;
+        }
         if (UpdateRuntime.HandleBootstrap(args)) return;
-#if SUNCODE_CEF
-        if (CefPreviewRuntime.Bundled) CefSubProcess.Run(args, true);
-#endif
         AgentSdk.ConfigureDiagnosticConsoleOutput(false);
         DiagnosticLog.ConfigureConsoleOutput(false);
         DiagnosticLog.Initialize();
@@ -49,6 +45,7 @@ internal static class Program
                 return;
             }
             InstanceCoordinator.StartServer();
+            BrowserComponentService.Current.CleanupUnusedInstallations();
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception exception)
@@ -58,6 +55,7 @@ internal static class Program
         }
         finally
         {
+            BrowserComponentService.Current.ShutdownAsync().GetAwaiter().GetResult();
             InstanceCoordinator?.Dispose();
             InstanceCoordinator = null;
             CefPreviewRuntime.Shutdown();

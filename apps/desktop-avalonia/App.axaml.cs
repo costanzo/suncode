@@ -15,6 +15,40 @@ namespace SunCode.Desktop;
 
 public sealed partial class App : Application
 {
+    internal void ShowBrowserSettings()
+    {
+        if (_dialogs is null || _hubWindow is null) return;
+        var owner = (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Windows.FirstOrDefault(window => window.IsActive) ?? _hubWindow;
+        _dialogs.ShowSettings(owner, page: SettingsPage.Browser);
+    }
+
+    internal void CloseProjectBrowser(string projectId)
+    {
+        if (_windows?.TryGetWindow(projectId, out var window) == true) window.Workspace.CloseBrowserUsePage();
+    }
+
+    internal void CloseProjectBrowsers()
+    {
+        foreach (var project in _windows?.OpenProjects ?? [])
+            if (_windows?.TryGetWindow(project.ProjectId, out var window) == true) window.Workspace.ClosePreview();
+    }
+
+    private void OnBrowserUseEnabledChanged(bool enabled)
+    {
+        if (!enabled) CloseProjectBrowsers();
+    }
+
+    internal async Task RestartBrowserComponentAsync()
+    {
+        if (await UpdateRuntime.Service.IsBusyAsync()) throw new InvalidOperationException(LocalizationService.GetString("LocBrowserRestartBusy", "Finish active turns and close running terminals before restarting."));
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop || Environment.ProcessPath is not { } executable) return;
+        var start = new System.Diagnostics.ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+        start.ArgumentList.Add("--suncode-browser-restart");
+        start.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        using var helper = System.Diagnostics.Process.Start(start) ?? throw new InvalidOperationException("Unable to restart SunCode.");
+        if (!desktop.TryShutdown()) helper.Kill();
+    }
+
     private DesktopViewModel? _viewModel;
     private ProjectHubViewModel? _hubViewModel;
     private AppSettingsViewModel? _appSettings;
@@ -53,6 +87,7 @@ public sealed partial class App : Application
             _hubViewModel = new ProjectHubViewModel(_viewModel);
             _hubWindow = new ProjectHubWindow { DataContext = _hubViewModel };
             _windows = new ProjectWindowManager(_hubWindow, () => desktop.Windows, _uiStateStore, _appSettings);
+            _appSettings.BrowserUseEnabledChanged += OnBrowserUseEnabledChanged;
             UpdateRuntime.Service.IsBusyAsync = async () =>
             {
                 var models = _windows.ViewModels.Concat(desktop.Windows.Select(window => window.DataContext).OfType<DesktopViewModel>()).Append(_viewModel).Distinct().ToArray();
@@ -113,6 +148,7 @@ public sealed partial class App : Application
                 _attentionCoordinator?.Dispose();
                 _attentionCoordinator = null;
                 if (_browserHost is not null) AgentSdk.BrowserHostRequested -= _browserHost.EnsureBrowserHost;
+                _appSettings.BrowserUseEnabledChanged -= OnBrowserUseEnabledChanged;
                 _dialogs?.CloseAll();
                 _windows?.CloseAll();
                 _hubViewModel.Dispose();

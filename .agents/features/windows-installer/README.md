@@ -2,7 +2,7 @@
 
 Status: Real x64 package build and isolated Inno lifecycle tests pass; ARM64, clean-machine/visual conformance, platform signing and managed-update enrollment remain unverified.
 
-`scripts/package-windows.ps1` publishes the existing Avalonia project with .NET and Rust, validates native architecture, adds app-local Visual C++ redistributable DLLs, and invokes Inno Setup for one offline installer plus a SHA-256 sidecar. The version follows the Desktop project. Native cross-compilation is refused; CEF and the separate CLI are excluded.
+`scripts/package-windows.ps1` publishes the existing Avalonia project with .NET and Rust, validates native architecture, adds app-local Visual C++ redistributable DLLs, and invokes Inno Setup for one offline installer plus a SHA-256 sidecar. The version follows the Desktop project. Native cross-compilation is refused. The built-in managed CEF binding is included, while native Chromium is installed separately through Browser use Settings. The separate CLI is excluded.
 
 Inno owns current-user installation, shortcuts, activation protocol and Windows uninstall. Same-version reinstall repairs missing files. Downgrades (including when the executable is missing) and architecture replacement are refused. Uninstall removes installer-owned files/registrations and preserves unrelated files and the application data directory. It does not access Agent SQLite or force-close running Agent/Terminal work.
 

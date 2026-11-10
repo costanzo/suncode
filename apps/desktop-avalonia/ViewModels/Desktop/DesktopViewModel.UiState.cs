@@ -25,10 +25,11 @@ public sealed partial class DesktopViewModel
         ProviderTrace.Refreshed += RefreshReviewFailure;
         Editor = new EditorViewModel(this);
         Explorer = new ExplorerViewModel(this);
-        Browser = new BrowserRuntimeViewModel(this);
+        Browser = new BrowserRuntimeViewModel(this, appSettings: AppSettings);
         Computer = new ComputerRuntimeViewModel(this);
         Layout = new WorkspaceLayoutViewModel(this);
         Terminal = new TerminalViewModel(this);
+        AppSettings.BrowserUseEnabledChanged += OnBrowserUseEnabledChanged;
         Git.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName != nameof(Git.IsAvailable)) return;

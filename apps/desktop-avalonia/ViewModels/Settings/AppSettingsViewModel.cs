@@ -5,7 +5,7 @@ using SunCode.Sdk.Models;
 
 namespace SunCode.Desktop.ViewModels;
 
-// Application-wide appearance, logging, and image storage settings. One
+// Application-wide appearance, logging, image storage and Browser Use settings. One
 // instance is shared by every window view model so a change made from any
 // Settings window is visible everywhere.
 public sealed class AppSettingsViewModel : ObservableObject
@@ -17,9 +17,11 @@ public sealed class AppSettingsViewModel : ObservableObject
     private string _imageDirectory = string.Empty;
     private long _logMaxBytes = 10 * 1024 * 1024;
     private int _logRetention = 5;
+    private bool _browserUseEnabled;
 
     public event Action<string>? ThemeChanged;
     public event Action<string>? LanguageChanged;
+    public event Action<bool>? BrowserUseEnabledChanged;
 
     public string ThemeMode { get => _themeMode; private set => SetProperty(ref _themeMode, value); }
     public string Language { get => _language; private set => SetProperty(ref _language, value); }
@@ -34,9 +36,17 @@ public sealed class AppSettingsViewModel : ObservableObject
         : ImageDirectory;
     public long LogMaxBytes { get => _logMaxBytes; private set => SetProperty(ref _logMaxBytes, value); }
     public int LogRetention { get => _logRetention; private set => SetProperty(ref _logRetention, value); }
+    public bool BrowserUseEnabled => _browserUseEnabled;
+
+    internal void SetBrowserUseEnabled(bool enabled)
+    {
+        if (SetProperty(ref _browserUseEnabled, enabled, nameof(BrowserUseEnabled)))
+            BrowserUseEnabledChanged?.Invoke(enabled);
+    }
 
     internal void Apply(SettingsSnapshot settings)
     {
+        SetBrowserUseEnabled(settings.Bool("browser_use_enabled", false));
         var retention = settings.Long("log_retention", 5);
         var configuredLevel = settings.String("log_level", "INFO").Trim().ToUpperInvariant();
         SetLanguage(settings.String("ui_locale", LocalizationService.DefaultLocale));

@@ -3,7 +3,11 @@ import { Icon } from "../../../../shared/Icon.jsx";
 import { WindowsMenuBar } from "./WindowsMenuBar.jsx";
 
 // Review fixtures only; the native Avalonia controller owns production commands.
-export function NativeMenuSpecimen({ presentation = "reference", renderPreview }) {
+export function NativeMenuSpecimen({
+  presentation = "reference",
+  renderPreview,
+  browserUseEnabled = true,
+}) {
   const windows = presentation === "windows" || presentation === "ubuntu";
   const [platform, setPlatform] = useState(windows ? "Windows / Linux" : "macOS");
   const [context, setContext] = useState("active");
@@ -45,7 +49,14 @@ export function NativeMenuSpecimen({ presentation = "reference", renderPreview }
     View: [row("Sessions", !project, { checked: navigation && left === "Sessions", action: () => { setNavigation(!(navigation && left === "Sessions")); setLeft("Sessions"); } }),
       row("Explorer", !project, { checked: navigation && left === "Explorer", action: () => { setNavigation(!(navigation && left === "Explorer")); setLeft("Explorer"); } }),
       row("Project Navigation", !project, { checked: navigation, shortcut: `${command}1`, action: () => setNavigation(!navigation) }), null,
-      ...["Built-in Browser", "Review", "Child Sessions"].map(label => row(label, !project || (label === "Child Sessions" && !session), { checked: right === label, action: () => setRight(right === label ? "" : label) })), null,
+      ...[
+        ...(browserUseEnabled && context !== "browser-disabled" ? ["Built-in Browser"] : []),
+        "Review",
+        "Child Sessions",
+      ].map(label => row(label, !project || (label === "Child Sessions" && !session), {
+        checked: right === label,
+        action: () => setRight(right === label ? "" : label),
+      })), null,
       ...(context === "no-git" ? [] : [row("Source Control", !project, { checked: drawer === "Source Control", shortcut: `${command}9`, action: () => setDrawer(drawer === "Source Control" ? "" : "Source Control") })]),
       ...["Provider Trace", "Tool Activity"].map(label => row(label, !session, { checked: drawer === label, action: () => setDrawer(drawer === label ? "" : label) }))],
     Window: [row("Minimize", false, { shortcut: `${command}M` }), row("Zoom"), row("Full Screen", false, { checked: false }), null,
@@ -89,7 +100,7 @@ export function NativeMenuSpecimen({ presentation = "reference", renderPreview }
       <div className="workspace-native-menu-controls">
         {!windows && <label>Platform<select value={platform} onChange={event => setPlatform(event.target.value)}><option>macOS</option><option>Windows / Linux</option></select></label>}
         <label>Context<select value={context} onChange={event => { setContext(event.target.value); setFeedback(""); }}>
-          <option value="active">Idle session</option><option value="running">Running turn</option><option value="approval">Pending approval</option><option value="question">Pending question</option><option value="archived">Archived session</option><option value="empty">Empty project</option><option value="hub">ProjectHub</option><option value="loading">Loading session</option><option value="no-git">Git unavailable</option>
+          <option value="active">Idle session</option><option value="running">Running turn</option><option value="approval">Pending approval</option><option value="question">Pending question</option><option value="archived">Archived session</option><option value="empty">Empty project</option><option value="hub">ProjectHub</option><option value="loading">Loading session</option><option value="no-git">Git unavailable</option><option value="browser-disabled">Browser Use disabled</option>
         </select></label>
       </div>
       {windows ? <>

@@ -96,7 +96,7 @@ export const browserPhaseMessages = {
   corrupt:
     "Required Chromium files are missing or damaged. Download a verified replacement to repair the component.",
   incompatible:
-    "The installed Chromium version is incompatible with this SunCode browser plugin. Install the compatible version.",
+    "The installed Chromium version is incompatible with this SunCode desktop client. Install the compatible version.",
   restart_required: "The verified component is staged. Restart SunCode to activate it.",
   unsupported: "A compatible Chromium package is unavailable for this platform.",
 };

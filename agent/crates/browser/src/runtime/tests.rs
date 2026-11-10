@@ -140,9 +140,13 @@ fn runtime_with_host(
 ) -> (BrowserRuntime, Arc<Mutex<usize>>) {
     let runtime = BrowserRuntime::with_cdp_port(data_dir, chromium.port, true, true);
     let starts = Arc::new(Mutex::new(0usize));
+    let opened = AtomicBool::new(false);
     let port = chromium.port;
     let counter = starts.clone();
     runtime.set_host_callback(Some(Arc::new(move |scope: &str| {
+        if opened.swap(true, Ordering::SeqCst) {
+            return Ok(());
+        }
         *counter.lock().unwrap() += 1;
         let url = connection::browser_target_url(scope);
         tokio::runtime::Handle::current().block_on(open_host_page(port, url))
@@ -158,6 +162,43 @@ async fn call(
     runtime
         .call("project-1", name, arguments, &TestCancellation::default())
         .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "requires SUNCODE_TEST_CHROMIUM"]
+async fn cached_session_still_requests_the_existing_host() {
+    let Some(chromium) = launch_chromium() else {
+        return;
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let (runtime, _) = runtime_with_host(&chromium, directory.path().to_path_buf());
+    runtime.start_project("project-1").await.unwrap();
+    runtime.set_host_callback(Some(Arc::new(|_| {
+        Err(BusinessError::unavailable("Host page is unavailable"))
+    })));
+    let error = call(&runtime, "browser_snapshot", json!({}))
+        .await
+        .unwrap_err();
+    assert_eq!(error.message, "Host page is unavailable");
+    runtime.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "requires a native CEF smoke host and SUNCODE_TEST_CEF_CDP_PORT"]
+async fn native_cef_host_connects_and_captures_screenshot() {
+    let port: u16 = std::env::var("SUNCODE_TEST_CEF_CDP_PORT")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = BrowserRuntime::with_cdp_port(directory.path().to_path_buf(), port, true, true);
+    let snapshot = call(&runtime, "browser_snapshot", json!({})).await.unwrap();
+    assert!(snapshot.to_string().contains("suncode-browser-use-"));
+    let screenshot = call(&runtime, "browser_screenshot", json!({}))
+        .await
+        .unwrap();
+    assert!(screenshot.to_string().contains("image/png"));
+    runtime.shutdown().await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

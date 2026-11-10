@@ -7,11 +7,22 @@ export function WorkspaceTitlebarSpecimen() {
   const [maximized, setMaximized] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [size, setSize] = useState("default");
+  const [browserUseEnabled, setBrowserUseEnabled] = useState(true);
   const [feedback, setFeedback] = useState("");
   const ubuntu = platform === "ubuntu";
   return (
     <div className="workspace-titlebar-specimen">
       <div className="workspace-native-menu-controls">
+        <label>
+          Browser Use
+          <select
+            value={browserUseEnabled ? "enabled" : "disabled"}
+            onChange={(event) => setBrowserUseEnabled(event.target.value === "enabled")}
+          >
+            <option value="enabled">Enabled</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </label>
         <label>
           Platform
           <select
@@ -64,6 +75,7 @@ export function WorkspaceTitlebarSpecimen() {
           <WorkspaceWindow
             key={platform}
             titlebarPlatform={platform}
+            browserUseEnabled={browserUseEnabled}
             windowMaximized={maximized}
             windowActive={isActive}
             onWindowMaximize={() => setMaximized((value) => !value)}

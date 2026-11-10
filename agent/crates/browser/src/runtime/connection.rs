@@ -66,22 +66,9 @@ impl BrowserRuntime {
             &first_error,
             format!("phase=initial project={scope}"),
         );
-        let Some(callback) = self
-            .inner
-            .host_callback
-            .read()
-            .ok()
-            .and_then(|value| value.clone())
-        else {
+        if !self.ensure_host(scope).await? {
             return Err(first_error);
-        };
-        logging::info("browser.host", format!("start_requested project={scope}"));
-        let callback_scope = scope.to_owned();
-        tokio::task::spawn_blocking(move || callback(&callback_scope))
-            .await
-            .map_err(|error| {
-                BusinessError::unavailable(format!("browser host callback failed: {error}"))
-            })??;
+        }
         match launch(HOST_START_TIMEOUT).await {
             Ok(session) => {
                 logging::info("browser.cdp", "connected_after_host_start=true");
@@ -97,6 +84,28 @@ impl BrowserRuntime {
                 Err(error)
             }
         }
+    }
+
+    /// Uses the existing host callback to prepare the page. Component management
+    /// belongs entirely to the host; CDP-only hosts may omit this callback.
+    pub(super) async fn ensure_host(&self, scope: &str) -> Result<bool, BusinessError> {
+        let Some(callback) = self
+            .inner
+            .host_callback
+            .read()
+            .ok()
+            .and_then(|value| value.clone())
+        else {
+            return Ok(false);
+        };
+        logging::debug("browser.host", format!("page_requested project={scope}"));
+        let callback_scope = scope.to_owned();
+        tokio::task::spawn_blocking(move || callback(&callback_scope))
+            .await
+            .map_err(|error| {
+                BusinessError::unavailable(format!("browser host callback failed: {error}"))
+            })??;
+        Ok(true)
     }
 
     fn known_target(&self, project_id: &str) -> Option<String> {

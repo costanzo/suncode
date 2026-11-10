@@ -8,11 +8,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SunCode.Desktop.Infrastructure;
 using SunCode.Desktop.ViewModels;
-#if SUNCODE_CEF
-using Xilium.CefGlue;
-using Xilium.CefGlue.Avalonia;
-using Xilium.CefGlue.Common.Handlers;
-#endif
 
 namespace SunCode.Desktop.Views.ProjectWorkspace.Preview;
 
@@ -28,9 +23,7 @@ public sealed class BrowserTab : ObservableObject
 
     public string Title { get; }
     public string Address { get; set; }
-#if SUNCODE_CEF
-    public AvaloniaCefBrowser? Browser { get; set; }
-#endif
+    internal IBrowserView? Browser { get; set; }
     public bool IsBrowserUse { get; set; }
     public bool BrowserInitialized { get; set; }
     public bool IsActive
@@ -42,7 +35,6 @@ public sealed class BrowserTab : ObservableObject
 
 public sealed partial class BrowserPreviewPane : UserControl
 {
-#if SUNCODE_CEF
     private const string DefaultAddress = "http://localhost:5173/";
 
     private readonly ObservableCollection<BrowserTab> _tabs = new();
@@ -88,6 +80,11 @@ public sealed partial class BrowserPreviewPane : UserControl
         SetActiveTab(_tabs[0]);
         StatusText.Text = "Browser is offline";
         UpdateNavigationButtons();
+    }
+
+    internal void CloseBrowserUsePage()
+    {
+        foreach (var tab in _tabs.Where(tab => tab.IsBrowserUse).ToArray()) DisconnectTab(tab);
     }
 
     private void NewTabClicked(object? sender, RoutedEventArgs e)
@@ -136,7 +133,7 @@ public sealed partial class BrowserPreviewPane : UserControl
 
         if (tab.Browser is not null)
         {
-            BrowserHost.Child = tab.Browser;
+            BrowserHost.Child = tab.Browser.Control;
             BrowserHost.IsVisible = true;
             EmptyState.IsVisible = false;
             DisconnectButton.IsVisible = true;
@@ -208,6 +205,7 @@ public sealed partial class BrowserPreviewPane : UserControl
     private async Task OpenPreviewAsync()
     {
         if (DataContext is not DesktopViewModel { SelectedProject: { } project } viewModel || _activeTab is null) return;
+        if (!viewModel.IsBrowserAvailable) return;
 
         var address = AddressInput.Text?.Trim();
         if (address is null || !IsAllowedPreviewUrl(address))
@@ -229,7 +227,8 @@ public sealed partial class BrowserPreviewPane : UserControl
         CefPreviewRuntime.Initialize();
         if (!CefPreviewRuntime.Available)
         {
-            StatusText.Text = CefPreviewRuntime.Error ?? "Chromium unavailable";
+            StatusText.Text = CefPreviewRuntime.Error ?? "Install Chromium in Settings → Browser use.";
+            (Avalonia.Application.Current as App)?.ShowBrowserSettings();
             return;
         }
 
@@ -261,7 +260,7 @@ public sealed partial class BrowserPreviewPane : UserControl
 
     internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
     {
-        if (DataContext is not DesktopViewModel { SelectedProject: { } project })
+        if (DataContext is not DesktopViewModel { SelectedProject: { } project } viewModel)
         {
             initialized.TrySetResult(false);
             return;
@@ -273,10 +272,17 @@ public sealed partial class BrowserPreviewPane : UserControl
             if (!CefPreviewRuntime.Available)
             {
                 initialized.TrySetResult(false);
+                (Avalonia.Application.Current as App)?.ShowBrowserSettings();
                 return;
             }
 
             var browserTab = _tabs.FirstOrDefault(tab => tab.IsBrowserUse);
+            if (browserTab is { Browser: not null, BrowserInitialized: true })
+            {
+                initialized.TrySetResult(true);
+                return;
+            }
+
             if (browserTab is null)
             {
                 browserTab = _activeTab is { Browser: null } ? _activeTab : new BrowserTab("Browser Use", string.Empty);
@@ -285,6 +291,7 @@ public sealed partial class BrowserPreviewPane : UserControl
             }
 
             _browserUseTab = browserTab;
+            viewModel.Layout.PreviewVisible = true;
             SetActiveTab(browserTab);
             _browserUseInitialization?.TrySetResult(false);
             _browserUseInitialization = initialized;
@@ -312,42 +319,21 @@ public sealed partial class BrowserPreviewPane : UserControl
         tab.BrowserInitialized = false;
         DiagnosticLog.Info("browser.host", $"create_begin project={projectId} mode={(browserUse ? "browser_use" : "preview")} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
 
-        var browser = new AvaloniaCefBrowser(() => CefPreviewRuntime.CreateProjectContext(projectId, browserUse));
+        var browser = CefPreviewRuntime.CreateView(projectId, browserUse);
         tab.Browser = browser;
-        browser.BrowserInitialized += () =>
+        browser.Initialized += () =>
         {
             tab.BrowserInitialized = true;
-            DiagnosticLog.Info("browser.host", $"browser_initialized project={projectId} bounds={Bounds.Width:0.##}x{Bounds.Height:0.##}");
             if (browserUse) _ = CompleteBrowserUseInitializationAsync();
             Dispatcher.UIThread.Post(UpdateNavigationButtons);
             Dispatcher.UIThread.Post(SyncConnectionState);
         };
-        browser.LoadStart += (_, args) =>
-        {
-            if (args.Frame.IsMain) DiagnosticLog.Debug("browser.host", $"load_start project={projectId}");
-        };
-        browser.LoadError += (_, args) =>
-        {
-            if (args.Frame.IsMain) DiagnosticLog.Warn("browser.host", $"load_error project={projectId} code={args.ErrorCode} url_length={args.FailedUrl.Length}");
-        };
-        browser.UnhandledException += (_, args) => DiagnosticLog.Error("browser.host", args.Exception, $"unhandled=true project={projectId}");
-        if (!browserUse)
-        {
-            browser.RequestHandler = new PreviewRequestHandler();
-            browser.LifeSpanHandler = new PreviewLifeSpanHandler();
-        }
-
-        browser.Settings.WindowlessFrameRate = 60;
-        browser.LoadEnd += (_, args) =>
-        {
-            if (args.Frame.IsMain) Dispatcher.UIThread.Post(UpdateNavigationButtons);
-        };
-        browser.AddressChanged += (_, _) => Dispatcher.UIThread.Post(UpdateNavigationButtons);
-        browser.LoadingStateChange += (_, _) => Dispatcher.UIThread.Post(UpdateNavigationButtons);
+        browser.Failed += exception => DiagnosticLog.Error("browser.host", exception, "browser_view_failed=true");
+        browser.NavigationChanged += () => Dispatcher.UIThread.Post(UpdateNavigationButtons);
 
         if (ReferenceEquals(_activeTab, tab))
         {
-            BrowserHost.Child = browser;
+            BrowserHost.Child = browser.Control;
             BrowserHost.IsVisible = true;
             EmptyState.IsVisible = false;
             DisconnectButton.IsVisible = true;
@@ -363,7 +349,7 @@ public sealed partial class BrowserPreviewPane : UserControl
         {
             DiagnosticLog.Info("browser.host", $"browser_disposed mode={(tab.IsBrowserUse ? "browser_use" : "preview")} caller={caller}");
         }
-        if (ReferenceEquals(BrowserHost.Child, tab.Browser)) BrowserHost.Child = null;
+        if (ReferenceEquals(BrowserHost.Child, tab.Browser?.Control)) BrowserHost.Child = null;
         tab.Browser?.Dispose();
         tab.Browser = null;
         tab.BrowserInitialized = false;
@@ -471,52 +457,6 @@ public sealed partial class BrowserPreviewPane : UserControl
         ForwardButton.IsEnabled = browser.CanGoForward;
         ReloadButton.IsEnabled = !browser.IsLoading;
     }
-
-    private sealed class PreviewRequestHandler : RequestHandler
-    {
-        protected override bool OnBeforeBrowse(CefBrowser browser, CefFrame frame, CefRequest request, bool userGesture, bool isRedirect) =>
-            frame.IsMain && request.Url != "about:blank" && !IsAllowedPreviewUrl(request.Url);
-    }
-
-    private sealed class PreviewLifeSpanHandler : LifeSpanHandler
-    {
-        protected override bool OnBeforePopup(
-            CefBrowser browser, CefFrame frame, int popupId, string targetUrl, string targetFrameName,
-            CefWindowOpenDisposition targetDisposition, bool userGesture, CefPopupFeatures popupFeatures,
-            CefWindowInfo windowInfo, ref CefClient client, CefBrowserSettings settings,
-            ref CefDictionaryValue extraInfo, ref bool noJavascriptAccess) => true;
-    }
-#else
-    // The pane remains in the shared XAML tree, but its entry points are hidden
-    // when CEF is excluded. Keep host callbacks independent of CefGlue types.
-    public BrowserPreviewPane() => InitializeComponent();
-
-    public void CloseBrowser([CallerMemberName] string caller = "") { }
-
-    internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
-        => initialized.TrySetResult(false);
-
-    private void OpenClicked(object? sender, RoutedEventArgs e)
-    {
-        CefPreviewRuntime.Initialize();
-        StatusText.Text = CefPreviewRuntime.Error;
-    }
-
-    private void AddressKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter) return;
-        OpenClicked(sender, e);
-        e.Handled = true;
-    }
-
-    private void NewTabClicked(object? sender, RoutedEventArgs e) { }
-    private void TabClicked(object? sender, RoutedEventArgs e) { }
-    private void CloseTabClicked(object? sender, RoutedEventArgs e) { }
-    private void BackClicked(object? sender, RoutedEventArgs e) { }
-    private void ForwardClicked(object? sender, RoutedEventArgs e) { }
-    private void ReloadClicked(object? sender, RoutedEventArgs e) { }
-    private void DisconnectClicked(object? sender, RoutedEventArgs e) { }
-#endif
 
     internal static bool IsAllowedPreviewUrl(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri)

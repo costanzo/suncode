@@ -84,7 +84,7 @@ $installerDirectory = Join-Path $outputRoot 'installer'
 $publishArguments = @(
     'publish', $project, '-c', 'Release', '-r', $RuntimeIdentifier,
     '--self-contained', 'true', '-o', $publishDirectory,
-    '-p:PublishSingleFile=false', '-p:PublishTrimmed=false', '-p:SunCodeBundleCef=false'
+    '-p:PublishSingleFile=false', '-p:PublishTrimmed=false'
 )
 if ($DistributionConfiguration) {
     $configurationPath = (Resolve-Path -LiteralPath $DistributionConfiguration).Path

@@ -1,104 +1,99 @@
 using System.Security.Cryptography;
 using System.Text;
-#if SUNCODE_CEF
-using Xilium.CefGlue;
-using Xilium.CefGlue.BrowserProcess;
-using Xilium.CefGlue.Common;
-#endif
 
 namespace SunCode.Desktop.Infrastructure;
 
 internal static class CefPreviewRuntime
 {
-    
-#if SUNCODE_CEF
-    internal static readonly bool Bundled = true;
-#else
-    internal static readonly bool Bundled = false;
-#endif
-    // Rust connects to this CEF-owned CDP endpoint; CEF remains the sole browser process owner.
     internal const int RemoteDebuggingPort = 9222;
-    private static bool _initialized;
-#if SUNCODE_CEF
-    // CEF only loads a request-context profile whose CachePath is a direct child of this root.
-    private static readonly string CacheRoot = Path.Combine(AppDataPaths.DataDirectory, "cef");
-#endif
-
+    private static bool _configured;
+    private static int _activeViews;
+    private static readonly Dictionary<string, int> ProjectBrowsers = new();
+    internal static int ActiveViews => Volatile.Read(ref _activeViews);
+    internal static bool HasProjectBrowser(string projectId)
+    {
+        lock (ProjectBrowsers) return ProjectBrowsers.GetValueOrDefault(projectId) > 0;
+    }
     internal static bool Available { get; private set; }
     internal static string? Error { get; private set; }
 
     internal static void Initialize()
     {
-        if (_initialized) return;
-        _initialized = true;
-        if (!Bundled)
-        {
-            Error = "The embedded Chromium runtime is unavailable.";
-            DiagnosticLog.Error("browser.preview", new InvalidOperationException(Error), "cef_not_bundled=true");
-            return;
-        }
-#if SUNCODE_CEF
         try
         {
-            Directory.CreateDirectory(CacheRoot);
-            CefRuntimeLoader.Initialize(new CefSettings
+            var service = BrowserComponentService.Current;
+            var directory = service.RequireReady();
+            if (!_configured)
             {
-                RootCachePath = CacheRoot,
-                RemoteDebuggingPort = RemoteDebuggingPort,
-                // CEF CHECK-fails inside cef_initialize when no subprocess path is set,
-                // and CefGlue only resolves the macOS bundle, framework, and resource
-                // paths when it is. The app re-enters itself through CefSubProcess.Run.
-                BrowserSubprocessPath = CefSubProcess.GetSubProcessPath(),
-                // Avalonia owns the macOS Cocoa view hierarchy. Windowed CEF tries to
-                // attach another native browser view and collides with AvaloniaNative's
-                // Objective-C classes (and can deadlock while the view is attached).
-                // The forked Avalonia adapter provides the OSR bitmap/input path. Use
-                // it on macOS, where windowed CEF's Cocoa view collides with
-                // AvaloniaNative's Objective-C classes. Keep the existing native
-                // hosting path on other platforms.
-                WindowlessRenderingEnabled = OperatingSystem.IsMacOS(),
-                LogSeverity = CefLogSeverity.Error
-            });
+                service.VerifyFilesAsync(directory, CancellationToken.None).GetAwaiter().GetResult();
+                service.MarkLoaded(directory);
+                CefBrowserHost.Initialize(directory, Path.Combine(AppDataPaths.DataDirectory, "cef"));
+                _configured = true;
+            }
+            Error = null;
             Available = true;
-            DiagnosticLog.Info("browser.host", $"cef_initialized=true cdp_port={RemoteDebuggingPort}");
         }
         catch (Exception exception)
         {
-            Error = "The embedded Chromium runtime is unavailable.";
-            DiagnosticLog.Error("browser.preview", exception, "cef_initialize_failed=true");
+            Available = false;
+            Error = LocalizationService.GetString("LocBrowserInstallGuidance", "Install or repair Chromium in Settings → Browser use.");
+            DiagnosticLog.Error("browser.host", exception, "cef_initialize_failed=true");
         }
-#endif
     }
 
-#if SUNCODE_CEF
-    internal static CefRequestContext CreateProjectContext(string projectId, bool browserUse = false)
+    internal static void RunSubprocess(string[] args)
+    {
+        // Resolve before logging, application IPC, Avalonia, or opening the agent.
+        var directory = BrowserComponentService.Current.RequireReady();
+        CefBrowserHost.RunSubprocess(directory, args);
+    }
+
+    internal static IBrowserView CreateView(string projectId, bool browserUse)
     {
         if (!Available) throw new InvalidOperationException(Error);
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(projectId));
-        var hash = Convert.ToHexString(digest.AsSpan(0, 16)).ToLowerInvariant();
-        var cachePath = Path.Combine(CacheRoot, $"{(browserUse ? "browser" : "preview")}--{hash}");
-        Directory.CreateDirectory(cachePath);
-        return CefRequestContext.CreateContext(new CefRequestContextSettings
-        {
-            CachePath = cachePath,
-            PersistSessionCookies = true
-        }, null);
-    }
-#endif
-
-    internal static string BrowserTargetUrl(string projectId)
-    {
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(projectId));
-        var hash = Convert.ToHexString(digest.AsSpan(0, 16)).ToLowerInvariant();
-        return $"data:text/html,%3Ctitle%3Esuncode-browser-use-{hash}%3C%2Ftitle%3E";
+        var profile = Path.Combine(AppDataPaths.DataDirectory, "cef", $"{(browserUse ? "browser" : "preview")}--{ProjectHash(projectId)}");
+        var view = CefBrowserHost.CreateView(profile, !browserUse);
+        Interlocked.Increment(ref _activeViews);
+        if (browserUse) lock (ProjectBrowsers) ProjectBrowsers[projectId] = ProjectBrowsers.GetValueOrDefault(projectId) + 1;
+        return new TrackedView(view, browserUse ? projectId : null);
     }
 
+    private static string ProjectHash(string projectId) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(projectId)).AsSpan(0, 16));
+    internal static string BrowserTargetUrl(string projectId) => $"data:text/html,%3Ctitle%3Esuncode-browser-use-{ProjectHash(projectId)}%3C%2Ftitle%3E";
     internal static void Shutdown()
     {
-        if (!Available) return;
-#if SUNCODE_CEF
-        CefRuntime.Shutdown();
-#endif
+        if (_configured) CefBrowserHost.Shutdown();
         Available = false;
+    }
+
+    private sealed class TrackedView(IBrowserView view, string? projectId) : IBrowserView
+    {
+        private int _disposed;
+        public Avalonia.Controls.Control Control => view.Control;
+        public string Address { get => view.Address; set => view.Address = value; }
+        public bool CanGoBack => view.CanGoBack;
+        public bool CanGoForward => view.CanGoForward;
+        public bool IsLoading => view.IsLoading;
+        public event Action? Initialized { add => view.Initialized += value; remove => view.Initialized -= value; }
+        public event Action? NavigationChanged { add => view.NavigationChanged += value; remove => view.NavigationChanged -= value; }
+        public event Action<Exception>? Failed { add => view.Failed += value; remove => view.Failed -= value; }
+        public void GoBack() => view.GoBack();
+        public void GoForward() => view.GoForward();
+        public void Reload() => view.Reload();
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            try { view.Dispose(); }
+            finally
+            {
+                Interlocked.Decrement(ref _activeViews);
+                if (projectId is not null) lock (ProjectBrowsers)
+                {
+                    var count = ProjectBrowsers.GetValueOrDefault(projectId) - 1;
+                    if (count <= 0) ProjectBrowsers.Remove(projectId);
+                    else ProjectBrowsers[projectId] = count;
+                }
+            }
+        }
     }
 }

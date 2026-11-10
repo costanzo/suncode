@@ -20,7 +20,7 @@ Prepare the bundled Browser Use runtime once before the first Debug build or aft
 
 The Avalonia client starts CEF with remote debugging on localhost port 9222. Rust connects to CEF through CDP; no Node.js or Playwright runtime is packaged.
 
-CEF is currently excluded from builds and packages (`SunCodeBundleCef=false`), so Browser Use and the built-in browser are unavailable and their entry points are hidden. Default builds do not reference CefGlue or require `CefGlueForkRoot`. To include CEF, pass both `-p:SunCodeBundleCef=true` and `-p:CefGlueForkRoot=/path/to/CefGlue` to `dotnet build`, `run`, or `publish`. The path must point to a CefGlue fork compatible with Avalonia 12 and the declared CEF 156.0.15 runtime, and contain `CefGlue.Avalonia/CefGlue.Avalonia.csproj`.
+All desktop browser code lives in this project under `Infrastructure/Browser/`, `Infrastructure/CefPreviewRuntime.cs`, and the existing browser views. The managed CEF binding is built directly into Desktop and its managed dependencies use normal application assembly resolution. Chromium is installed explicitly in Settings → Browser use from NuGet.org or Huawei Cloud, with the same application-pinned SHA-256 for either source. Builds no longer need a local CefGlue checkout or a CEF bundle flag. The adapter uses Costanzo.CefGlue.Avalonia 1.0.0-preview.1, CefGlue.Next 152.7977.831 and CEF 152.0.6. Runtime payloads remain in the user's application data directory and are excluded from build/publish output. Windows x64/ARM64 and Linux x64/ARM64 have pinned packages. External macOS Framework loading requires a binding change and currently reports unsupported.
 
 ```sh
 dotnet build apps/desktop-avalonia/SunCode.Desktop.csproj
@@ -28,8 +28,6 @@ dotnet run --project apps/desktop-avalonia/SunCode.Desktop.csproj
 ```
 
 The managed SDK runs Cargo from the repository root, uses the shared root `target/`, and copies the native library from `target/debug` or `target/release`. This also works when `dotnet` is invoked from another directory. To override the output, use `CARGO_TARGET_DIR` or `-p:SunCodeCargoTargetDirectory=...`; relative overrides resolve from the repository root. Development builds retain line-table Rust debug information and incremental compilation.
-
-The referenced CefGlue fork's NuGet configuration must use `nuget.org` as both the package-source key and the package-source-mapping key for `https://api.nuget.org/v3/index.json`. Naming the same URL `Nuget` in that fork can conflict with the standard user-level `nuget.org` source and cause NU1100 during normal restore, especially after clearing package caches.
 
 Run the Avalonia test project from its colocated `tests/` directory:
 

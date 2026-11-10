@@ -197,6 +197,7 @@ export function ContentSwitcher({
 export function WorkspaceWindow({
   projectSwitcherProjects = workspaceRecentProjects,
   gitAvailable = true,
+  browserUseEnabled = true,
   initialDrawer = "tools",
   titlebarPlatform = "macos",
   windowMaximized = false,
@@ -225,6 +226,11 @@ export function WorkspaceWindow({
     initialDrawer === "git" && !gitAvailable ? null : initialDrawer,
   );
   const [archiveRequest, setArchiveRequest] = useState(null);
+  useEffect(() => {
+    if (!browserUseEnabled) {
+      setRightRegion((current) => current === "preview" ? null : current);
+    }
+  }, [browserUseEnabled]);
   const activePrimarySession =
     sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
   const activeSessionArchived =
@@ -348,7 +354,7 @@ export function WorkspaceWindow({
                 onSelectChild={(child) => selectContent(contentItemForChildSession(child))}
               />
             )}
-            {rightRegion === "preview" && <BrowserPreviewPanel />}
+            {rightRegion === "preview" && browserUseEnabled && <BrowserPreviewPanel />}
           </div>
           {gitAvailable && drawer === "git" && (
             <SourceControlPanel
@@ -367,17 +373,19 @@ export function WorkspaceWindow({
           {drawer === "terminal" && <TerminalPanel onClose={() => setDrawer(null)} />}
         </div>
         <aside className="workspace-gutter workspace-gutter-right">
-          <IconButton
-            icon="computer"
-            label="Show built-in browser"
-            active={rightRegion === "preview"}
-            onClick={() => {
-              setRightRegion(rightRegion === "preview" ? null : "preview");
-              setNavigation(null);
-              setActiveFile(null);
-              setActiveChild(null);
-            }}
-          />
+          {browserUseEnabled && (
+            <IconButton
+              icon="computer"
+              label="Show built-in browser"
+              active={rightRegion === "preview"}
+              onClick={() => {
+                setRightRegion(rightRegion === "preview" ? null : "preview");
+                setNavigation(null);
+                setActiveFile(null);
+                setActiveChild(null);
+              }}
+            />
+          )}
           <IconButton
             icon="panel-right"
             label="Show review"
@@ -430,6 +438,7 @@ export function WorkspaceWindow({
   return ubuntu ? (
     <NativeMenuSpecimen
       presentation="ubuntu"
+      browserUseEnabled={browserUseEnabled}
       renderPreview={({ menus, context, onCommand }) => (
         <WindowsMenuBar
           platform="ubuntu"

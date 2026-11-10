@@ -19,7 +19,7 @@ sudo apt-get install build-essential pkg-config libssl-dev libdbus-1-dev \
 
 Other distributions use their corresponding dependencies and `--format tar`; `deb`/`all` requires Debian tools. ARM64 maps to the native `aarch64-unknown-linux-gnu` host and Debian `arm64`; x64 uses `x86_64-unknown-linux-gnu` and `amd64`. Mismatched hosts/RIDs are refused.
 
-For version `0.1.0` on x64, outputs under `artifacts/linux/0.1.0/linux-x64/` are `publish/`, `SunCode-0.1.0-linux-x64.deb`, `SunCode-0.1.0-linux-x64.tar.gz` and their `.sha256` sidecars. .NET and Rust are included; native ELF architectures are checked. The build stages package roots without installing them. CEF and CLI are excluded.
+For version `0.1.0` on x64, outputs under `artifacts/linux/0.1.0/linux-x64/` are `publish/`, `SunCode-0.1.0-linux-x64.deb`, `SunCode-0.1.0-linux-x64.tar.gz` and their `.sha256` sidecars. .NET, Rust and the built-in managed CEF binding are included; native ELF architectures are checked. The build stages package roots without installing them. Native Chromium is installed separately through Browser use Settings. The CLI is excluded. Linux browser-component conformance still requires native validation.
 
 ## Debian installation and uninstall
 

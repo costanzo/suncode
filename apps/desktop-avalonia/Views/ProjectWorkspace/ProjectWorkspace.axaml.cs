@@ -171,7 +171,13 @@ public sealed partial class ProjectWorkspace : UserControl
 
     internal void ToggleBrowserPanel()
     {
-        if (CefPreviewRuntime.Bundled) Layout.PreviewVisible = !Layout.PreviewVisible; 
+        if (!ViewModel.IsBrowserAvailable) return;
+        if (BrowserComponentService.Current.Busy || BrowserComponentService.Current.Inspect().State != "ready")
+        {
+            (Avalonia.Application.Current as App)?.ShowBrowserSettings();
+            return;
+        }
+        Layout.PreviewVisible = !Layout.PreviewVisible;
     }
 
     internal async Task ToggleChildSessionsPanelAsync()
@@ -302,14 +308,15 @@ public sealed partial class ProjectWorkspace : UserControl
         BrowserPreview.CloseBrowser();
     }
 
+    internal void CloseBrowserUsePage() => BrowserPreview.CloseBrowserUsePage();
+
     internal void EnsureBrowserUsePage(TaskCompletionSource<bool> initialized)
     {
-        if (!CefPreviewRuntime.Bundled)
+        if (!ViewModel.IsBrowserAvailable)
         {
             initialized.TrySetResult(false);
             return;
         }
-        Layout.PreviewVisible = true;
         BrowserPreview.EnsureBrowserUsePage(initialized);
     }
 

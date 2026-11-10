@@ -102,7 +102,7 @@ internal sealed class DesktopMenuController
     }
 
     private NativeMenuItem Action(NativeMenu menu, string name, string fallback, Action execute,
-        Func<bool>? enabled = null, KeyGesture? gesture = null, Func<bool>? check = null, bool windowShortcut = true)
+        Func<bool>? enabled = null, KeyGesture? gesture = null, Func<bool>? check = null, bool windowShortcut = true, Func<bool>? visible = null)
     {
         var item = new NativeMenuItem { Gesture = gesture };
         var barItem = BarItem();
@@ -111,6 +111,8 @@ internal sealed class DesktopMenuController
         if (check is not null) barItem.ToggleType = MenuItemToggleType.CheckBox;
         void Update()
         {
+            item.IsVisible = visible?.Invoke() ?? true;
+            barItem.IsVisible = item.IsVisible;
             item.Header = L(name, fallback);
             item.IsEnabled = Enabled && (enabled?.Invoke() ?? true);
             barItem.Header = L(name, fallback);
@@ -124,7 +126,7 @@ internal sealed class DesktopMenuController
         bool Execute()
         {
             // Recheck at invocation: context can change while a native menu is open.
-            if (!Enabled || enabled?.Invoke() == false) return false;
+            if (!Enabled || visible?.Invoke() == false || enabled?.Invoke() == false) return false;
             execute();
             Workspace?.CloseWindowsMenu();
             Refresh();
@@ -386,9 +388,8 @@ internal sealed class DesktopMenuController
             if (Model is { } model) model.Layout.NavigationVisible = !model.Layout.NavigationVisible;
         }, () => ProjectReady, new KeyGesture(Key.D1, CommandModifier), () => Model?.Layout.NavigationVisible == true);
         Separator(view);
-        if (CefPreviewRuntime.Bundled)
-            Action(view, "Browser", "Built-in Browser", () => Workspace?.ToggleBrowserPanel(), () => ProjectReady,
-                check: () => Model?.Layout.PreviewVisible == true);
+        Action(view, "Browser", "Built-in Browser", () => Workspace?.ToggleBrowserPanel(), () => ProjectReady && Model?.IsBrowserAvailable == true,
+            check: () => Model?.Layout.PreviewVisible == true, visible: () => Model?.IsBrowserAvailable == true);
         Action(view, "Review", "Review", () => Workspace?.ToggleReviewPanel(), () => ProjectReady,
             check: () => Model?.Layout.ReviewVisible == true && Model?.Layout.PreviewVisible == false);
         Action(view, "ChildSessions", "Child Sessions", () => _ = RunAsync(() => Workspace?.ToggleChildSessionsPanelAsync() ?? Task.CompletedTask), () => SessionReady,

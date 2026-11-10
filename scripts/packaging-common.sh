@@ -59,7 +59,7 @@ packaging_cleanup() {
 packaging_publish_app() {
   local args=(dotnet publish "$packaging_project" -c Release -r "$packaging_rid"
     --self-contained true -o "$packaging_publish" -p:PublishSingleFile=false
-    -p:PublishTrimmed=false -p:SunCodeBundleCef=false)
+    -p:PublishTrimmed=false)
   if [[ -n "${SUNCODE_UPDATE_DISTRIBUTION_FILE:-}" ]]; then
     [[ -f "$SUNCODE_UPDATE_DISTRIBUTION_FILE" ]] || packaging_fail 'distribution configuration does not exist'
     args+=("-p:SunCodeUpdateDistributionFile=$(cd "$(dirname "$SUNCODE_UPDATE_DISTRIBUTION_FILE")" && pwd -P)/$(basename "$SUNCODE_UPDATE_DISTRIBUTION_FILE")")

@@ -5,7 +5,7 @@
              x:Name="SunCode"
              x:CompileBindings="False">
   <Grid>
-    <ComboBox x:Name="FlatCombo">
+    <ComboBox x:Name="FlatCombo" AutomationProperties.Name="{Binding Path=(AutomationProperties.Name), ElementName=SunCode}">
       <ComboBox.ItemTemplate>
         <DataTemplate x:DataType="controls:SCComboBoxItem">
           <StackPanel Spacing="2" HorizontalAlignment="Stretch" VerticalAlignment="Center">

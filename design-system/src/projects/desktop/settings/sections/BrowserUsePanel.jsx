@@ -140,7 +140,7 @@ export function BrowserUsePanel({ onSave, scenario = "missing", platform = "maco
     <div className="settings-panel-content settings-browser-content">
       <div className="settings-panel-heading">
         <h2>Browser use</h2>
-        <p>Browse and inspect web pages with the CEF browser plugin.</p>
+        <p>Browse and inspect web pages with the built-in CEF browser.</p>
       </div>
       <div className="settings-panel-section">
         <SettingRow

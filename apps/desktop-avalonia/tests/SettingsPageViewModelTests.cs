@@ -247,7 +247,7 @@ public sealed class SettingsPageViewModelTests
         Assert.Equal("Integrity verified", browser.IntegrityText);
         Assert.Equal("2.0 KB · 1 active pages", browser.ProfileUsageText);
         Assert.True(browser.IsStartVisible);
-        Assert.True(browser.CanStart);
+        Assert.False(browser.CanStart); // SDK readiness alone cannot bypass local installation checks.
         Assert.True(browser.CanClear);
         Assert.False(browser.CanStop);
         Assert.False(browser.CanRestart);

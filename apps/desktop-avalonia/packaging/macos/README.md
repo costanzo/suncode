@@ -16,7 +16,7 @@ artifacts/macos/0.1.0/osx-arm64/SunCode-0.1.0-osx-arm64.dmg
 artifacts/macos/0.1.0/osx-arm64/SunCode-0.1.0-osx-arm64.dmg.sha256
 ```
 
-Publishing includes .NET, Rust and the notification bridge. The MSBuild target updates the copied plist version fields from the Desktop project before signing; source plist values are template placeholders. Assembly metadata follows the same version, and both macOS RIDs receive final ad hoc signing. The script checks bundle versions and apphost/SDK/.NET/notification-bridge architectures before making the DMG. CEF remains off and needs a separate framework/signing review before inclusion.
+Publishing includes .NET, Rust, the built-in managed CEF binding and the notification bridge. The MSBuild target updates the copied plist version fields from the Desktop project before signing; source plist values are template placeholders. Assembly metadata follows the same version, and both macOS RIDs receive final ad hoc signing. The script checks bundle versions and apphost/SDK/.NET/notification-bridge architectures before making the DMG. Native Chromium is excluded. macOS Browser Use currently reports unsupported pending external-framework activation support and native signing/runtime validation.
 
 The DMG contains `SunCode.app` and an Applications link. Quit SunCode after active work finishes, drag the app into Applications, eject the image and start the installed app. Remove the bundle through Finder to uninstall. Data under `~/.suncode` or the configured data directory survives. This is a Finder installation flow, without a `.pkg` or Windows-style downgrade guard.
 

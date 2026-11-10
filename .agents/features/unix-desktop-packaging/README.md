@@ -2,7 +2,7 @@
 
 Status: Packaging source implemented and statically inspected on Windows. User reports confirm macOS ARM64 publishing and Ubuntu 22.04 x64 publishing/portable archive creation. Subsequent macOS architecture validation and Debian dependency-scanning failures have source fixes but await native reruns. Complete native packaging, installed behavior and release signing/notarization remain unverified.
 
-`scripts/package-macos.sh` and `scripts/package-linux.sh` share Bash 3.2-compatible host/version/publish/checksum validation. They require native OS/architecture and matching Rust host toolchains, include .NET and the Rust SDK, exclude CEF/CLI, check native payload architecture and write ignored version/RID-scoped artifacts.
+`scripts/package-macos.sh` and `scripts/package-linux.sh` share Bash 3.2-compatible host/version/publish/checksum validation. They require native OS/architecture and matching Rust host toolchains, include .NET, the Rust SDK and the built-in managed CEF binding, exclude native Chromium and the CLI, check native payload architecture and write ignored version/RID-scoped artifacts. Chromium installation is explicit through Settings on supported targets. macOS external-framework activation currently reports unsupported.
 
 macOS generates `SunCode.app` and a compressed DMG with an Applications link. Assembly metadata and copied plist versions follow the Desktop project. Final ad hoc signing depends on completed bundle/resource/symbol work for both macOS RIDs. Optional Developer ID signing handles Mach-O leaves before the hardened-runtime/JIT-entitled app envelope; keychain-profile notarization requires Accepted status and staples the app and DMG. No credentials enter source or packages. Finder owns installation/removal.
 

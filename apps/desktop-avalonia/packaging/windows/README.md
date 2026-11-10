@@ -30,7 +30,7 @@ Distribute the installer and optional checksum. Build/restore may access NuGet, 
 
 `-RuntimeIdentifier win-arm64` requires the ARM64 MSVC Rust host and ARM64 CRT; the managed SDK currently builds the Rust host target, so cross-compiling .NET alone is refused. ARM64 packaging/installation remains unverified. x64 packages allow x64-compatible Windows, including supported emulation. The declared OS floor is Windows 10 build 17763, matching the Desktop API target; clean-machine OS conformance remains release work.
 
-CEF is explicitly excluded, matching the Desktop default. Browser Use and the built-in browser remain unavailable. A CEF-enabled installer needs separate native packaging/dependency verification. The native CLI retains its separate release flow and is not included.
+The installer includes the built-in managed CEF binding. Users install its compatible Chromium component through Settings → Browser use after installation, with a pinned SHA-256 check. Native Chromium stays outside the installer. The native CLI retains its separate release flow and is not included. Installed-desktop Browser Use conformance remains unverified.
 
 ## Installation and uninstall
 

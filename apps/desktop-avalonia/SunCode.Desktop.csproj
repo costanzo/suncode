@@ -19,9 +19,7 @@
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <PowerShellRuntimeSource Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeSource>
     <PowerShellRuntimeDevelopmentSource Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))">$(MSBuildProjectDirectory)/../../artifacts/runtimes/powershell/win-x64</PowerShellRuntimeDevelopmentSource>
-    <SunCodeBundleCef Condition="'$(SunCodeBundleCef)' == ''">false</SunCodeBundleCef>
     <SunCodeUpdateDistributionFile Condition="'$(SunCodeUpdateDistributionFile)' == ''">$(MSBuildProjectDirectory)/Updates/update-distribution.json</SunCodeUpdateDistributionFile>
-    <DefineConstants Condition="'$(SunCodeBundleCef)' == 'true'">$(DefineConstants);SUNCODE_CEF</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -30,7 +28,7 @@
   </PropertyGroup>
 
   <!-- Release publishes that specify a RID include the matching .NET runtime.
-       Target machines usually do not have dotnet installed. Single-file and trimming stay off so the Rust and CEF native libraries remain separate files. -->
+       Target machines usually do not have dotnet installed. Single-file and trimming stay off so the Rust SDK and managed dependencies remain separate files. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>
@@ -51,13 +49,16 @@
                       Condition="'$(Configuration)' != 'Release'" />
     <ProjectReference Include="../../sdks/csharp/SunCode.Sdk.csproj" />
     <ProjectReference Include="ThirdParty/RoyalTerminal.Pty.Windows/RoyalTerminal.Pty.Windows.csproj" />
-    <ProjectReference Include="$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj"
-                      Condition="'$(SunCodeBundleCef)' == 'true'" />
-    <PackageReference Include="cef.runtime.osx-arm64" Version="156.0.15" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-arm64'" PrivateAssets="all" />
-    <PackageReference Include="cef.runtime.osx-x64" Version="156.0.15" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'osx-x64'" PrivateAssets="all" />
-    <PackageReference Include="cef.runtime.linux-x64" Version="156.0.15" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'linux-x64'" PrivateAssets="all" />
-    <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="156.0.15" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'win-x64'" PrivateAssets="all" />
-    <PackageReference Include="chromiumembeddedframework.runtime.win-arm64" Version="156.0.15" Condition="'$(SunCodeBundleCef)' == 'true' And '$(RuntimeIdentifier)' == 'win-arm64'" PrivateAssets="all" />
+    <PackageReference Include="Costanzo.CefGlue.Avalonia" Version="1.0.0-preview.1" PrivateAssets="build;buildTransitive" />
+    <!-- Exclude transitive Chromium assets. Desktop installs the runtime on demand. -->
+    <PackageReference Include="chromiumembeddedframework.runtime" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="chromiumembeddedframework.runtime.win-arm64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.linux-x64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.linux-arm64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.osx-x64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="cef.runtime.osx-arm64" Version="152.0.6" IncludeAssets="none" PrivateAssets="all" />
+    <PackageReference Include="CefGlue.Next.Common" Version="152.7977.831" ExcludeAssets="build;buildTransitive" PrivateAssets="build;buildTransitive" />
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
@@ -78,28 +79,6 @@
                       Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.2" />
   </ItemGroup>
-  <Target Name="ValidateCefGlueFork" BeforeTargets="CollectPackageReferences;PrepareForBuild"
-          Condition="'$(SunCodeBundleCef)' == 'true'">
-    <Error Condition="'$(CefGlueForkRoot)' == ''"
-           Text="SunCodeBundleCef=true requires CefGlueForkRoot to point to the Avalonia 12-compatible CefGlue fork. Pass -p:CefGlueForkRoot=/path/to/CefGlue." />
-    <Error Condition="!Exists('$(CefGlueForkRoot)/CefGlue.Avalonia/CefGlue.Avalonia.csproj')"
-           Text="CefGlueForkRoot must contain CefGlue.Avalonia/CefGlue.Avalonia.csproj." />
-  </Target>
-
-  <Target Name="CopyWindowsCefRuntime" AfterTargets="Publish"
-          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' == 'win-x64'">
-    <PropertyGroup>
-      <CefWindowsPackageRoot>$(NuGetPackageRoot)/chromiumembeddedframework.runtime.win-x64/156.0.15</CefWindowsPackageRoot>
-    </PropertyGroup>
-    <ItemGroup>
-      <CefWindowsNativeFiles Include="$(CefWindowsPackageRoot)/runtimes/win-x64/native/*.*" />
-      <CefWindowsAdditionalFiles Include="$(CefWindowsPackageRoot)/CEF/win-x64/**/*.*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(CefWindowsNativeFiles)"
-          DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(CefWindowsAdditionalFiles)"
-          DestinationFolder="$(PublishDir)%(RecursiveDir)" SkipUnchangedFiles="true" />
-  </Target>
   <Target Name="BuildMacOSNotificationBridge"
           BeforeTargets="Build"
           Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(DesignTimeBuild)' != 'true'"
@@ -108,39 +87,10 @@
     <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(TargetDir)libsuncode_notifications.dylib&quot; &quot;$(MSBuildProjectDirectory)/Native/macOS/SunCodeNotifications.swift&quot;" />
   </Target>
 
-  <!-- NativeLibrary probing finds CEF under runtimes/osx/native. Keep the
-       development output there and remove the legacy root copy; loading both
-       paths makes macOS register every CEF Objective-C class twice. -->
-  <Target Name="CopyCefPreviewMacOSDevelopment"
-          AfterTargets="Build"
-          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == ''">
-    <PropertyGroup>
-      <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'Arm64'">arm64</CefPreviewMacArchitecture>
-      <CefPreviewMacArchitecture Condition="$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) == 'X64'">x64</CefPreviewMacArchitecture>
-      <CefPreviewPackageRoot>$(NuGetPackageRoot)/cef.runtime.osx-$(CefPreviewMacArchitecture)/156.0.15/CEF</CefPreviewPackageRoot>
-      <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-$(CefPreviewMacArchitecture)/Chromium Embedded Framework.framework</CefPreviewFrameworkSource>
-    </PropertyGroup>
-    <Error Condition="'$(CefPreviewMacArchitecture)' == '' Or !Exists('$(CefPreviewFrameworkSource)')"
-           Text="The CEF preview runtime for the current macOS architecture is unavailable. Restore cef.runtime.osx-arm64 or cef.runtime.osx-x64 before running the desktop app." />
-    <ItemGroup>
-      <CefPreviewMain Include="$(CefPreviewFrameworkSource)/Chromium Embedded Framework" />
-      <CefPreviewLibraries Include="$(CefPreviewFrameworkSource)/Libraries/**/*.*" />
-      <CefPreviewResources Include="$(CefPreviewFrameworkSource)/Resources/**/*.*" />
-    </ItemGroup>
-    <!-- CefGlue sets FrameworkDirPath to the directory holding libcef.dylib, and
-         Chromium loads icudtl.dat, paks, and Libraries relative to it. They must
-         sit beside libcef.dylib, not in the output root. -->
-    <MakeDir Directories="$(TargetDir)runtimes/osx/native/Libraries;$(TargetDir)runtimes/osx/native/Resources" />
-    <Delete Files="$(TargetDir)libcef.dylib" />
-    <RemoveDir Directories="$(TargetDir)Libraries;$(TargetDir)Resources" />
-    <Copy SourceFiles="@(CefPreviewMain)" DestinationFiles="$(TargetDir)runtimes/osx/native/libcef.dylib" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(CefPreviewLibraries)" DestinationFolder="$(TargetDir)runtimes/osx/native/Libraries/%(RecursiveDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(CefPreviewResources)" DestinationFolder="$(TargetDir)runtimes/osx/native/Resources/%(RecursiveDir)" SkipUnchangedFiles="true" />
-  </Target>
-
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <Content Include="$(SunCodeUpdateDistributionFile)" Link="update-distribution.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Infrastructure/Browser/THIRD-PARTY-NOTICES.txt" Link="browser-third-party-notices.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Compile Remove="ThirdParty/**/*.cs" />
     <Compile Remove="Compatibility/**/*.cs" />
     <Compile Remove="artifacts/**/*.cs" />
@@ -187,18 +137,6 @@
     <Exec Command="/usr/bin/xcrun swiftc -parse-as-library -emit-library -o &quot;$(SunCodeAppBundle)/Contents/MacOS/libsuncode_notifications.dylib&quot; &quot;Native/macOS/SunCodeNotifications.swift&quot;" />
   </Target>
 
-  <Target Name="DeployCefPreviewMacOS" AfterTargets="CreateMacOSAppBundle"
-          Condition="'$(SunCodeBundleCef)' == 'true' And $([MSBuild]::IsOSPlatform('OSX')) And '$(RuntimeIdentifier)' == 'osx-arm64'">
-    <PropertyGroup>
-      <CefPreviewPackageRoot>$(NuGetPackageRoot)/cef.runtime.osx-arm64/156.0.15/CEF</CefPreviewPackageRoot>
-      <CefPreviewFrameworkSource>$(CefPreviewPackageRoot)/osx-arm64</CefPreviewFrameworkSource>
-      <CefPreviewFrameworkDestination>$(SunCodeAppBundle)/Contents/Frameworks</CefPreviewFrameworkDestination>
-    </PropertyGroup>
-    <MakeDir Directories="$(CefPreviewFrameworkDestination)" />
-    <Exec Command="chmod 755 &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot;" />
-    <Exec Command="bash &quot;$(CefPreviewPackageRoot)/deploy-cef-framework.sh&quot; &quot;$(CefPreviewFrameworkSource)&quot; &quot;$(CefPreviewFrameworkDestination)&quot; &quot;SunCode&quot; &quot;dev.suncode.desktop&quot; &quot;-&quot; &quot;$(CefPreviewPackageRoot)/cef.entitlements&quot; &quot;$(MSBuildProjectDirectory)/Assets/suncode-desktop.icns&quot;" />
-  </Target>
-
   <Target Name="RemoveReleasePublishSymbols" BeforeTargets="CreateMacOSAppBundle" AfterTargets="Publish"
           Condition="'$(Configuration)' == 'Release'">
     <ItemGroup>
@@ -209,7 +147,7 @@
 
   <Target Name="FinalizeMacOSAppBundleSignature"
           AfterTargets="Publish"
-          DependsOnTargets="CreateMacOSAppBundle;DeployCefPreviewMacOS;RemoveReleasePublishSymbols"
+          DependsOnTargets="CreateMacOSAppBundle;RemoveReleasePublishSymbols"
           Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <Exec Command="/usr/bin/codesign --force --deep --sign - --identifier dev.suncode.desktop &quot;$(SunCodeAppBundle)&quot;" />
   </Target>
