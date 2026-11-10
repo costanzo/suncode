@@ -303,8 +303,8 @@
                 <Grid>
                   <controls:MarkdownText Markdown="{Binding Text}" FontSize="14" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Grid ColumnDefinitions="*,Auto" Margin="-7,-7,0,0">
-                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="-7,-7,0,0" HorizontalAlignment="Left">
+                <Grid ColumnDefinitions="*,Auto" Margin="-7,0,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0" HorizontalAlignment="Left">
                     <Button Classes="quiet" Width="26" Height="26" MinHeight="26" Padding="5" Click="CopyMessage" ToolTip.Tip="{DynamicResource LocCopyResponse}" AutomationProperties.Name="{DynamicResource LocCopyResponse}" IsVisible="{Binding ShowCopy}">
                       <svg:Svg Path="/Assets/icons/copy.svg" Css="{DynamicResource IconSvgCss}" />
                     </Button>
