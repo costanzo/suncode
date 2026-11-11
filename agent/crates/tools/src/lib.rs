@@ -25,6 +25,7 @@ mod read;
 mod scope;
 mod search;
 mod support;
+mod text;
 mod webfetch;
 mod write;
 

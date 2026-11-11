@@ -47,24 +47,41 @@ pub(crate) fn read(
         "max_bytes must be at least 1",
     )?
     .clamp(1, MAX_PREVIEW_BYTES) as usize;
-    let (bytes, source_complete) = if offset == 1 && limit.is_none() {
-        let mut bytes = Vec::new();
-        fs::File::open(&canonical)
-            .and_then(|file| file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes))
-            .map_err(|_| retryable("read_failed", "file could not be read"))?;
-        let complete = bytes.len() as u64 <= MAX_SOURCE_BYTES;
-        bytes.truncate(MAX_SOURCE_BYTES as usize);
-        (bytes, complete)
+    let mut raw = Vec::new();
+    fs::File::open(&canonical)
+        .and_then(|file| file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut raw))
+        .map_err(|_| retryable("read_failed", "file could not be read"))?;
+    let source_complete = raw.len() as u64 <= MAX_SOURCE_BYTES;
+    let source_sha256 = source_complete.then(|| sha256_hex(&raw));
+    raw.truncate(MAX_SOURCE_BYTES as usize);
+    let utf16 = raw.starts_with(&[0xff, 0xfe]);
+    if !source_complete && utf16 {
+        return Err(fatal(
+            "resource_limit",
+            "UTF-16LE reads require a source no larger than 16 MiB",
+        ));
+    }
+    let decoded = if utf16 {
+        crate::text::decode(&raw)?.0.into_bytes()
     } else {
-        (read_line_range(&canonical, offset, limit)?, true)
+        raw
     };
-    let total_bytes = if source_complete {
+    let ranged = offset != 1 || limit.is_some();
+    let bytes = if !ranged {
+        decoded
+    } else if source_complete {
+        read_line_range(&decoded, offset, limit)?
+    } else {
+        read_large_line_range(&canonical, offset, limit)?
+    };
+    let selected_complete = source_complete || ranged;
+    let total_bytes = if selected_complete {
         bytes.len() as u64
     } else {
         metadata.len()
     };
     let preview_len = utf8_preview_len(&bytes, max_bytes);
-    let truncated = preview_len < bytes.len() || !source_complete;
+    let truncated = preview_len < bytes.len() || !selected_complete;
     let mut result = json!({
         "path": path,
         "bytes": preview_len,
@@ -75,9 +92,17 @@ pub(crate) fn read(
         "limit": limit,
     });
     if offset == 1 && limit.is_none() && source_complete {
-        result["sha256"] = json!(sha256_hex(&bytes));
+        result["sha256"] = json!(source_sha256);
     }
-    if truncated && source_complete {
+    // The digest describes the raw source even when only a line range or
+    // preview was shown. It is observation metadata, not proof of a full read.
+    if let Some(digest) = source_sha256 {
+        result["source_sha256"] = json!(digest);
+    }
+    if utf16 {
+        result["encoding"] = json!("utf-16le");
+    }
+    if truncated && selected_complete {
         if let Some(checkpoint_root) = checkpoint_root {
             result["artifact_id"] = json!(write_artifact(checkpoint_root, &bytes)?);
         }
@@ -99,45 +124,78 @@ fn utf8_preview_len(bytes: &[u8], max_bytes: usize) -> usize {
     }
 }
 
-fn read_line_range(path: &Path, offset: u64, limit: Option<u64>) -> Result<Vec<u8>, BusinessError> {
-    let file =
-        fs::File::open(path).map_err(|_| retryable("read_failed", "file could not be read"))?;
-    let mut reader = BufReader::new(file);
-    let mut line = Vec::new();
-    let mut line_number = 1_u64;
-    let mut selected = Vec::new();
-    let mut selected_lines = 0_u64;
-    loop {
-        line.clear();
-        let count = reader
-            .read_until(b'\n', &mut line)
-            .map_err(|_| retryable("read_failed", "file could not be read"))?;
-        if count == 0 {
-            break;
-        }
-        if std::str::from_utf8(&line).is_err() {
+fn read_line_range(
+    bytes: &[u8],
+    offset: u64,
+    limit: Option<u64>,
+) -> Result<Vec<u8>, BusinessError> {
+    let text = std::str::from_utf8(bytes).map_err(|_| {
+        fatal(
+            "encoding_unsupported",
+            "offset and limit require UTF-8 or BOM-marked UTF-16LE text",
+        )
+    })?;
+    let mut lines = text.split_inclusive('\n');
+    for _ in 1..offset {
+        if lines.next().is_none() {
             return Err(fatal(
-                "encoding_unsupported",
-                "offset and limit require UTF-8 text",
+                "invalid_arguments",
+                "offset is beyond the end of the file",
             ));
         }
-        if line_number >= offset {
-            if limit.is_none_or(|value| selected_lines < value) {
-                selected.extend_from_slice(&line);
-                selected_lines += 1;
-            }
-            if limit.is_some_and(|value| selected_lines >= value) {
-                break;
-            }
-        }
-        line_number += 1;
     }
-    if line_number < offset && selected_lines == 0 {
+    Ok(lines
+        .take(limit.unwrap_or(u64::MAX).min(usize::MAX as u64) as usize)
+        .collect::<String>()
+        .into_bytes())
+}
+
+/// Preserve line-range access to large UTF-8 files without buffering an
+/// unbounded skipped line or claiming a comparable whole-file observation.
+fn read_large_line_range(
+    path: &Path,
+    offset: u64,
+    limit: Option<u64>,
+) -> Result<Vec<u8>, BusinessError> {
+    let mut reader = BufReader::new(
+        fs::File::open(path).map_err(|_| fatal("read_failed", "file could not be read"))?,
+    );
+    let mut line = 1u64;
+    let end_line = limit.map(|limit| offset.saturating_add(limit));
+    let mut selected = Vec::new();
+    loop {
+        let buffer = reader
+            .fill_buf()
+            .map_err(|_| fatal("read_failed", "file could not be read"))?;
+        if buffer.is_empty() || end_line.is_some_and(|end| line >= end) {
+            break;
+        }
+        let count = buffer
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .map_or(buffer.len(), |index| index + 1);
+        if line >= offset {
+            if selected.len() + count > MAX_SOURCE_BYTES as usize {
+                return Err(fatal(
+                    "resource_limit",
+                    "selected line range exceeds 16 MiB; request fewer lines",
+                ));
+            }
+            selected.extend_from_slice(&buffer[..count]);
+        }
+        if buffer[count - 1] == b'\n' {
+            line += 1;
+        }
+        reader.consume(count);
+    }
+    if line < offset {
         return Err(fatal(
             "invalid_arguments",
             "offset is beyond the end of the file",
         ));
     }
+    std::str::from_utf8(&selected)
+        .map_err(|_| fatal("encoding_unsupported", "line ranges require valid text"))?;
     Ok(selected)
 }
 

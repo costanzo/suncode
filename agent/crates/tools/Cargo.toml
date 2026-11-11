@@ -25,14 +25,14 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 similar.workspace = true
+tempfile.workspace = true
 suncode-common.workspace = true
 suncode-documents.workspace = true
 suncode-http = { workspace = true, features = ["blocking"] }
 url.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys.workspace = true
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_System_WindowsProgramming"] }
 
 [dev-dependencies]
-tempfile.workspace = true
 zip.workspace = true

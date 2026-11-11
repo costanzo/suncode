@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 pub(super) fn read() -> (&'static str, &'static str, Value) {
     (
         "read",
-        "Read a bounded text file. Use offset (1-indexed) and limit to continue through large files. Reading from the start without a line limit returns the full-file sha256 when the source fits within 16 MiB, even if the preview is truncated. Pass sha256 as expected_sha256 to overwrite or delete the file. Relative paths resolve inside the current project; registered read-only dependencies use dependency:<dependencyId>/<path>.",
+        "Read a bounded text file, including BOM-marked UTF-16LE up to 16 MiB. Use offset (1-indexed) and limit to continue through large UTF-8 files. Reading from the start without a line limit returns the raw full-file sha256 when the source fits within 16 MiB, even if the preview is truncated. Pass sha256 as expected_sha256 to overwrite or delete the file. source_sha256 also accompanies bounded partial reads for change detection; it does not mean all content was shown. Relative paths resolve inside the current project; registered read-only dependencies use dependency:<dependencyId>/<path>.",
         json!({
             "type": "object",
             "required": ["path"],
@@ -123,7 +123,7 @@ pub(super) fn write() -> (&'static str, &'static str, Value) {
 pub(super) fn edit() -> (&'static str, &'static str, Value) {
     (
         "edit",
-        "Replace exact text in one project file after approval. Include enough surrounding text to make each match unique. Set replaceAll only when every occurrence should change. For multiple independent edits, provide edits with oldText and newText entries, each matching once in the original file. Returns the edited file's sha256.",
+        "Replace exact text in one project file after approval. Inspect relevant content and repository instructions first. Use either oldString/newString with optional replaceAll, or edits containing oldString/newString objects (never both). Each batch entry matches once in the original file, not earlier edits' output. Include context to make matches unique. LF/CRLF/CR match equivalently; untouched bytes and UTF-8 or BOM-marked UTF-16LE encoding are preserved. Source and result are limited to 16 MiB. Returns sha256, replacement counts, changed ranges, and a bounded before/after preview. Conflict details identify zero-based edit indexes and candidate lines; re-read and correct the call rather than retrying unchanged.",
         json!({
             "type": "object",
             "required": ["path"],
@@ -134,6 +134,7 @@ pub(super) fn edit() -> (&'static str, &'static str, Value) {
                 },
                 "oldString": {
                     "type": "string",
+                    "minLength": 1,
                     "description": "Exact text to replace"
                 },
                 "newString": {
@@ -142,14 +143,17 @@ pub(super) fn edit() -> (&'static str, &'static str, Value) {
                 },
                 "edits": {
                     "type": "array",
+                    "minItems": 1,
+                    "maxItems": 200,
                     "items": {
                         "type": "object",
-                        "required": ["oldText", "newText"],
+                        "required": ["oldString", "newString"],
                         "properties": {
-                            "oldText": {
-                                "type": "string"
+                            "oldString": {
+                                "type": "string",
+                                "minLength": 1
                             },
-                            "newText": {
+                            "newString": {
                                 "type": "string"
                             }
                         },

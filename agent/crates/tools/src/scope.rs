@@ -1,6 +1,6 @@
 //! Project roots and project-relative path containment.
 
-use crate::error::{fatal, retryable};
+use crate::error::fatal;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -30,13 +30,6 @@ pub(crate) fn open_project(path: &Path) -> Result<(PathBuf, Value), BusinessErro
         .unwrap_or("Project");
     let value = json!({"canonical_path": canonical_path, "display_name": display_name});
     Ok((root, value))
-}
-
-pub(crate) fn existing_file(root: &Path, path: &str) -> Result<(PathBuf, Vec<u8>), BusinessError> {
-    let canonical = existing_file_path(root, path)?;
-    let bytes =
-        fs::read(&canonical).map_err(|_| retryable("read_failed", "file could not be read"))?;
-    Ok((canonical, bytes))
 }
 
 /// The canonical path of regular file `path` inside project root `root`; symbolic links

@@ -845,6 +845,7 @@ impl TurnLoop<'_> {
             None
         };
         attach_nearby_instructions(self.context, call, &mut normalized_result);
+        attach_file_observation(&self.context.messages, call, &mut normalized_result);
         let process_failed = (call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
             || (suncode_mcp::is_mcp_tool(&call.name)

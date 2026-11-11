@@ -84,6 +84,7 @@ impl ToolProvider for BuiltinTools {
 
     fn validate(&self, name: &str, arguments: &Value) -> Result<(), BusinessError> {
         match name {
+            "edit" => translate::validate_edit_arguments(arguments),
             "bash" => shell::validate_bash_arguments(arguments),
             "webfetch" => translate::validate_webfetch_arguments(arguments),
             _ => Ok(()),

@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261111-edit-reliability
+
+- Date: 2026-11-11
+- Status: Accepted
+- Context: Exact edits needed clearer malformed-call handling, preservation of mixed line endings, reliable publication, actionable results, observation hints, and bounded support for larger and UTF-16LE files.
+- Decision: Keep original-file exact matching and mutually exclusive single/batch calls. Normalize newline matching while preserving untouched bytes and corresponding replacement endings. Stage and sync writes, serialize built-in mutations, recheck the baseline before atomic publication, and preserve access permissions. Windows uses handle-based POSIX rename semantics for existing files. Keep the 1 MiB write output limit and allow 16 MiB edit sources/results. Derive advisory read-state notices from the current conversation's successful built-in results, without making historical reads mandatory.
+- Consequences: Conflicts and successful edits have bounded structured feedback. UTF-16LE reads/diffs decode text while content digests remain raw-byte hashes. No database or ABI changes are required. Atomic publication prevents partial file visibility; it does not eliminate races with external programs, preserve all filesystem metadata, or guarantee power-loss durability. Native Unix conformance remains unverified.
+- Details: `specs/rust-core-phase-1.md`, `features/rust-core-phase-1/README.md`, `agent/crates/tools/src/edit.rs`, `agent/crates/tools/src/write.rs`, `agent/crates/core/src/agent/support/file_observations.rs`.
+
 ## ADR-20261109-browser-component
 
 - Date: 2026-11-09

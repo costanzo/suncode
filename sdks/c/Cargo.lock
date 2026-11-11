@@ -3731,6 +3731,7 @@ dependencies = [
  "suncode-common",
  "suncode-documents",
  "suncode-http",
+ "tempfile",
  "url",
  "windows-sys 0.61.2",
 ]

@@ -160,9 +160,8 @@ pub(crate) fn remove<'a>(
     }
 }
 
-fn text(bytes: &[u8]) -> Option<&str> {
-    std::str::from_utf8(bytes)
-        .ok()
+fn text(bytes: &[u8]) -> Option<String> {
+    crate::text::decode(bytes).ok().map(|(text, _)| text)
         .filter(|value| !value.contains('\0'))
 }
 
@@ -182,7 +181,7 @@ pub fn diff(baseline: Option<&[u8]>, current: Option<&[u8]>) -> FileDiff {
     };
     let diff = TextDiff::configure()
         .timeout(DIFF_TIMEOUT)
-        .diff_lines(old, new);
+        .diff_lines(&old, &new);
     let mut additions = 0;
     let mut deletions = 0;
     let mut hunks = Vec::new();

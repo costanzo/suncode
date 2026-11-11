@@ -139,15 +139,80 @@ fn edit_translation_accepts_multiple_disjoint_edits() {
         &json!({
             "path":"file.txt",
             "edits":[
-                {"oldText":"one","newText":"two"},
-                {"oldText":"three","newText":"four"}
+                {"oldString":"one","newString":"two"},
+                {"oldString":"three","newString":"four"}
             ]
         }),
         None,
     )
     .unwrap();
-    assert_eq!(translated["replacements"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        translated["replacements"],
+        json!([
+            {"old":"one","new":"two","replace_all":false},
+            {"old":"three","new":"four","replace_all":false}
+        ])
+    );
     assert!(translated.get("edits").is_none());
+}
+
+#[test]
+fn edit_rejects_obsolete_field_names_with_actionable_errors() {
+    for fields in [
+        json!({"oldText":"x","newText":"y"}),
+        json!({"oldText":"x","newString":"y"}),
+        json!({"oldString":"x","newText":"y"}),
+        json!({"oldString":"x","newString":"y","oldText":"x"}),
+    ] {
+        for batch in [false, true] {
+            let arguments = if batch {
+                json!({"path":"a","edits":[fields.clone()]})
+            } else {
+                let mut arguments = fields.clone();
+                arguments["path"] = json!("a");
+                arguments
+            };
+            for error in [
+                provider().validate("edit", &arguments).unwrap_err(),
+                translate_arguments("edit", &arguments, None).unwrap_err(),
+            ] {
+                assert_eq!(error.code, "invalid_arguments");
+                assert!(error.message.contains("oldString"));
+                assert!(error.message.contains("newString"));
+                if batch {
+                    assert_eq!(error.details["edit_index"], 0);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn edit_rejects_invalid_shapes_before_policy_and_at_execution() {
+    for arguments in [
+        json!({"path":"a"}),
+        json!({"path":"a","oldString":"x","newString":"y","edits":[{"oldString":"x","newString":"y"}]}),
+        json!({"path":"a","edits":[{"oldString":"x","newString":"y"}],"replaceAll":false}),
+        json!({"path":"a","edits":[]}),
+        json!({"path":"a","edits":null}),
+        json!({"path":"a","oldString":"x","newString":"y","replaceAll":"true"}),
+        json!({"path":"a","oldString":"","newString":"y"}),
+        json!({"path":"a","oldString":"x","newString":null}),
+        json!({"path":"a","edits":[{"oldString":"x","newString":"y","replaceAll":true}]}),
+        json!({"path":"a","edits":vec![json!({"oldString":"x","newString":"y"});201]}),
+        json!({"path":"a","oldString":"x","newString":"y","replacements":[]}),
+        json!({"path":" ","oldString":"x","newString":"y"}),
+    ] {
+        assert_eq!(provider().validate("edit", &arguments).unwrap_err().code, "invalid_arguments", "{arguments}");
+        assert_eq!(translate_arguments("edit", &arguments, None).unwrap_err().code, "invalid_arguments", "{arguments}");
+    }
+    for arguments in [
+        json!({"path":"a","oldString":"x","newString":"","replaceAll":true}),
+        json!({"path":"a","edits":[{"oldString":"x","newString":""}]}),
+    ] {
+        provider().validate("edit", &arguments).unwrap();
+        translate_arguments("edit", &arguments, None).unwrap();
+    }
 }
 
 #[test]
@@ -485,7 +550,7 @@ mod execute {
         let edited = call
             .run(
                 "edit",
-                json!({"path":"file.txt","edits":[{"oldText":"new","newText":"next"}]}),
+                json!({"path":"file.txt","edits":[{"oldString":"new","newString":"next"}]}),
             )
             .unwrap();
         assert_eq!(edited["sha256"], crate::support::sha256_hex(b"next"));

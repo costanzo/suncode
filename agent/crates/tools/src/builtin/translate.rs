@@ -52,6 +52,7 @@ pub(crate) fn translate_arguments_with_shell(
         }
     }
     if name == "edit" {
+        validate_edit_arguments(&result)?;
         let replacements = if let Some(edits) = result.get("edits").and_then(Value::as_array) {
             if edits.is_empty() {
                 return Err(BusinessError::new(
@@ -66,16 +67,16 @@ pub(crate) fn translate_arguments_with_shell(
                         BusinessError::new("invalid_arguments", "each edit must be an object")
                     })?;
                     let old = object
-                        .get("oldText")
+                        .get("oldString")
                         .and_then(Value::as_str)
                         .ok_or_else(|| {
-                            BusinessError::new("invalid_arguments", "oldText is required")
+                            BusinessError::new("invalid_arguments", "oldString is required")
                         })?;
                     let new = object
-                        .get("newText")
+                        .get("newString")
                         .and_then(Value::as_str)
                         .ok_or_else(|| {
-                            BusinessError::new("invalid_arguments", "newText is required")
+                            BusinessError::new("invalid_arguments", "newString is required")
                         })?;
                     Ok(json!({"old": old, "new": new, "replace_all": false}))
                 })
@@ -175,6 +176,104 @@ pub(crate) fn translate_arguments_with_shell(
         }
     }
     Ok(result)
+}
+
+pub(crate) fn validate_edit_arguments(value: &Value) -> Result<(), BusinessError> {
+    let invalid = |message| BusinessError::new("invalid_arguments", message);
+    let object = value
+        .as_object()
+        .ok_or_else(|| invalid("edit arguments must be an object"))?;
+    if object.contains_key("oldText") || object.contains_key("newText") {
+        return Err(invalid(
+            "use oldString/newString instead of oldText/newText, both at the top level and inside edits",
+        ));
+    }
+    if object.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "path" | "oldString" | "newString" | "replaceAll" | "edits"
+        )
+    }) {
+        return Err(invalid("unknown edit argument"));
+    }
+    if object
+        .get("path")
+        .and_then(Value::as_str)
+        .is_none_or(|path| path.trim().is_empty())
+    {
+        return Err(invalid("path must be a non-empty string"));
+    }
+    if let Some(edits) = object.get("edits") {
+        if ["oldString", "newString", "replaceAll"]
+            .iter()
+            .any(|key| object.contains_key(*key))
+        {
+            return Err(invalid(
+                "use either edits or oldString/newString/replaceAll, never both",
+            ));
+        }
+        let edits = edits
+            .as_array()
+            .ok_or_else(|| invalid("edits must be an array"))?;
+        if edits.is_empty() || edits.len() > 200 {
+            return Err(invalid("edits must contain between 1 and 200 entries"));
+        }
+        for (index, edit) in edits.iter().enumerate() {
+            let valid = edit.as_object().is_some_and(|entry| {
+                entry.len() == 2
+                    && entry
+                        .get("oldString")
+                        .and_then(Value::as_str)
+                        .is_some_and(|text| !text.is_empty())
+                    && entry.get("newString").and_then(Value::as_str).is_some()
+            });
+            if !valid {
+                return Err(invalid(
+                    "each edit requires non-empty oldString and string newString, with no other fields",
+                )
+                .with_details(json!({"edit_index": index})));
+            }
+            validate_edit_text(
+                edit["oldString"].as_str().unwrap(),
+                edit["newString"].as_str().unwrap(),
+            )?;
+        }
+    } else {
+        if object
+            .get("oldString")
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty)
+            || object.get("newString").and_then(Value::as_str).is_none()
+        {
+            return Err(invalid(
+                "oldString must be non-empty and newString must be a string",
+            ));
+        }
+        if object
+            .get("replaceAll")
+            .is_some_and(|value| !value.is_boolean())
+        {
+            return Err(invalid("replaceAll must be a boolean"));
+        }
+        validate_edit_text(
+            object["oldString"].as_str().unwrap(),
+            object["newString"].as_str().unwrap(),
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_edit_text(old: &str, new: &str) -> Result<(), BusinessError> {
+    if old.contains('\0') || new.contains('\0') {
+        return Err(BusinessError::invalid("edit text must not contain NUL"));
+    }
+    if old.len() > crate::text::MAX_EDIT_BYTES * 2 || new.len() > crate::text::MAX_EDIT_BYTES * 2 {
+        return Err(BusinessError::new(
+            "resource_limit",
+            "replacement text exceeds 32 MiB",
+        ));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_webfetch_arguments(value: &Value) -> Result<(), BusinessError> {

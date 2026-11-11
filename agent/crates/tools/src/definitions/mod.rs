@@ -48,6 +48,24 @@ mod tests {
     use std::collections::BTreeSet;
 
     #[test]
+    fn edit_single_and_batch_use_the_same_text_fields() {
+        let definitions = all();
+        let edit = definitions.iter().find(|tool| tool.name == "edit").unwrap();
+        let properties = &edit.parameters["properties"];
+        let item = &properties["edits"]["items"];
+        assert_eq!(item["required"], serde_json::json!(["oldString", "newString"]));
+        assert_eq!(item["additionalProperties"], false);
+        assert_eq!(item["properties"].as_object().unwrap().len(), 2);
+        for fields in [properties, &item["properties"]] {
+            assert_eq!(fields["oldString"]["type"], "string");
+            assert_eq!(fields["oldString"]["minLength"], 1);
+            assert_eq!(fields["newString"]["type"], "string");
+            assert!(fields.get("oldText").is_none());
+            assert!(fields.get("newText").is_none());
+        }
+    }
+
+    #[test]
     fn built_in_tool_names_match_the_model_contract() {
         let definitions = all();
         let names = definitions
