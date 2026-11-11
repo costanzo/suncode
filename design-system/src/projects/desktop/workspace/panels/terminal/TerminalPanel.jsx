@@ -91,10 +91,7 @@ export function TerminalPanel({ onClose, standalone = false, state = "running" }
               <div className="workspace-terminal-entry" key={line.command}>
                 <div className="workspace-terminal-command">
                   <span className="workspace-terminal-prompt">{line.prompt} %</span>
-                  <code>
-                    <span style={{ color: "var(--terminal-ansi-11)" }}>{line.command.split(" ")[0]}</span>
-                    {line.command.slice(line.command.indexOf(" "))}
-                  </code>
+                  <code>{line.command}</code>
                 </div>
                 <code
                   className="workspace-terminal-result"
@@ -105,13 +102,38 @@ export function TerminalPanel({ onClose, standalone = false, state = "running" }
               </div>
             ))}
             {standalone && (
-              <div className="workspace-terminal-palette" aria-label="ANSI text colors, normal then bright">
-                {Array.from({ length: 16 }, (_, index) => (
-                  <span key={index} style={{ color: `var(--terminal-ansi-${index})` }}>
-                    {["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"][index % 8]}
-                  </span>
+              <>
+                {[false, true].map((modified) => (
+                  <div
+                    key={String(modified)}
+                    className="workspace-terminal-themed-prompt"
+                    aria-label={`Powerline prompt, ${modified ? "modified" : "clean"} Git state`}
+                  >
+                    <span className="workspace-terminal-prompt-directory">~/Projects/suncode</span>
+                    <span
+                      className="workspace-terminal-prompt-git"
+                      style={{ backgroundColor: `var(--terminal-ansi-${modified ? 3 : 2})` }}
+                    >
+                      {modified ? "main !1 ?3" : "main"}
+                    </span>
+                    <span className="workspace-terminal-prompt-status">✓</span>
+                    <span className="workspace-terminal-prompt-time">20:29:19</span>
+                  </div>
                 ))}
-              </div>
+                <div className="workspace-terminal-palette" aria-label="ANSI foreground and background pairs, normal then bright">
+                  {Array.from({ length: 16 }, (_, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        color: `var(--terminal-ansi-${[0, 1, 4, 5].includes(index) ? 15 : 0})`,
+                        backgroundColor: `var(--terminal-ansi-${index})`,
+                      }}
+                    >
+                      {["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"][index % 8]}
+                    </span>
+                  ))}
+                </div>
+              </>
             )}
           </div>
           <form className="workspace-terminal-input" onSubmit={handleSubmit}>

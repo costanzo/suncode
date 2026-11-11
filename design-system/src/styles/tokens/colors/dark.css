@@ -2,6 +2,7 @@
 .website-workbench,
 [data-website-theme="dark"] .website-workbench {
   color-scheme: dark;
+  /* Canonical terminal palette shared by light and dark appearances. */
   --terminal-ansi-0: #000000;
   --terminal-ansi-1: #cd0000;
   --terminal-ansi-2: #00cd00;

@@ -138,6 +138,38 @@
   gap: 2px 8px;
 }
 
+.workspace-terminal-themed-prompt {
+  display: flex;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+
+.workspace-terminal-themed-prompt > span {
+  padding: 2px 4px;
+}
+
+.workspace-terminal-prompt-directory {
+  overflow: hidden;
+  background: var(--terminal-ansi-4);
+  color: var(--terminal-ansi-15);
+  text-overflow: ellipsis;
+}
+
+.workspace-terminal-prompt-git {
+  color: var(--terminal-ansi-0);
+}
+
+.workspace-terminal-prompt-status {
+  margin-left: auto;
+  background: var(--terminal-ansi-0);
+  color: var(--terminal-ansi-2);
+}
+
+.workspace-terminal-prompt-time {
+  background: var(--terminal-ansi-7);
+  color: var(--terminal-ansi-0);
+}
+
 .workspace-terminal-command {
   display: flex;
   gap: 8px;
