@@ -8,6 +8,18 @@
              x:Class="SunCode.Desktop.Views.ProjectWorkspace.Review.AgentSidebar"
              x:DataType="vm:DesktopViewModel">
   <UserControl.Styles>
+    <Style Selector="svg|Svg.todo-marker">
+      <Setter Property="Css" Value="{DynamicResource MutedIconSvgCss}" />
+    </Style>
+    <Style Selector="svg|Svg.todo-marker.completed">
+      <Setter Property="Css" Value="{DynamicResource SuccessSvgCss}" />
+    </Style>
+    <Style Selector="svg|Svg.todo-marker.in-progress">
+      <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
+    </Style>
+    <Style Selector="svg|Svg.todo-marker.cancelled">
+      <Setter Property="Css" Value="{DynamicResource DangerSvgCss}" />
+    </Style>
     <Style Selector="Border.context-usage">
       <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
@@ -301,11 +313,31 @@
             <Button Classes="compact primary" Content="{DynamicResource LocRetryTurn}" Click="RetryTurn" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
-        <Border Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">
+        <Border x:Name="TodoCard" Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">
           <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource LocTodo}" Classes="section-label" /><TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" Classes="mono" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock x:Name="TodoHeading" Text="{DynamicResource LocTodo}" Classes="mono" FontSize="9" FontWeight="Normal" LetterSpacing="0.54" Foreground="{DynamicResource TextMutedBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding CurrentTodos.Count, StringFormat={}{0} items}" FontFamily="{DynamicResource SansFontFamily}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" />
+            </Grid>
             <ItemsControl ItemsSource="{Binding CurrentTodos}">
-              <ItemsControl.ItemTemplate><DataTemplate x:DataType="models:TodoItem"><Grid ColumnDefinitions="13,*,Auto" Margin="0,1"><TextBlock Text="{Binding StatusMarker}" Classes="mono" FontSize="9" /><TextBlock Grid.Column="1" Text="{Binding Content}" FontSize="9" TextWrapping="Wrap" Margin="6,0,0,0" /><TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:TodoItem">
+                  <Grid Classes="todo-row" ColumnDefinitions="13,*" ColumnSpacing="6" MinHeight="16" Opacity="{Binding Opacity}" ToolTip.Tip="{Binding StatusText}" AutomationProperties.Name="{Binding Content}" AutomationProperties.HelpText="{Binding StatusText}">
+                    <Grid Width="13" Height="16" VerticalAlignment="Center">
+                      <svg:Svg Classes="todo-marker" Classes.completed="{Binding IsCompleted}" Classes.in-progress="{Binding IsInProgress}" Classes.cancelled="{Binding IsCancelled}"
+                               Width="11" Height="11" Path="{Binding StatusIconPath}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <svg:Svg.RenderTransform>
+                          <TranslateTransform Y="{DynamicResource TodoMarkerOffsetY}" />
+                        </svg:Svg.RenderTransform>
+                      </svg:Svg>
+                    </Grid>
+                    <TextBlock Grid.Column="1" Text="{Binding Content}" FontFamily="{DynamicResource SansFontFamily}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
         </Border>

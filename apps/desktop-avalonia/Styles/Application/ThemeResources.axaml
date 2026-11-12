@@ -6,6 +6,7 @@
        installed CJK font. -->
   <FontFamily x:Key="MonoFontFamily">fonts:SunCode#JetBrains Mono, JetBrains Mono, SF Mono, Menlo, Monaco, Consolas, monospace</FontFamily>
   <FontFamily x:Key="SansFontFamily">fonts:SunCode#Noto Sans, Noto Sans, Noto Sans CJK SC, fonts:SunCode#Noto Sans SC, Noto Sans SC, PingFang SC, Helvetica Neue, Arial, sans-serif</FontFamily>
+  <x:Double x:Key="TodoMarkerOffsetY">2</x:Double>
   <!-- Paints nothing visible but keeps a surface hit-testable, for drag
        regions such as the title bar and pane resize handles. -->
   <SolidColorBrush x:Key="HitTestTransparentBrush" Color="#01000000" />
@@ -80,6 +81,7 @@
       <Thickness x:Key="ComboBoxDropdownBorderPadding">4</Thickness>
       <Thickness x:Key="ComboBoxDropdownContentMargin">0</Thickness>
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #a7afb9; } [fill='#000'] { fill: #a7afb9; } [stroke='currentColor'] { stroke: #a7afb9; }</x:String>
+      <x:String x:Key="MutedIconSvgCss">[stroke='#000'] { stroke: #7f8994; } [fill='#000'] { fill: #7f8994; } [stroke='currentColor'] { stroke: #7f8994; }</x:String>
       <x:String x:Key="DisabledIconSvgCss">[stroke='#000'] { stroke: #46505b; } [fill='#000'] { fill: #46505b; } [stroke='currentColor'] { stroke: #46505b; }</x:String>
       <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #edf0f3; stroke-width: 2.4; } [fill='#000'] { fill: #edf0f3; } [stroke='currentColor'] { stroke: #edf0f3; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #d9e0e6; } [fill='#000'] { fill: #d9e0e6; } [stroke='currentColor'] { stroke: #d9e0e6; }</x:String>
@@ -195,6 +197,7 @@
       <Thickness x:Key="ComboBoxDropdownBorderPadding">4</Thickness>
       <Thickness x:Key="ComboBoxDropdownContentMargin">0</Thickness>
       <x:String x:Key="IconSvgCss">[stroke='#000'] { stroke: #44515e; } [fill='#000'] { fill: #44515e; } [stroke='currentColor'] { stroke: #44515e; }</x:String>
+      <x:String x:Key="MutedIconSvgCss">[stroke='#000'] { stroke: #65717d; } [fill='#000'] { fill: #65717d; } [stroke='currentColor'] { stroke: #65717d; }</x:String>
       <x:String x:Key="DisabledIconSvgCss">[stroke='#000'] { stroke: #bac6d0; } [fill='#000'] { fill: #bac6d0; } [stroke='currentColor'] { stroke: #bac6d0; }</x:String>
       <x:String x:Key="GutterIconHoverSvgCss">[stroke='#000'] { stroke: #17202a; stroke-width: 2.4; } [fill='#000'] { fill: #17202a; } [stroke='currentColor'] { stroke: #17202a; stroke-width: 2.4; }</x:String>
       <x:String x:Key="AccentSvgCss">[stroke='#000'] { stroke: #2c3742; } [fill='#000'] { fill: #2c3742; } [stroke='currentColor'] { stroke: #2c3742; }</x:String>

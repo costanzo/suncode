@@ -361,7 +361,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasMessages => Messages.Count > 0;
     public bool HasActivities => Activities.Count > 0;
     public bool HasCurrentTodos => CurrentTodos.Count > 0;
-    public bool IsReviewTodosVisible => HasCurrentTodos && IsReviewRunning;
+    public bool IsReviewTodosVisible => HasCurrentTodos;
     public bool HasChildSessions => ChildSessions.Count > 0;
     public bool HasSelectedChildSession => SelectedChildSession is not null;
     public bool HasChildPendingApproval => ChildPendingApproval is not null;

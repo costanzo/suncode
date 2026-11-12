@@ -402,7 +402,18 @@ public sealed record TodoItem(string Content, string Status, string Priority)
         _ => " "
     };
 
-    public double Opacity => IsCompleted ? 0.58 : 1.0;
+    public double Opacity => IsCompleted ? 0.62 : 1.0;
+
+    public string StatusIconPath => Status switch
+    {
+        "completed" => "/Assets/icons/check.svg",
+        "in_progress" => "/Assets/icons/activity.svg",
+        "cancelled" => "/Assets/icons/close.svg",
+        _ => "/Assets/icons/more-horizontal.svg"
+    };
+
+    public bool IsInProgress => Status == "in_progress";
+    public bool IsCancelled => Status == "cancelled";
 
     public string StatusText => Status switch
     {

@@ -25,6 +25,7 @@ export function ReviewPanel({
   onInspectFailure,
   inspectingFailure = false,
   onRetryTurn,
+  todos = currentTurnTodos,
 }) {
   const [questionResolution, setQuestionResolution] = useState(null);
   const headingRef = useRef(null);
@@ -171,21 +172,23 @@ export function ReviewPanel({
               {noChanges ? "Inspecting project, no file changes yet" : "Editing workspace modules"}
             </span>
           </div>
-          <div className="workspace-todo-card">
-            <div>
-              <span>TODO</span>
-              <small>{currentTurnTodos.length} items</small>
-            </div>
-            {currentTurnTodos.map((todo) => (
-              <p key={todo.content} className={`workspace-todo-item is-${todo.status}`}>
-                <span className="workspace-todo-marker">
-                  <Icon name={todo.icon} size={11} />
-                </span>
-                <span>{todo.content}</span>
-              </p>
-            ))}
-          </div>
         </>
+      )}
+      {!idle && todos.length > 0 && (
+        <div className="workspace-todo-card">
+          <div>
+            <span>TODO</span>
+            <small>{todos.length} items</small>
+          </div>
+          {todos.map((todo) => (
+            <p key={todo.content} className={`workspace-todo-item is-${todo.status}`}>
+              <span className="workspace-todo-marker">
+                <Icon name={todo.icon} size={11} />
+              </span>
+              <span>{todo.content}</span>
+            </p>
+          ))}
+        </div>
       )}
       {showTurnChanges && (
         <div className="workspace-turn-changes">

@@ -371,7 +371,7 @@ public sealed class SessionSnapshotProjectionTests
             {
                 Assert.Equal("Implement tool", item.Content);
                 Assert.Equal("x", item.StatusMarker);
-                Assert.Equal(0.58, item.Opacity);
+                Assert.Equal(0.62, item.Opacity);
             },
             item =>
             {

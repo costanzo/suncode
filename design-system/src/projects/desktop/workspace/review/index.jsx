@@ -4,6 +4,7 @@ import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { ReviewPanel } from "../panels/review/index.js";
 import { FailureNavigationSpecimen } from "./FailureNavigationSpecimen.jsx";
 import { QuestionWindowSpecimen } from "./QuestionWindowSpecimen.jsx";
+import { TodoLifecycleSpecimen } from "./TodoLifecycleSpecimen.jsx";
 
 const reviewGuides = {
   noSession: {
@@ -58,7 +59,7 @@ const reviewGuides = {
       ],
       logic: [
         "A turn is running but has not produced file changes yet.",
-        "The TODO projection remains visible while the agent loop is active.",
+        "The TODO projection stays visible through the turn's terminal outcome until the next turn starts.",
         "The state can transition to running-with-changes or a terminal outcome.",
       ],
     },
@@ -92,7 +93,7 @@ const reviewGuides = {
       style: [
         "Compaction uses the same 7px status point as other active states, with a steel tone and 1.6s pulse.",
         "The process card uses 11px padding, 7px gaps, and a 6px corner radius.",
-        "Turn and progress metadata use 9px monospace text; TODO and changes are hidden.",
+        "Turn and progress metadata use 9px monospace text. The current TODO list stays visible.",
       ],
       logic: [
         "The current turn remains active while earlier messages are reduced to fit the model context budget.",
@@ -226,6 +227,13 @@ export function WorkspaceReviewPage() {
         title="Review"
         description="Agent progress, current-turn todos, approval decisions, questions, checkpoints, and undo entry points."
       />
+      <Section
+        id="todo-lifecycle"
+        title="TODO lifecycle"
+        description="Keep the latest list after a turn ends. Starting the next turn clears it until that turn writes its own list."
+      >
+        <TodoLifecycleSpecimen />
+      </Section>
       <Section
         id="failure-navigation"
         title="Failure details"
