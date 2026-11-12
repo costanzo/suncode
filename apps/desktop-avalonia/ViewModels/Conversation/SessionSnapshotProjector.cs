@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using SunCode.Desktop.Models;
 using SunCode.Sdk.Models;
@@ -221,11 +222,15 @@ internal static class SessionSnapshotProjector
         return seconds == 0 ? $"{minutes} m" : $"{minutes} m {seconds} s";
     }
 
-    internal static string FormatCompletionTime(string completedAt)
+    internal static string FormatCompletionTime(string completedAt, DateTimeOffset? now = null)
     {
-        return DateTimeOffset.TryParse(completedAt, out var completed)
-            ? completed.ToLocalTime().ToString("HH:mm")
-            : string.Empty;
+        if (!DateTimeOffset.TryParse(completedAt, out var completed)) return string.Empty;
+        var local = completed.ToLocalTime();
+        var today = (now ?? DateTimeOffset.Now).ToLocalTime();
+        var format = local.Date == today.Date ? "HH:mm"
+            : local.Year == today.Year ? "MM-dd HH:mm"
+            : "yyyy-MM-dd HH:mm";
+        return local.ToString(format, CultureInfo.InvariantCulture);
     }
 
     internal static string MessageText(AgentMessage message) => message.Text;

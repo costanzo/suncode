@@ -337,7 +337,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
                 _oldestMessageId = page.OldestMessageId;
                 _hasMoreMessages = page.HasMore;
             } while (unseen.Count == 0 && _hasMoreMessages && _oldestMessageCreatedAt is not null && _oldestMessageId is not null);
-            Messages.InsertRangeAtStart(unseen);
+            PrependOlderMessages(unseen);
             OnPropertyChanged(nameof(HasMoreMessages));
             OnPropertyChanged(nameof(HasMessages));
             return unseen.Count > 0;
@@ -346,6 +346,26 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
         {
             _isLoadingOlderMessages = false;
             OnPropertyChanged(nameof(IsLoadingOlderMessages));
+        }
+    }
+
+    /// <summary>
+    /// Prepends a paged batch. Paged messages carry no turn timing, so each loaded
+    /// turn's final response takes its duration and completion time from the
+    /// snapshot's turn list.
+    /// </summary>
+    internal void PrependOlderMessages(IReadOnlyList<MessageItem> loaded)
+    {
+        Messages.InsertRangeAtStart(loaded);
+        foreach (var turnId in loaded.Select(item => item.TurnId).Where(id => id.Length > 0).Distinct(StringComparer.Ordinal))
+        {
+            var finalAssistant = Messages.LastOrDefault(item => item.TurnId == turnId && item.IsAssistant && item.CanBeFinalAssistant);
+            foreach (var assistant in loaded.Where(item => item.TurnId == turnId && item.IsAssistant && item != finalAssistant))
+                assistant.IsFinalAssistant = false;
+            if (finalAssistant is null || !loaded.Contains(finalAssistant)) continue;
+            if (ToolActivity.Turns.FirstOrDefault(item => item.TurnId == turnId) is not { } activityTurn) continue;
+            finalAssistant.DurationText = FormatDuration(activityTurn.StartedAt, activityTurn.CompletedAt, activityTurn.State);
+            finalAssistant.CompletionTimeText = FormatCompletionTime(activityTurn.CompletedAt);
         }
     }
 

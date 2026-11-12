@@ -230,6 +230,7 @@ public sealed partial class ChatArea : UserControl
         if (_conversationScroller is not null) _conversationScroller.ScrollChanged -= ConversationScrollChanged;
         _conversationScroller = scroller;
         _conversationScroller.ScrollChanged += ConversationScrollChanged;
+        QueueLoadOlderMessagesIfUnscrollable();
     }
 
     private void QueueAttachConversationScroller()
@@ -282,6 +283,22 @@ public sealed partial class ChatArea : UserControl
         }
     }
 
+    private void QueueLoadOlderMessagesIfUnscrollable() =>
+        Dispatcher.UIThread.Post(LoadOlderMessagesIfUnScrollable, DispatcherPriority.Background);
+    
+    private void LoadOlderMessagesIfUnScrollable()
+    {
+        // When the latest page fits in the viewpoint there is nothing to scroll,
+        // so ScrollChanged never reaches the top-of-history trigger.
+        AttachConversationScroller();
+        if (_conversationScroller is not { Viewport.Height: > 0 } scroller
+            || _loadingOlderMessages
+            || DataContext is not DesktopViewModel { HasMoreMessages: true }
+            || scroller.Extent.Height - scroller.Viewport.Height > 24)
+            return;
+        _ = LoadOlderMessagesAsync();
+    }
+
     private void KeepConversationAtBottomAfterResize()
     {
         Dispatcher.UIThread.Post(SnapFollowedConversationToBottom, DispatcherPriority.Background);
@@ -309,28 +326,37 @@ public sealed partial class ChatArea : UserControl
     {
         if (_conversationScroller is null || _loadingOlderMessages) return;
         _loadingOlderMessages = true;
-        var oldExtent = _conversationScroller.Extent.Height;
-        var oldOffset = _conversationScroller.Offset.Y;
         try
         {
-            await ViewModel.LoadOlderMessagesAsync();
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            // A short page may leave the view at the top without changing the
+            // offset, so no further ScrollChanged arrives; keep loading until
+            // the restored offset leaves the trigger zone.
+            bool loaded;
+            do
             {
-                AttachConversationScroller();
-                if (_conversationScroller is null) return;
-                var extentDelta = _conversationScroller.Extent.Height - oldExtent;
-                _scrollingConversation = true;
-                try
+                var oldExtent = _conversationScroller.Extent.Height;
+                var oldOffset = _conversationScroller.Offset.Y;
+                loaded = await ViewModel.LoadOlderMessagesAsync();
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    var offset = Math.Max(0, oldOffset + extentDelta);
-                    _programmaticConversationOffset = offset;
-                    _conversationScroller.Offset = new Vector(_conversationScroller.Offset.X, offset);
-                }
-                finally
-                {
-                    _scrollingConversation = false;
-                }
-            }, DispatcherPriority.Background);
+                    AttachConversationScroller();
+                    if (_conversationScroller is null) return;
+                    var extentDelta = _conversationScroller.Extent.Height - oldExtent;
+                    _scrollingConversation = true;
+                    try
+                    {
+                        var offset = Math.Max(0, oldOffset + extentDelta);
+                        _programmaticConversationOffset = offset;
+                        _conversationScroller.Offset = new Vector(_conversationScroller.Offset.X, offset);
+                    }
+                    finally
+                    {
+                        _scrollingConversation = false;
+                    }
+                }, DispatcherPriority.Background);
+            } while (loaded 
+                     && ViewModel.HasMoreMessages 
+                     && _conversationScroller is { Offset.Y: <= 24 });
         }
         finally
         {
@@ -378,6 +404,7 @@ public sealed partial class ChatArea : UserControl
         if (e.PropertyName is nameof(DesktopViewModel.Messages) or nameof(DesktopViewModel.HasMessages))
         {
             QueueScrollToConversationEnd();
+            if (e.PropertyName == nameof(DesktopViewModel.Messages)) QueueLoadOlderMessagesIfUnscrollable();
             return;
         }
 
