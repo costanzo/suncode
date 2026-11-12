@@ -8,7 +8,7 @@ const guides = {
   running: {
     tabs: {
       actions: ["Enter a command in the focused prompt.", "Use the tab and restart controls from the toolbar."],
-      style: ["The drawer uses a 36px header and a dense monospace viewport.", "Output and the active prompt share one reading column.", "Terminal text uses platform system fonts: Menlo / Monaco on macOS, Consolas on Windows, and DejaVu Sans Mono on Linux, with monospace fallbacks."],
+      style: ["The drawer uses a 36px header and a dense monospace viewport.", "Output and the active prompt share one reading column.", "Terminal text uses platform system fonts: Menlo / Monaco on macOS, Consolas on Windows, and DejaVu Sans Mono on Linux, with monospace fallbacks.", "Both appearances share the canonical ANSI palette. The examples show foreground/background pairs and clean/modified Git prompt colors."],
       logic: ["The shell belongs to the desktop client and is independent from Agent sessions.", "The project root is the default working directory.", "New and restarted shells use the measured visible grid; wrapping follows the current viewport through startup and resize."],
     },
   },

@@ -34,21 +34,14 @@ public sealed partial class TerminalSessionView : UserControl
         throw new InvalidOperationException("No system monospace font is available. Install a monospace font and restart SunCode.");
     }
 
-    // ANSI order: black, red, green, yellow, blue, magenta, cyan, white,
-    // followed by their bright variants. Keep aligned with DESIGN.md and the terminal specimen.
-    private static readonly TerminalTheme LightTheme = TerminalTheme.FromBase16(
-        new uint[]
-        {
-            0xFF26313A, 0xFFB42318, 0xFF287667, 0xFF805B00,
-            0xFF245EAD, 0xFF8A3FA0, 0xFF006B78, 0xFF4B5563,
-            0xFF65717D, 0xFFC12D22, 0xFF216E39, 0xFF856000,
-            0xFF245EAD, 0xFF8A3FA0, 0xFF006B78, 0xFF26313A,
-        },
-        defaultForeground: 0xFF26313A,
-        defaultBackground: 0xFFF2F5F7,
-        cursorColor: 0xFF26313A,
-        selectionForeground: 0xFF26313A,
-        selectionBackground: 0xFFBAC6D0);
+    // Shell themes use ANSI colors for both text and backgrounds. Preserve the
+    // canonical palette in both appearances so explicit color pairs stay legible.
+    private static readonly TerminalTheme LightTheme = TerminalTheme.Light
+        .WithDefaultForeground(0xFF26313A)
+        .WithDefaultBackground(0xFFF2F5F7)
+        .WithCursorColor(0xFF26313A)
+        .WithCursorTextColor(0xFFF2F5F7)
+        .WithSelectionColors(0xFF26313A, 0xFFBAC6D0);
 
     private static readonly TerminalTheme DarkTheme = TerminalTheme.Dark
         .WithDefaultBackground(0xFF0D1115)

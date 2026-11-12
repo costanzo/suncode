@@ -1,3 +1,4 @@
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -8,6 +9,7 @@ using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using RoyalTerminal.Avalonia.Controls;
+using RoyalTerminal.Terminal.Theming;
 using SunCode.Desktop.ViewModels;
 using SunCode.Desktop.Views.ProjectWorkspace.Terminal;
 using SunCode.Sdk.Models;
@@ -17,6 +19,57 @@ namespace SunCode.Desktop.Tests;
 [Collection("Avalonia UI")]
 public sealed class TerminalLayoutTests(AvaloniaUiFixture ui)
 {
+    [Fact]
+    public Task AppearanceChangesPreserveShellForegroundAndBackgroundPairs() => ui.Run(() =>
+    {
+        using var session = new TerminalSessionViewModel("colors", Path.GetTempPath()) { State = "exited" };
+        var view = new TerminalSessionView { DataContext = session };
+        var window = new Window { Width = 620, Height = 180, Content = view, RequestedThemeVariant = ThemeVariant.Light };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var terminal = view.FindControl<TerminalControl>("Terminal")!;
+            terminal.WriteOutput(Encoding.UTF8.GetBytes(
+                "\u001b[37;44mD\u001b[30;42mG\u001b[30;43mM\u001b[32;40mS\u001b[30;47mT" +
+                "\u001b[38;5;254;48;5;25mI\u001b[38;2;1;2;3;48;2;4;5;6mR\u001b[0mX"));
+            var palette = TerminalTheme.Dark.Palette;
+            var expectedPairs = new (uint Foreground, uint Background)[]
+            {
+                (palette[7], palette[4]), (palette[0], palette[2]),
+                (palette[0], palette[3]), (palette[2], palette[0]),
+                (palette[0], palette[7]), (palette[254], palette[25]),
+                (0xFF010203, 0xFF040506),
+            };
+
+            foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark, ThemeVariant.Light })
+            {
+                window.RequestedThemeVariant = variant;
+                Dispatcher.UIThread.RunJobs();
+                var theme = terminal.Theme!;
+                var light = variant == ThemeVariant.Light;
+                Assert.Equal(light ? 0xFF26313Au : 0xFFD9E0E6u, theme.DefaultForeground);
+                Assert.Equal(light ? 0xFFF2F5F7u : 0xFF0D1115u, theme.DefaultBackground);
+                Assert.Equal(palette.ToArray(), theme.Palette.ToArray());
+                var row = terminal.Screen!.GetRow(0);
+                for (var index = 0; index < expectedPairs.Length; index++)
+                {
+                    Assert.Equal(expectedPairs[index].Foreground, row[index].Foreground);
+                    Assert.Equal(expectedPairs[index].Background, row[index].Background);
+                }
+                Assert.Equal(theme.DefaultForeground, row[7].Foreground);
+                Assert.Equal(theme.DefaultBackground, row[7].Background);
+                if (light)
+                {
+                    Assert.Equal(0xFF26313Au, theme.CursorColor);
+                    Assert.Equal(0xFFF2F5F7u, theme.CursorTextColor);
+                    Assert.Equal(0xFF26313Au, theme.SelectionForeground);
+                    Assert.Equal(0xFFBAC6D0u, theme.SelectionBackground);
+                }
+            }
+        }
+        finally { window.Close(); }
+    });
+
     [Fact]
     public Task ShellStartupWaitsForVisibleMeasuredLayout() => ui.Run(() =>
     {

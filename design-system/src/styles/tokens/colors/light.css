@@ -2,22 +2,6 @@
 :where([data-theme="light"]) .website-workbench,
 [data-website-theme="light"] .website-workbench {
   color-scheme: light;
-  --terminal-ansi-0: #26313a;
-  --terminal-ansi-1: #b42318;
-  --terminal-ansi-2: #287667;
-  --terminal-ansi-3: #805b00;
-  --terminal-ansi-4: #245ead;
-  --terminal-ansi-5: #8a3fa0;
-  --terminal-ansi-6: #006b78;
-  --terminal-ansi-7: #4b5563;
-  --terminal-ansi-8: #65717d;
-  --terminal-ansi-9: #c12d22;
-  --terminal-ansi-10: #216e39;
-  --terminal-ansi-11: #856000;
-  --terminal-ansi-12: #245ead;
-  --terminal-ansi-13: #8a3fa0;
-  --terminal-ansi-14: #006b78;
-  --terminal-ansi-15: #26313a;
   --canvas: #f3f5f7;
   --surface: #ffffff;
   --surface-raised: #f8fafc;
