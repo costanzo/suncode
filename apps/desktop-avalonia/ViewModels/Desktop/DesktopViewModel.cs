@@ -375,7 +375,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public bool HasPendingApproval => PendingApproval is not null;
     public bool HasPendingQuestion => PendingQuestion is not null;
     public bool HasTurnChanges => TurnChanges.Count > 0;
-    public string TurnChangeFileCountText => $"{TurnChanges.Count} {(TurnChanges.Count == 1 ? "file" : "files}")}";
+    public string TurnChangeFileCountText => $"{TurnChanges.Count} {(TurnChanges.Count == 1 ? "file" : "files")}";
     public int TurnChangeAddedCount => TurnChanges.Count(change => change.IsAdded);
     public int TurnChangeEditedCount => TurnChanges.Count(change => change.IsModified);
     public int TurnChangeDeletedCount => TurnChanges.Count(change => change.IsDeleted);
