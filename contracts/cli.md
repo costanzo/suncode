@@ -86,7 +86,7 @@ Human output is the default when stdout is a terminal. Assistant final text is w
 }
 ```
 
-The JSONL renderer adapts typed SDK events and terminal outcomes; it does not expose provider wire payloads, database rows, credentials, absolute dependency paths, or diagnostic logs. JSONL field names and event meanings are add-only within `schema_version: 1`. Human formatting is not a machine contract.
+The JSONL renderer adapts typed SDK events and terminal outcomes; it does not expose provider wire payloads, database rows, credentials or diagnostic logs. JSONL field names and event meanings are add-only within `schema_version: 1`. Human formatting is not a machine contract.
 
 ## Exit status
 

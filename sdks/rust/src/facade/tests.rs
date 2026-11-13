@@ -1542,7 +1542,7 @@ fn project_default_model_is_used_when_session_model_is_omitted() {
 }
 
 #[test]
-fn project_dependencies_are_read_only_and_browsed_on_demand() {
+fn project_dependencies_are_registered_and_browsed_on_demand() {
     let directory = tempfile::tempdir().unwrap();
     let project_root = directory.path().join("project");
     let dependency_root = directory.path().join("dependency");

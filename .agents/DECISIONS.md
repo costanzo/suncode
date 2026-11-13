@@ -2,6 +2,16 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261113-editable-project-dependencies
+
+- Date: 2026-11-13
+- Status: Accepted
+- Context: Related repositories need coordinated edits and builds in one session. Opaque dependency aliases cannot be consumed by ordinary shell commands and build tools.
+- Decision: Treat registered dependencies as additional working directories under the main project's existing session policy. Expose canonical roots to the model and real paths in dependency tool results. Accept legacy aliases in structured file paths and process workdirs. Resolve the selected root before the existing audited dispatcher and pass command text intact to the host shell. Retain registration IDs and qualify dependency checkpoint/change keys with those IDs.
+- Consequences: Existing registrations gain the same approval-gated editing and process behavior as the main root, including session Full Control. Default cwd and relative paths remain main-root based. Root and nested repository instructions carry their own directory scope. No schema or ABI change is required. Git inspection and language-server lifecycle remain main-project scoped. Processes retain their actual OS authority; the feature adds no OS isolation. Existing file version/diff review covers dependency mutations, while a public file undo operation remains unimplemented.
+- Supersedes: ADR-20260822-read-only-project-dependencies.
+- Details: `features/editable-dependencies/README.md`, `contracts/agent-sdk/README.md`, `contracts/persistence.md`.
+
 ## ADR-20261111-edit-reliability
 
 - Date: 2026-11-11
@@ -434,7 +444,7 @@ Newest first. Historical context is retained only when it still explains a curre
 ## ADR-20260822-read-only-project-dependencies
 
 - Date: 2026-08-22
-- Status: Accepted
+- Status: Superseded by ADR-20261113-editable-project-dependencies.
 - Context: Developers often need the agent and desktop Explorer to inspect related local repositories without opening them as the active project or granting them the active project's mutation and process authority.
 - Decision: Persist project-owned dependency folders in `project_dependency`, canonicalize them in Rust, and reject roots that equal, contain, are contained by, or overlap the active project or another dependency. Expose only opaque dependency IDs and display names to clients and the model. Add a lazy Avalonia Explorer for the project plus a `Dependencies` group. Route `dependency:<id>/...` only through bounded `read`, `glob`, and `grep`; preserve the alias in results and reject every other dependency operation. Add the missing table transactionally to an otherwise-current 13-table database as a narrow additive bootstrap extension, without introducing a general migration runner.
 - Consequences: Related source becomes inspectable without extending write, process, Git, checkpoint, or undo authority. Absolute dependency roots do not cross the SDK/model boundary. The current schema has 15 tables; unknown and structurally incompatible databases remain rejected.

@@ -42,7 +42,7 @@ fn todo_write_arguments_require_one_active_task_at_most() {
 }
 
 #[test]
-fn dependency_paths_are_parsed_without_exposing_absolute_roots() {
+fn legacy_dependency_paths_are_parsed() {
     assert_eq!(
         providers::dependency_path("dependency:dependency-1/src/lib.rs"),
         Some(("dependency-1", "src/lib.rs"))
@@ -146,7 +146,7 @@ fn project_agents_file_is_loaded_as_repository_instructions() {
     assert!(text.contains("Repository instructions from AGENTS.md"));
     assert!(text.contains("Run focused tests."));
     assert!(text.contains("cannot grant authority"));
-    assert!(!text.contains(directory.path().to_str().unwrap()));
+    assert!(text.contains(directory.path().to_str().unwrap()));
 }
 
 #[test]
@@ -554,17 +554,15 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
             .collect()
         );
     }
-    let dependency_alias = messages
+    let dependency_root = messages
         .iter()
         .filter(|message| message.get("role").and_then(Value::as_str) == Some("system"))
         .filter_map(|message| message.get("content").and_then(Value::as_str))
         .find_map(|content| {
-            content
-                .split_whitespace()
-                .find(|value| value.starts_with("dependency:") && !value.contains('<'))
-                .map(|value| {
-                    value.trim_end_matches(|character: char| character.is_ascii_punctuation())
-                })
+            content.lines().find_map(|line| {
+                line.strip_prefix("- Shared source: ")
+                    .and_then(|path| serde_json::from_str::<String>(path).ok())
+            })
         });
     if user_text.contains("slow") {
         tokio::time::sleep(Duration::from_millis(150)).await;
@@ -621,14 +619,29 @@ async fn mock_deepseek(Json(body): Json<Value>) -> impl IntoResponse {
             json!({"choices":[{"delta":{"content":"queued done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}),
         ]
     } else if user_text.contains("dependency read") {
-        let path = format!("{}/lib.rs", dependency_alias.unwrap());
+        let path = Path::new(dependency_root.as_ref().unwrap()).join("lib.rs");
         vec![
             json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-read","function":{"name":"read","arguments":serde_json::to_string(&json!({"path":path})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
         ]
-    } else if user_text.contains("dependency write") {
-        let path = format!("{}/lib.rs", dependency_alias.unwrap());
+    } else if user_text.contains("dependency bash") {
+        let command = if cfg!(windows) {
+            "(Get-Location).Path"
+        } else {
+            "pwd"
+        };
         vec![
-            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-write","function":{"name":"write","arguments":serde_json::to_string(&json!({"path":path,"content":"changed"})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
+            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-bash","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command,"workdir":dependency_root.unwrap()})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
+        ]
+    } else if user_text.contains("dependency pair") {
+        let path = Path::new(dependency_root.as_ref().unwrap()).join("lib.rs");
+        vec![json!({"choices":[{"delta":{"tool_calls":[
+            {"index":0,"id":"dependency-edit","function":{"name":"edit","arguments":serde_json::to_string(&json!({"path":path,"oldString":"shared","newString":"updated"})).unwrap()}},
+            {"index":1,"id":"main-write","function":{"name":"write","arguments":"{\"path\":\"lib.rs\",\"content\":\"main file\"}"}}
+        ]},"finish_reason":"tool_calls"}]})]
+    } else if user_text.contains("dependency write") {
+        let path = Path::new(dependency_root.as_ref().unwrap()).join("lib.rs");
+        vec![
+            json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"dependency-write","function":{"name":"edit","arguments":serde_json::to_string(&json!({"path":path,"oldString":"shared","newString":"updated"})).unwrap()}}]},"finish_reason":"tool_calls"}]}),
         ]
     } else if user_text.contains("read nested") {
         vec![
@@ -1379,7 +1392,7 @@ async fn reasoning_effort_rejects_invalid_values_and_unsupported_models() {
 }
 
 #[tokio::test]
-async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
+async fn dependency_reads_use_real_paths_and_mutations_require_approval() {
     let (agent, store, root, server, session_id) = fixture().await;
     let project_id = store
         .session_by_id(&session_id)
@@ -1409,8 +1422,15 @@ async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
         .find(|message| message.role == "tool")
         .unwrap()
         .text_content();
-    assert!(result.contains("dependency:"));
-    assert!(!result.contains(root.to_str().unwrap()));
+    let result: Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        result["path"],
+        Path::new(&dependency.canonical_root)
+            .join("lib.rs")
+            .to_string_lossy()
+            .as_ref()
+    );
+    assert!(!root.join("lib.rs").exists());
 
     let error = agent
         .submit(
@@ -1422,9 +1442,214 @@ async fn dependency_read_is_routed_and_write_is_rejected_before_approval() {
         )
         .await
         .unwrap_err();
-    assert_eq!(error.code, "scope_denied");
+    assert_eq!(error.code, "approval_required");
     assert_eq!(
         std::fs::read_to_string(Path::new(&dependency.canonical_root).join("lib.rs")).unwrap(),
+        "pub fn shared() {}\n"
+    );
+    agent
+        .resolve_approval(error.details["approval_id"].as_str().unwrap(), "allow_once")
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while std::fs::read_to_string(Path::new(&dependency.canonical_root).join("lib.rs")).unwrap()
+            != "pub fn updated() {}\n"
+        {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(!root.join("lib.rs").exists());
+    server.abort();
+}
+
+#[tokio::test]
+async fn dependency_full_control_keeps_same_name_changes_independent_and_runs_shell() {
+    let (agent, store, root, server, session_id) = fixture().await;
+    let project_id = store
+        .session_by_id(&session_id)
+        .unwrap()
+        .unwrap()
+        .project_id
+        .unwrap();
+    let dependency = store.project_dependencies(&project_id).unwrap().remove(0);
+    store
+        .set_setting("session", &session_id, "full_control", &json!(true))
+        .unwrap();
+    let response = agent
+        .submit(
+            &session_id,
+            "dependency-pair",
+            "dependency pair",
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        response,
+        TurnResponse::Completed { tool_calls: 2, .. }
+    ));
+    let turns = store.session_trace_turns(&session_id).unwrap();
+    let versions = store
+        .turn_file_versions(&session_id, &turns[0].turn_id)
+        .unwrap();
+    assert_eq!(versions.len(), 2);
+    assert!(versions
+        .iter()
+        .any(|v| v.path == "lib.rs" && v.baseline.is_none()));
+    let version = versions
+        .iter()
+        .find(|v| v.path == format!("dependency:{}/lib.rs", dependency.dependency_id))
+        .unwrap();
+    let before = version.baseline.as_ref().unwrap();
+    let after = version.current.as_ref().unwrap();
+    let diff = agent
+        .services
+        .operations
+        .checkpoint_diff(
+            Some((&before.stored_on, &before.sha256)),
+            Some((&after.stored_on, &after.sha256)),
+        )
+        .unwrap();
+    assert_eq!(diff.additions, 1);
+    assert_eq!(diff.deletions, 1);
+    assert_eq!(
+        fs::read_to_string(root.join("lib.rs")).unwrap(),
+        "main file"
+    );
+    agent
+        .submit(
+            &session_id,
+            "dependency-bash",
+            "dependency bash",
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+    let result = store
+        .context_messages(&session_id)
+        .unwrap()
+        .into_iter()
+        .rev()
+        .find(|m| m.role == "tool")
+        .unwrap();
+    let result: Value = serde_json::from_str(&result.text_content()).unwrap();
+    assert_eq!(result["success"], true);
+    assert!(result["stdout"]
+        .as_str()
+        .unwrap()
+        .contains("dependency-source"));
+    assert_eq!(result["sandbox"]["os_isolation"], false);
+    server.abort();
+}
+
+#[tokio::test]
+async fn dependency_instructions_keep_repository_scope_and_distinct_nested_identities() {
+    let (agent, store, root, server, session_id) = fixture().await;
+    let project_id = store
+        .session_by_id(&session_id)
+        .unwrap()
+        .unwrap()
+        .project_id
+        .unwrap();
+    let dependency = store.project_dependencies(&project_id).unwrap().remove(0);
+    let dependency_root = Path::new(&dependency.canonical_root);
+    fs::write(dependency_root.join("AGENTS.md"), "Dependency root rules.").unwrap();
+    for directory in [&root, dependency_root] {
+        fs::create_dir_all(directory.join("src")).unwrap();
+        fs::write(directory.join("src/file.rs"), "source").unwrap();
+        fs::write(directory.join("src/AGENTS.md"), "Nested rules.").unwrap();
+    }
+    let message = agent
+        .services
+        .dependency_context_message(&project_id)
+        .unwrap()
+        .unwrap()
+        .text_content();
+    assert!(message.contains("Dependency root rules."));
+    assert!(message.contains(&format!("directory tree {}", dependency_root.display())));
+    assert!(!message.contains(&format!("dependency:{}", dependency.dependency_id)));
+    let paths = providers::StorePathScopes {
+        store: &store,
+        project_id: &project_id,
+        project_root: &root,
+    };
+    let mut context: Continuation = serde_json::from_value(json!({
+        "session_id":session_id, "project_id":project_id, "project_root":root,
+        "turn_id":"t", "submission_key":"k", "model":"m", "messages":[],
+        "iterations":0, "tool_calls":0, "usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0},
+        "pending_call":null, "remaining_calls":[]
+    })).unwrap();
+    for (path, expected) in [
+        (root.join("src/file.rs"), "src/AGENTS.md".to_owned()),
+        (
+            dependency_root.join("src/file.rs"),
+            dependency_root
+                .join("src/AGENTS.md")
+                .to_string_lossy()
+                .into_owned(),
+        ),
+    ] {
+        let call = ToolCall {
+            call_id: "read".into(),
+            name: "read".into(),
+            arguments: json!({"path":path}),
+            toolset_name: None,
+        };
+        let mut result = json!({});
+        attach_nearby_instructions(&mut context, &call, &mut result, &paths);
+        assert_eq!(result["repository_instructions"][0]["path"], expected);
+        let mut repeated = json!({});
+        attach_nearby_instructions(&mut context, &call, &mut repeated, &paths);
+        assert!(repeated.get("repository_instructions").is_none());
+    }
+    assert_eq!(context.loaded_instruction_paths.len(), 2);
+    server.abort();
+}
+
+#[tokio::test]
+async fn dependency_removed_while_awaiting_approval_is_not_executed() {
+    let (agent, store, _root, server, session_id) = fixture().await;
+    let project_id = store
+        .session_by_id(&session_id)
+        .unwrap()
+        .unwrap()
+        .project_id
+        .unwrap();
+    let dependency = store.project_dependencies(&project_id).unwrap().remove(0);
+    let error = agent
+        .submit(
+            &session_id,
+            "removed-dependency",
+            "dependency write",
+            None,
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "approval_required");
+    store
+        .remove_project_dependency(&project_id, &dependency.dependency_id)
+        .unwrap();
+    agent
+        .resolve_approval(error.details["approval_id"].as_str().unwrap(), "allow_once")
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if store.session_trace_turns(&session_id).unwrap()[0].state == "failed" {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        fs::read_to_string(Path::new(&dependency.canonical_root).join("lib.rs")).unwrap(),
         "pub fn shared() {}\n"
     );
     server.abort();
@@ -1975,7 +2200,12 @@ async fn documents_are_read_through_audited_operations_and_paths_map_back() {
         paths
             .display_path(&Path::new(&dependency.canonical_root).join("lib.rs"))
             .as_deref(),
-        Some(alias.as_str())
+        Some(
+            Path::new(&dependency.canonical_root)
+                .join("lib.rs")
+                .to_string_lossy()
+                .as_ref()
+        )
     );
     assert_eq!(paths.display_path(Path::new("/elsewhere/file.rs")), None);
     server.abort();

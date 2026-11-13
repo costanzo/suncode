@@ -29,7 +29,9 @@ fn provider_classifies_builtin_tools_and_dependency_access() {
     assert_eq!(tools.risk("grep"), Some(Risk::ReadOnly));
     assert_eq!(tools.risk("bash"), Some(Risk::ProcessExecution));
     assert!(tools.allows_dependency_paths("read"));
-    assert!(!tools.allows_dependency_paths("write"));
+    for name in ["write", "edit", "delete", "bash"] {
+        assert!(tools.allows_dependency_paths(name));
+    }
 }
 
 #[test]
@@ -203,8 +205,18 @@ fn edit_rejects_invalid_shapes_before_policy_and_at_execution() {
         json!({"path":"a","oldString":"x","newString":"y","replacements":[]}),
         json!({"path":" ","oldString":"x","newString":"y"}),
     ] {
-        assert_eq!(provider().validate("edit", &arguments).unwrap_err().code, "invalid_arguments", "{arguments}");
-        assert_eq!(translate_arguments("edit", &arguments, None).unwrap_err().code, "invalid_arguments", "{arguments}");
+        assert_eq!(
+            provider().validate("edit", &arguments).unwrap_err().code,
+            "invalid_arguments",
+            "{arguments}"
+        );
+        assert_eq!(
+            translate_arguments("edit", &arguments, None)
+                .unwrap_err()
+                .code,
+            "invalid_arguments",
+            "{arguments}"
+        );
     }
     for arguments in [
         json!({"path":"a","oldString":"x","newString":"","replaceAll":true}),
@@ -247,34 +259,45 @@ fn webfetch_arguments_are_validated_before_policy() {
 }
 
 #[test]
-fn dependency_results_preserve_the_stable_alias() {
+fn dependency_results_expose_real_paths_and_keep_private_checkpoint_identity() {
+    let root = temporary_directory("result-paths").canonicalize().unwrap();
     let read = normalize_result(
         "read",
         json!({"path":"src/lib.rs","data_base64":STANDARD.encode("hello")}),
-        Some("dependency-1"),
+        Some(("dependency-1", &root)),
     );
-    assert_eq!(read["path"], "dependency:dependency-1/src/lib.rs");
+    assert_eq!(
+        read["path"],
+        root.join("src/lib.rs").to_string_lossy().as_ref()
+    );
 
     let glob = normalize_result(
         "glob",
         json!({"paths":["src/lib.rs","README.md"]}),
-        Some("dependency-1"),
+        Some(("dependency-1", &root)),
     );
     assert_eq!(
         glob["paths"],
-        json!([
-            "dependency:dependency-1/src/lib.rs",
-            "dependency:dependency-1/README.md"
-        ])
+        json!([root.join("src/lib.rs"), root.join("README.md")])
     );
 
     let grep = normalize_result(
         "grep",
         json!({"matches":[{"path":"src/lib.rs","line":1}]}),
-        Some("dependency-1"),
+        Some(("dependency-1", &root)),
     );
     assert_eq!(
         grep["matches"][0]["path"],
+        root.join("src/lib.rs").to_string_lossy().as_ref()
+    );
+    let edited = normalize_result(
+        "edit",
+        json!({"path":"src/lib.rs", "checkpoint":{"path":"src/lib.rs"}}),
+        Some(("dependency-1", &root)),
+    );
+    assert_eq!(edited["path"], read["path"]);
+    assert_eq!(
+        edited["checkpoint"]["path"],
         "dependency:dependency-1/src/lib.rs"
     );
 }
@@ -368,11 +391,20 @@ mod execute {
         }
 
         fn resolve(&self, path: &str) -> Result<ScopedPath, BusinessError> {
-            Ok(match path.strip_prefix("dependency:dep/") {
+            let relative = path
+                .strip_prefix("dependency:dep/")
+                .map(str::to_owned)
+                .or_else(|| {
+                    std::path::Path::new(path)
+                        .strip_prefix(&self.0)
+                        .ok()
+                        .map(|relative| relative.to_string_lossy().into_owned())
+                });
+            Ok(match relative {
                 Some(relative) => ScopedPath::Dependency {
                     dependency_id: "dep".into(),
                     root: self.0.clone(),
-                    relative: relative.into(),
+                    relative,
                 },
                 None => ScopedPath::Project {
                     relative: path.into(),
@@ -566,22 +598,122 @@ mod execute {
     }
 
     #[test]
-    fn dependency_reads_resolve_through_scopes_and_keep_the_alias() {
+    fn dependency_file_tools_share_mutation_preconditions_and_qualify_checkpoints() {
         let project = temporary_directory("project").canonicalize().unwrap();
         let dependency = temporary_directory("dependency").canonicalize().unwrap();
         fs::write(dependency.join("lib.rs"), "pub fn shared() {}\n").unwrap();
-        let result = Call {
-            tools: &provider(),
+        let tools = provider();
+        let flag = Flag::default();
+        let call = Call {
+            tools: &tools,
             project: &project,
             dependency: &dependency,
             timeout_ceiling: None,
             output: Arc::default(),
-            cancellation: &Flag::default(),
-        }
-        .run("read", json!({"path":"dependency:dep/lib.rs"}))
-        .unwrap();
-        assert_eq!(result["path"], "dependency:dep/lib.rs");
+            cancellation: &flag,
+        };
+        let result = call
+            .run("read", json!({"path":"dependency:dep/lib.rs"}))
+            .unwrap();
+        assert_eq!(
+            result["path"],
+            dependency.join("lib.rs").to_string_lossy().as_ref()
+        );
         assert_eq!(result["content"], "pub fn shared() {}\n");
+        let edited = call.run("edit", json!({"path":dependency.join("lib.rs"), "oldString":"shared", "newString":"updated"})).unwrap();
+        assert_eq!(edited["checkpoint"]["path"], "dependency:dep/lib.rs");
+        assert_eq!(
+            call.run(
+                "write",
+                json!({"path":"dependency:dep/lib.rs", "content":"wrong"})
+            )
+            .unwrap_err()
+            .code,
+            "precondition_required"
+        );
+        let written = call.run("write", json!({"path":"dependency:dep/lib.rs", "content":"final", "expected_sha256":edited["sha256"]})).unwrap();
+        assert_eq!(written["checkpoint"]["path"], "dependency:dep/lib.rs");
+        let deleted = call
+            .run(
+                "delete",
+                json!({"path":dependency.join("lib.rs"), "expected_sha256":written["sha256"]}),
+            )
+            .unwrap();
+        assert_eq!(deleted["checkpoint"]["path"], "dependency:dep/lib.rs");
+        assert!(!dependency.join("lib.rs").exists());
+        assert!(!project.join("lib.rs").exists());
+    }
+
+    #[test]
+    fn dependency_workdirs_resolve_before_shell_translation() {
+        let project = temporary_directory("cwd-project").canonicalize().unwrap();
+        let dependency = temporary_directory("cwd-dependency")
+            .canonicalize()
+            .unwrap();
+        fs::create_dir(dependency.join("src")).unwrap();
+        let scopes = Scopes(dependency.clone());
+        let tools = provider();
+        let flag = Flag::default();
+        let shell = suncode_common::shell::ResolvedShell {
+            path: "/bin/sh".into(),
+            family: "sh".into(),
+            version: "test".into(),
+            interactive_args: vec![],
+        };
+        let context = ToolContext {
+            shell: Some(&shell),
+            project_id: "p",
+            project_root: &project,
+            call_key: "call",
+            timeout_ceiling: None,
+            paths: &scopes,
+            documents: &NoDocuments,
+            output: Arc::new(Collect::default()),
+            cancellation: &flag,
+        };
+        for workdir in [
+            "dependency:dep/src".to_owned(),
+            dependency.join("src").to_string_lossy().into_owned(),
+        ] {
+            let (root, params, id) = super::super::prepare(
+                &ToolInvocation {
+                    name: "bash",
+                    arguments: json!({"command":"echo dependency:dep/literal", "workdir":workdir}),
+                    approval_pin: None,
+                },
+                &context,
+            )
+            .unwrap();
+            assert_eq!(root, dependency);
+            assert_eq!(id.as_deref(), Some("dep"));
+            assert_eq!(params["cwd"], "src");
+            assert_eq!(params["args"], json!(["-c", "echo dependency:dep/literal"]));
+        }
+        let (root, _, id) = super::super::prepare(
+            &ToolInvocation {
+                name: "bash",
+                arguments: json!({"command":"echo default"}),
+                approval_pin: None,
+            },
+            &context,
+        )
+        .unwrap();
+        assert_eq!(root, project);
+        assert!(id.is_none());
+        let error = Call {
+            tools: &tools,
+            project: &project,
+            dependency: &dependency,
+            timeout_ceiling: None,
+            output: Arc::default(),
+            cancellation: &flag,
+        }
+        .run(
+            "bash",
+            json!({"command":"echo safe", "workdir":"dependency:dep/../"}),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "scope_denied");
     }
 
     #[cfg(unix)]

@@ -183,13 +183,7 @@ impl PathScopes for StorePathScopes<'_> {
         dependencies.iter().find_map(|dependency| {
             path.strip_prefix(&dependency.canonical_root)
                 .ok()
-                .map(|relative| {
-                    format!(
-                        "{DEPENDENCY_PREFIX}{}/{}",
-                        dependency.dependency_id,
-                        relative.to_string_lossy().replace('\\', "/")
-                    )
-                })
+                .map(|_| path.to_string_lossy().into_owned())
         })
     }
 }

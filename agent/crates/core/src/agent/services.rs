@@ -364,18 +364,27 @@ impl TurnServices {
             .iter()
             .map(|dependency| {
                 format!(
-                    "- {}: dependency:{}",
-                    dependency.display_name, dependency.dependency_id
+                    "- {}: {}",
+                    dependency.display_name,
+                    serde_json::to_string(&dependency.canonical_root).unwrap_or_default()
                 )
             })
             .collect::<Vec<_>>()
             .join("\n");
+        let instructions = dependencies
+            .iter()
+            .filter_map(|dependency| {
+                super::support::project_instruction_message(&dependency.canonical_root)
+                    .map(|message| message.text_content())
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
         Ok(Some(suncode_llm::Message {
             role: "system".into(),
             content: vec![suncode_llm::ContentPart {
                 kind: "text".into(),
                 text: format!(
-                    "Registered read-only source dependencies:\n{roots}\nUse dependency:<dependencyId>/<relativePath> with read, or dependency:<dependencyId> as the glob/grep path. Dependencies cannot be modified or used as a process working directory."
+                    "Registered additional working directories (dependencies):\n{roots}\nThese directories use the same tool permissions and approval policy as the main project. Use their real absolute filesystem paths for file tools, bash workdir, and paths inside shell commands. Relative paths and an omitted bash workdir default to the main project. Dependency IDs and legacy dependency aliases are internal identifiers, not shell paths.\n\n{instructions}"
                 ),
             }],
             tool_calls: Vec::new(),

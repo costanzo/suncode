@@ -746,7 +746,7 @@ impl TurnLoop<'_> {
             _ => Ok(false),
         }
     }
-    
+
     fn record_unkown_completion(&mut self, call: &ToolCall) -> Result<bool, BusinessError> {
         let error = BusinessError::new(
             "unknown_completion",
@@ -844,7 +844,14 @@ impl TurnLoop<'_> {
         } else {
             None
         };
-        attach_nearby_instructions(self.context, call, &mut normalized_result);
+        let project_root = PathBuf::from(&self.context.project_root);
+        let project_id = self.context.project_id.clone();
+        let paths = providers::StorePathScopes {
+            store: &self.services.store,
+            project_id: &project_id,
+            project_root: &project_root,
+        };
+        attach_nearby_instructions(self.context, call, &mut normalized_result, &paths);
         attach_file_observation(&self.context.messages, call, &mut normalized_result);
         let process_failed = (call.name == "bash"
             && normalized_result.get("success").and_then(Value::as_bool) == Some(false))
@@ -897,7 +904,7 @@ impl TurnLoop<'_> {
         )?;
         Ok(())
     }
-    
+
     /// Folds one file write or delete into the turn's net change for that
     /// path: the first one in the turn fixes the baseline, later ones move the
     /// latest version, and counts always compare baseline to latest. A delete
@@ -910,7 +917,7 @@ impl TurnLoop<'_> {
         let (Some(path), Some(stored_on)) = (
             checkpoint.get("path").and_then(Value::as_str),
             checkpoint.get("stored_on").and_then(Value::as_str),
-        ) else { 
+        ) else {
             return Ok(());
         };
         let current_sha256 = checkpoint.get("current_sha256").and_then(Value::as_str);
@@ -940,7 +947,7 @@ impl TurnLoop<'_> {
                     .map(|version| (version.stored_on.as_str(), version.sha256.as_str())),
                 current_sha256.map(|sha256| (stored_on, sha256)),
             )
-        }) else { 
+        }) else {
             return Ok(());
         };
         let (baseline_stored_on, baseline_sha256) = baseline
@@ -1063,7 +1070,12 @@ impl TurnLoop<'_> {
     }
 
     pub(super) fn validate_dependency_call(&self, call: &ToolCall) -> Result<(), BusinessError> {
-        let Some(path) = call.arguments.get("path").and_then(Value::as_str) else {
+        let path_key = if call.name == "bash" {
+            "workdir"
+        } else {
+            "path"
+        };
+        let Some(path) = call.arguments.get(path_key).and_then(Value::as_str) else {
             return Ok(());
         };
         let scopes = providers::StorePathScopes {
@@ -1109,7 +1121,7 @@ impl TurnLoop<'_> {
 fn dependency_scope_denied() -> BusinessError {
     BusinessError::new(
         "scope_denied",
-        "dependencies are read-only and support only read-only file tools",
+        "tool does not accept project dependency paths",
     )
 }
 

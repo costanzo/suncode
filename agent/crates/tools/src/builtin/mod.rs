@@ -60,9 +60,12 @@ fn is_document_tool(name: &str) -> bool {
     )
 }
 
-/// Dependencies are read-only, so only read-only file tools may target them.
-fn reads_dependencies(name: &str) -> bool {
-    matches!(name, "read" | "glob" | "grep") || is_document_tool(name)
+/// Tools whose structured paths can select a registered dependency root.
+fn uses_project_paths(name: &str) -> bool {
+    matches!(
+        name,
+        "read" | "glob" | "grep" | "write" | "edit" | "delete" | "bash"
+    ) || is_document_tool(name)
 }
 
 impl ToolProvider for BuiltinTools {
@@ -103,7 +106,7 @@ impl ToolProvider for BuiltinTools {
     }
 
     fn allows_dependency_paths(&self, name: &str) -> bool {
-        reads_dependencies(name)
+        uses_project_paths(name)
     }
 
     fn execute<'a>(
@@ -115,8 +118,15 @@ impl ToolProvider for BuiltinTools {
             let method = method(invocation.name)
                 .ok_or_else(|| BusinessError::new("authorization_denied", "Unknown tool"))?;
             let (root, params, dependency_id) = prepare(&invocation, &context)?;
-            let raw = self.run_blocking(root, method, params, &context).await?;
-            Ok(translate::normalize_result(invocation.name, raw, dependency_id.as_deref()).into())
+            let raw = self
+                .run_blocking(root.clone(), method, params, &context)
+                .await?;
+            Ok(translate::normalize_result(
+                invocation.name,
+                raw,
+                dependency_id.as_deref().map(|id| (id, root.as_path())),
+            )
+            .into())
         })
     }
 }
@@ -128,12 +138,17 @@ fn prepare(
     context: &ToolContext<'_>,
 ) -> Result<(std::path::PathBuf, Value, Option<String>), BusinessError> {
     let mut arguments = invocation.arguments.clone();
-    let (root, dependency_id) = match arguments.get("path").and_then(Value::as_str) {
+    let path_key = if invocation.name == "bash" {
+        "workdir"
+    } else {
+        "path"
+    };
+    let (root, dependency_id) = match arguments.get(path_key).and_then(Value::as_str) {
         None => (context.project_root.to_path_buf(), None),
         Some(path) => match context.paths.resolve(path)? {
             ScopedPath::Project { relative } => {
                 // Authorized absolute paths arrive here already made relative
-                arguments["path"] = json!(relative);
+                arguments[path_key] = json!(relative);
                 (context.project_root.to_path_buf(), None)
             }
             ScopedPath::Dependency {
@@ -141,13 +156,13 @@ fn prepare(
                 root,
                 relative,
             } => {
-                if !reads_dependencies(invocation.name) {
+                if !uses_project_paths(invocation.name) {
                     return Err(BusinessError::new(
                         "scope_denied",
-                        "dependencies are read-only",
+                        "tool does not accept project dependency paths",
                     ));
                 }
-                arguments["path"] = json!(relative);
+                arguments[path_key] = json!(relative);
                 (root, Some(dependency_id))
             }
         },

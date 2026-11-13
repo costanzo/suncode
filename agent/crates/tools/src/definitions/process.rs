@@ -18,7 +18,7 @@ pub(super) fn bash() -> (&'static str, &'static str, Value) {
                 },
                 "workdir": {
                     "type": "string",
-                    "description": "Working directory for the command, as a path relative to the active project or an absolute path inside it. Defaults to the active project directory."
+                    "description": "Working directory relative to the main project, or an absolute path inside the main project or a registered dependency. Defaults to the main project. Use real filesystem paths in the command string; legacy dependency aliases are accepted only in this workdir field."
                 }
             },
             "additionalProperties": false

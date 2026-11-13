@@ -42,7 +42,7 @@ pub trait Cancellation: Send + Sync {
 pub enum ScopedPath {
     /// Inside the opened project.
     Project { relative: String },
-    /// Inside a registered read-only source dependency.
+    /// Inside a registered additional working directory.
     Dependency {
         dependency_id: String,
         root: std::path::PathBuf,
@@ -211,8 +211,8 @@ pub trait ToolProvider: Send + Sync {
         true
     }
 
-    /// Whether `name` accepts `dependency:` paths. Dependencies are read-only,
-    /// so only tools that never write may opt in.
+    /// Whether `name` accepts paths in registered dependencies. The call still
+    /// passes the tool's ordinary risk policy and approval before execution.
     fn allows_dependency_paths(&self, _name: &str) -> bool {
         false
     }

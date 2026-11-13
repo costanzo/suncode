@@ -338,7 +338,11 @@ fn timeout_millis(value: &Value) -> Result<u64, BusinessError> {
     Ok(milliseconds)
 }
 
-pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Option<&str>) -> Value {
+pub(crate) fn normalize_result(
+    name: &str,
+    mut value: Value,
+    dependency: Option<(&str, &Path)>,
+) -> Value {
     if name == "read" {
         if let Some(encoded) = value
             .get("data_base64")
@@ -379,18 +383,30 @@ pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Opti
             }
         }
     }
-    if let Some(dependency_id) = dependency_id {
+    if let Some((dependency_id, root)) = dependency {
         if matches!(
             name,
-            "read" | "document_inspect" | "document_read" | "document_search" | "spreadsheet_read"
+            "read"
+                | "write"
+                | "edit"
+                | "delete"
+                | "document_inspect"
+                | "document_read"
+                | "document_search"
+                | "spreadsheet_read"
         ) {
-            prefix_result_path(&mut value, "path", dependency_id);
+            qualify_result_path(&mut value, "path", root);
+        }
+        if let Some(checkpoint) = value.get_mut("checkpoint") {
+            if let Some(path) = checkpoint.get("path").and_then(Value::as_str) {
+                checkpoint["path"] = json!(dependency_alias(dependency_id, path));
+            }
         }
         if name == "glob" {
             if let Some(paths) = value.get_mut("paths").and_then(Value::as_array_mut) {
                 for path in paths {
                     if let Some(relative) = path.as_str() {
-                        *path = json!(dependency_alias(dependency_id, relative));
+                        *path = json!(root.join(relative).to_string_lossy());
                     }
                 }
             }
@@ -398,7 +414,7 @@ pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Opti
         if name == "grep" {
             if let Some(matches) = value.get_mut("matches").and_then(Value::as_array_mut) {
                 for matched in matches {
-                    prefix_result_path(matched, "path", dependency_id);
+                    qualify_result_path(matched, "path", root);
                 }
             }
         }
@@ -406,11 +422,11 @@ pub(crate) fn normalize_result(name: &str, mut value: Value, dependency_id: Opti
     value
 }
 
-fn prefix_result_path(value: &mut Value, key: &str, dependency_id: &str) {
+fn qualify_result_path(value: &mut Value, key: &str, root: &Path) {
     let Some(relative) = value.get(key).and_then(Value::as_str) else {
         return;
     };
-    value[key] = json!(dependency_alias(dependency_id, relative));
+    value[key] = json!(root.join(relative).to_string_lossy());
 }
 
 fn scoped_glob(scope_root: Option<&Path>, path: &str, pattern: &str) -> String {

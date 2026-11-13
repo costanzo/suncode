@@ -23,9 +23,6 @@ pub(in crate::agent) fn attach_file_observation(
     else {
         return;
     };
-    if path.starts_with("dependency:") {
-        return;
-    }
     if call.name == "edit" {
         let previous = previous_observation(messages, &path);
         let source = result.get("source_sha256").and_then(Value::as_str);

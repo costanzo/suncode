@@ -3,14 +3,14 @@ use serde_json::{json, Value};
 pub(super) fn read() -> (&'static str, &'static str, Value) {
     (
         "read",
-        "Read a bounded text file, including BOM-marked UTF-16LE up to 16 MiB. Use offset (1-indexed) and limit to continue through large UTF-8 files. Reading from the start without a line limit returns the raw full-file sha256 when the source fits within 16 MiB, even if the preview is truncated. Pass sha256 as expected_sha256 to overwrite or delete the file. source_sha256 also accompanies bounded partial reads for change detection; it does not mean all content was shown. Relative paths resolve inside the current project; registered read-only dependencies use dependency:<dependencyId>/<path>.",
+        "Read a bounded text file, including BOM-marked UTF-16LE up to 16 MiB. Use offset (1-indexed) and limit to continue through large UTF-8 files. Reading from the start without a line limit returns the raw full-file sha256 when the source fits within 16 MiB, even if the preview is truncated. Pass sha256 as expected_sha256 to overwrite or delete the file. source_sha256 also accompanies bounded partial reads for change detection; it does not mean all content was shown. Relative paths resolve inside the main project. Use real absolute paths for files in registered dependencies; legacy dependency:<dependencyId>/<path> aliases are also accepted.",
         json!({
             "type": "object",
             "required": ["path"],
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the project"
+                    "description": "File path relative to the main project, or an absolute path inside the main project or a registered dependency"
                 },
                 "offset": {
                     "type": "integer",
@@ -36,7 +36,7 @@ pub(super) fn read() -> (&'static str, &'static str, Value) {
 pub(super) fn glob() -> (&'static str, &'static str, Value) {
     (
         "glob",
-        "List project files matching a glob pattern. Results respect ignore rules and are bounded to 100 entries. Set path to a project subdirectory or dependency:<dependencyId> for a registered read-only dependency.",
+        "List project files matching a glob pattern. Results respect ignore rules and are bounded to 100 entries. Set path to a project subdirectory or the real absolute path of a registered dependency directory. Legacy dependency aliases are accepted.",
         json!({
             "type": "object",
             "required": ["pattern"],
@@ -47,7 +47,7 @@ pub(super) fn glob() -> (&'static str, &'static str, Value) {
                 },
                 "path": {
                     "type": "string",
-                    "description": "Directory to search, relative to the project"
+                    "description": "Directory relative to the main project, or an absolute directory inside a registered dependency"
                 },
                 "limit": {
                     "type": "integer",
@@ -64,7 +64,7 @@ pub(super) fn glob() -> (&'static str, &'static str, Value) {
 pub(super) fn grep() -> (&'static str, &'static str, Value) {
     (
         "grep",
-        "Fast content search for regular expressions. Use this tool whenever you need to find files or matching lines. Do not use bash to run grep or rg for normal file search; use bash with rg only when you explicitly need raw terminal behavior such as counting matches. Results are bounded to 100 matches. Set path to a project subdirectory or dependency:<dependencyId> for a registered read-only dependency.",
+        "Fast content search for regular expressions. Use this tool whenever you need to find files or matching lines. Do not use bash to run grep or rg for normal file search; use bash with rg only when you explicitly need raw terminal behavior such as counting matches. Results are bounded to 100 matches. Set path to a project subdirectory or the real absolute path of a registered dependency directory. Legacy dependency aliases are accepted.",
         json!({
             "type": "object",
             "required": ["pattern"],
@@ -103,7 +103,7 @@ pub(super) fn write() -> (&'static str, &'static str, Value) {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the project"
+                    "description": "File path relative to the main project, or an absolute path inside the main project or a registered dependency"
                 },
                 "content": {
                     "type": "string",
@@ -130,7 +130,7 @@ pub(super) fn edit() -> (&'static str, &'static str, Value) {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the project"
+                    "description": "File path relative to the main project, or an absolute path inside the main project or a registered dependency"
                 },
                 "oldString": {
                     "type": "string",
@@ -179,7 +179,7 @@ pub(super) fn delete() -> (&'static str, &'static str, Value) {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the project"
+                    "description": "File path relative to the main project, or an absolute path inside the main project or a registered dependency"
                 },
                 "expected_sha256": {
                     "type": "string",

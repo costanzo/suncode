@@ -39,7 +39,7 @@ One row per opened local directory tree: `project_id` primary key, non-empty `us
 
 ### `project_dependency`
 
-One registered read-only source root per row: opaque `dependency_id`, owning `project_id`, canonical root, display name, and creation timestamp. `(project_id, canonical_root)` is unique, and Rust owns referential validation and dependent-row cleanup. The canonical root remains internal to Rust persistence and operations; client DTOs expose only the stable dependency ID and display name.
+One registered additional working root per row: opaque `dependency_id`, owning `project_id`, canonical root, display name, and creation timestamp. `(project_id, canonical_root)` is unique, and Rust owns referential validation and dependent-row cleanup. Registration DTOs expose stable IDs and display names. Model context advertises canonical roots for file and shell operations under the existing session policy.
 
 ### `configuration`
 
@@ -110,6 +110,8 @@ Context compaction does not add a table or a `session_message` role. A completed
 Durable approval state keyed by `approval_id`, associated with its session and the composite `(turn_id, tool_call_id)` in `session_tool_use`. It stores operation, arguments JSON, idempotency key, decision metadata, status, and timestamps. Rust validates ownership and manages related rows explicitly.
 
 ### `session_turn_change`
+
+Dependency file changes use `dependency:<id>/<relative>` in `relative_path`, keeping independent identities for same-named files in different roots. Main-project changes retain root-relative paths. This namespace requires no schema change.
 
 One net file change per `(turn_id, relative_path)`, with owning `session_id` and a nonnegative first-touch `ordinal`. Each row stores nullable `baseline_sha256`/`baseline_stored_on` and `current_sha256`/`current_stored_on` pairs, `is_binary`, nonnegative `additions` and `deletions`, `created_at`, `updated_at`, and `expires_at`. Indexes cover `(session_id, turn_id)` and expiry.
 

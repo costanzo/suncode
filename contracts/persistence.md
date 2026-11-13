@@ -16,7 +16,7 @@ HTTPS server verification is durable global configuration. `verify_https_certifi
 
 SunCode currently has one 17-table schema at `SCHEMA_VERSION = 1`. Opening accepts that exact `PRAGMA user_version`, or version `0` with zero application tables. Every other version returns `database_schema_incompatible` and requires an explicit database reset or a new data directory. Initialization checks admission, applies the current schema scripts, validates the exact application table-name manifest, applies seed scripts, and writes the version in one transaction. Same-version reopening is idempotent. Schema changes require a version bump. Detailed admission and validation rules are in `sqlite-schema.md`.
 
-Project source dependencies are stored in `project_dependency`. Rust persists their canonical roots, rejects self/nested/overlapping roots at the SDK boundary, and deletes registrations with the owning project. The SDK never exposes a dependency's absolute root to Avalonia or to the model; external code refers to it by an opaque dependency ID.
+Additional working directories are stored in `project_dependency`. Rust persists their canonical roots, rejects self/nested/overlapping roots at the SDK boundary, and deletes registrations with the owning project. Registration and Explorer DTOs select dependencies by opaque ID. Model context and dependency tool results expose real paths for ordinary file and shell operations under the existing session policy. Private checkpoint metadata and turn-change keys qualify dependency paths as `dependency:<id>/<relative>` so same-named files in separate roots have independent versions and diffs.
 
 ## Streams
 
