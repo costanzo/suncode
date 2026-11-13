@@ -222,6 +222,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     // Localized item text is computed on read; re-raise it after the shared locale changes.
     private void OnAppLanguageChanged(string locale)
     {
+        RefreshProviderRetryStatus();
         foreach (var item in LanguageServers.Servers) item.OnPropertyChanged(string.Empty);
         foreach (var item in Mcp.Servers) item.OnPropertyChanged(string.Empty);
         foreach (var item in Messages) item.OnPropertyChanged(string.Empty);
@@ -256,6 +257,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     internal void ApplySnapshot(SessionSnapshotProjection projection, bool preserveLoadedMessages = false)
     {
+        ClearProviderRetryStatus();
         if (!preserveLoadedMessages || Messages.Count == 0)
         {
             _appliedMessageIds.Clear();
@@ -439,6 +441,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
 
     private void RefreshConversationDuration()
     {
+        RefreshProviderRetryStatus();
         var row = Messages.FirstOrDefault(item => item.IsWorkingDuration);
         if (row is not null) row.DurationText = ActiveTurnDurationText;
     }

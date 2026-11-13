@@ -10,8 +10,9 @@ public sealed partial class DesktopViewModel
     private bool _restoringUiState;
     internal bool RestoringSavedFile { get; set; }
 
-    internal DesktopViewModel(UiStateStore? uiStateStore = null, AppSettingsViewModel? appSettings = null, IGitService? gitService = null)
+    internal DesktopViewModel(UiStateStore? uiStateStore = null, AppSettingsViewModel? appSettings = null, IGitService? gitService = null, TimeProvider? timeProvider = null)
     {
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _uiStateStore = uiStateStore;
         AppSettings = appSettings ?? new AppSettingsViewModel();
         AppSettings.LanguageChanged += OnAppLanguageChanged;

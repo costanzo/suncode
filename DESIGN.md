@@ -564,7 +564,7 @@ bounded monospace reading surfaces.
 
 ### Provider retry status
 
-While a provider retry is waiting, Conversation replaces Thinking and running dots with a static 11px secondary-text status giving the scheduled delay and retry number out of two. The text wraps at constrained widths, has no new animation or alert surface, and clears when the next provider request starts or the turn ends. The delay describes the scheduled wait, not a live countdown. The active composer keeps its existing stop action available. Review this state at Desktop Workspace → Conversation.
+While a provider retry is waiting, Conversation replaces Thinking and running dots with an 11px secondary-text countdown and retry number out of two. Recompute the remaining seconds from elapsed monotonic time every second and round up. At zero, show waiting for the retry to start until the next request starts. The text wraps at constrained widths and clears on the next provider request, a turn transition, session change, or snapshot/resync. A new retry schedule replaces the previous countdown. The active composer keeps its existing stop action available. Review this state at Desktop Workspace → Conversation.
 
 ## Proxy Tool provider inspector
 

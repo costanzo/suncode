@@ -165,6 +165,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
         {
             if (ReferenceEquals(_selectedSession, value)) return;
             var sessionChanged = _selectedSession?.SessionId != value?.SessionId;
+            if (sessionChanged) ClearProviderRetryStatus();
             _selectedSession = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SessionTitle));
@@ -275,7 +276,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
     public string StatusText { get => _statusText; private set => SetProperty(ref _statusText, value); }
     public void ReportPresentationError(string message) => StatusText = message;
     public string ComposerText { get => _composerText; set { if (SetProperty(ref _composerText, value)) { OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(HasComposerInput)); OnPropertyChanged(nameof(IsComposerStopAction)); OnPropertyChanged(nameof(IsComposerSendAction)); OnPropertyChanged(nameof(IsComposerActionEnabled)); OnPropertyChanged(nameof(ComposerSubmitLabel)); } } }
-    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ProviderRetryText = string.Empty; OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); OnPropertyChanged(nameof(HasComposerInput)); OnPropertyChanged(nameof(IsComposerStopAction)); OnPropertyChanged(nameof(IsComposerSendAction)); OnPropertyChanged(nameof(IsComposerActionEnabled)); OnPropertyChanged(nameof(ComposerSubmitLabel)); OnPropertyChanged(nameof(ComposerPlaceholder)); foreach (var queued in QueuedInputs) queued.IsTurnActive = IsTurnActive; NotifyReviewPresentationChanged(); } } }
+    public string ActiveTurnId { get => _activeTurnId; private set { if (SetProperty(ref _activeTurnId, value)) { ClearProviderRetryStatus(); OnPropertyChanged(nameof(IsTurnActive)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(CanSubmit)); OnPropertyChanged(nameof(CanCompose)); OnPropertyChanged(nameof(CanChooseReasoningEffort)); OnPropertyChanged(nameof(CanAttachImages)); OnPropertyChanged(nameof(HasComposerInput)); OnPropertyChanged(nameof(IsComposerStopAction)); OnPropertyChanged(nameof(IsComposerSendAction)); OnPropertyChanged(nameof(IsComposerActionEnabled)); OnPropertyChanged(nameof(ComposerSubmitLabel)); OnPropertyChanged(nameof(ComposerPlaceholder)); foreach (var queued in QueuedInputs) queued.IsTurnActive = IsTurnActive; NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnState { get => _activeTurnState; private set { if (SetProperty(ref _activeTurnState, value)) { OnPropertyChanged(nameof(IsTurnCompacting)); OnPropertyChanged(nameof(IsTurnThinking)); OnPropertyChanged(nameof(IsTurnIndicatorDots)); OnPropertyChanged(nameof(HasFailedTurn)); NotifyReviewPresentationChanged(); } } }
     public string ActiveTurnDurationText => _activeTurnStartedAt is { } started
         ? FormatDuration(started.ToString("O"), string.Empty, ActiveTurnState)

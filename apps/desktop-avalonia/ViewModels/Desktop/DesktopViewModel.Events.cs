@@ -270,6 +270,7 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        ClearProviderRetryStatus();
         _conversationDurationTimer.Stop();
         Terminal.Dispose();
         Remote.Dispose();

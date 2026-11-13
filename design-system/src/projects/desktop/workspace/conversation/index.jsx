@@ -173,10 +173,10 @@ const conversationGuides = {
     tabs: {
       actions: ["Wait for the scheduled request retry or use the composer stop action."],
       style: [
-        "A static 11px secondary-text status replaces Thinking and running dots; it wraps at narrow widths.",
+        "An 11px secondary-text countdown replaces Thinking and running dots and wraps at narrow widths.",
       ],
       logic: [
-        "Show the scheduled delay and retry number while waiting. Clear it when the next request starts or the turn ends. The delay is a schedule, not a live countdown.",
+        "Update remaining seconds once per second from elapsed time. At zero, show waiting for the retry to start. Clear the status when the next request starts, the turn changes, or the selected session changes.",
       ],
     },
   },

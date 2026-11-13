@@ -101,6 +101,18 @@ export function ConversationPanel({
   const thinking = state === "content-thinking";
   const [retryStopped, setRetryStopped] = useState(false);
   const retrying = state === "content-retrying" && !retryStopped;
+  const [retrySeconds, setRetrySeconds] = useState(58);
+  useEffect(() => {
+    if (!retrying) return undefined;
+    const deadline = performance.now() + 58000;
+    setRetrySeconds(58);
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+      setRetrySeconds(remaining);
+      if (remaining === 0) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [retrying]);
   const modelUnavailable = state === "model-unavailable";
   const submissionBusy = turnPhase === "stopping" || turnPhase === "submitting";
   const turnActive =
@@ -438,7 +450,9 @@ export function ConversationPanel({
             )}
             {retrying && turnActive && turnPhase !== "running" && (
               <div className="workspace-retry-indicator" role="status">
-                Retrying request after 2s · retry 1 of 2
+                {retrySeconds > 0
+                  ? `Retrying request in ${retrySeconds}s · retry 1 of 2`
+                  : "Waiting for retry to start · retry 1 of 2"}
               </div>
             )}
             {thinking && turnActive && turnPhase !== "running" && (
