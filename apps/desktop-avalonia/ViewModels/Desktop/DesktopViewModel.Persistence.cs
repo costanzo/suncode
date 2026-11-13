@@ -372,9 +372,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable
     public void ShowToolActivity(string turnId, string toolCallId)
     {
         if (!ToolActivity.TrySelect(turnId, toolCallId)) return;
-        ToolActivityVisible = true;
-        GitVisible = false;
-        ProviderTraceVisible = false;
+        Layout.OpenBottomDrawer(WorkspaceBottomDrawer.ToolActivity);
+        ToolActivity.RequestDetailFocus();
     }
 
     /// <summary>Opens the turn diff drawer on one turn, optionally focused on one file.</summary>

@@ -66,7 +66,7 @@
           <TextBlock Grid.Row="0" Margin="12,0" Text="{DynamicResource LocCurrentSession}" Classes="eyebrow" VerticalAlignment="Center" />
           <Border Grid.Row="1" Background="{DynamicResource BorderBrush}" />
           <Grid Grid.Row="2">
-            <TreeView x:Name="ToolTree" Classes="tool-tree" ItemsSource="{Binding ToolActivity.Turns}" SelectionChanged="ToolSelected">
+            <TreeView x:Name="ToolTree" Classes="tool-tree" ItemsSource="{Binding ToolActivity.Turns}" SelectedItem="{Binding ToolActivity.SelectedTool, Mode=OneWay}" SelectionChanged="ToolSelected">
               <TreeView.DataTemplates>
                 <TreeDataTemplate DataType="models:ToolActivityTurnItem" ItemsSource="{Binding Tools}">
                   <Grid Height="24" ColumnDefinitions="12,*,Auto" Margin="-15,0,8,0" ToolTip.Tip="{Binding Preview}">
@@ -99,9 +99,9 @@
         <Border Grid.Column="1" Background="{DynamicResource BorderBrush}" />
 
         <Grid Grid.Column="2" Background="{DynamicResource WorkspaceBrush}">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ToolActivity.HasSelectedTool}">
+          <ScrollViewer x:Name="ToolDetailScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ToolActivity.HasSelectedTool}">
             <StackPanel Margin="16,14,18,20" Spacing="14">
-              <Grid ColumnDefinitions="*,Auto">
+              <Grid x:Name="ToolDetailHeading" Focusable="True" AutomationProperties.Name="{Binding ToolActivity.SelectedTool.DisplayName}" ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="3">
                   <TextBlock Text="{Binding ToolActivity.SelectedTitle}" Classes="mono" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" />
                   <TextBlock Text="{Binding ToolActivity.SelectedTool.DisplayName}" FontSize="15" FontWeight="SemiBold" />

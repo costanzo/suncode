@@ -11,8 +11,12 @@ public sealed class ToolActivityViewModel : ObservableObject
 {
     private ToolActivityTurnItem? _selectedTurn;
     private ToolActivityItem? _selectedTool;
+    private bool _followActiveTool = true;
 
     public ObservableCollection<ToolActivityTurnItem> Turns { get; } = [];
+    internal event Action? DetailFocusRequested;
+
+    internal void RequestDetailFocus() => DetailFocusRequested?.Invoke();
 
     public ToolActivityTurnItem? SelectedTurn
     {
@@ -57,6 +61,12 @@ public sealed class ToolActivityViewModel : ObservableObject
 
     public void Select(ToolActivityTurnItem turn, ToolActivityItem tool)
     {
+        _followActiveTool = false;
+        SetSelection(turn, tool);
+    }
+
+    private void SetSelection(ToolActivityTurnItem turn, ToolActivityItem tool)
+    {
         turn.IsExpanded = true;
         SelectedTurn = turn;
         SelectedTool = tool;
@@ -69,6 +79,7 @@ public sealed class ToolActivityViewModel : ObservableObject
 
     public void ToggleTurn(ToolActivityTurnItem turn)
     {
+        _followActiveTool = false;
         turn.IsExpanded = !turn.IsExpanded;
         SelectedTurn = turn;
         if (SelectedTool is null || SelectedTool.TurnId != turn.TurnId)
@@ -101,8 +112,8 @@ public sealed class ToolActivityViewModel : ObservableObject
         return created;
     }
 
-    // Adds or updates one tool call and follows it when nothing is selected or
-    // the selection is already tracking the running turn.
+    // Follow live calls while using the default selection. An explicit
+    // selection remains stable while other calls update.
     internal void Upsert(
         ToolActivityTurnItem turn,
         string toolCallId,
@@ -124,8 +135,8 @@ public sealed class ToolActivityViewModel : ObservableObject
         {
             existing.Update(name, state, request, result, output, error);
         }
-        if (SelectedTool is null || (SelectedTurn?.IsActive == true && existing.IsActive))
-            Select(turn, existing);
+        if (SelectedTool is null || (_followActiveTool && SelectedTurn?.IsActive == true && existing.IsActive))
+            SetSelection(turn, existing);
     }
 
     internal void ReplaceAll(IEnumerable<ToolActivityTurnItem> turns)
@@ -145,6 +156,7 @@ public sealed class ToolActivityViewModel : ObservableObject
 
     private void SelectDefault()
     {
+        _followActiveTool = true;
         var turn = Turns.LastOrDefault(item => item.IsActive && item.Tools.Any(tool => tool.IsActive))
             ?? Turns.LastOrDefault(item => item.Tools.Count > 0);
         var tool = turn?.Tools.LastOrDefault(item => item.IsActive) ?? turn?.Tools.FirstOrDefault();
@@ -154,6 +166,6 @@ public sealed class ToolActivityViewModel : ObservableObject
             SelectedTool = null;
             return;
         }
-        Select(turn, tool);
+        SetSelection(turn, tool);
     }
 }

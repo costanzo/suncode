@@ -78,6 +78,22 @@ public sealed class ToolActivityViewModelTests
     }
 
     [Fact]
+    public void ExplicitSelectionIsRetainedWhenAnotherToolUpdates()
+    {
+        var viewModel = new ToolActivityViewModel();
+        var turn = viewModel.EnsureTurn("turn");
+        viewModel.Upsert(turn, "call-1", "bash", "executing", "{}", "", "", "");
+        viewModel.Upsert(turn, "call-2", "bash", "executing", "{}", "", "", "");
+        Assert.Equal("call-2", viewModel.SelectedTool?.ToolCallId);
+
+        Assert.True(viewModel.TrySelect("turn", "call-1"));
+        viewModel.Upsert(turn, "call-2", "bash", "executing", "{}", "", "new output", "");
+
+        Assert.Equal("call-1", viewModel.SelectedTool?.ToolCallId);
+        Assert.Equal("new output", turn.Tools[1].Output);
+    }
+
+    [Fact]
     public void ToggleTurnSwitchesSelectionToThatTurn()
     {
         var viewModel = new ToolActivityViewModel();

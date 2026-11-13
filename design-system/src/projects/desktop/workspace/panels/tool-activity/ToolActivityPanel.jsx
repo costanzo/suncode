@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "../../../../../shared/Icon.jsx";
 
@@ -85,7 +85,12 @@ const completedToolActivityTurns = [
   },
 ];
 
-export function ToolActivityPanel({ onClose, standalone = false, state = "running" }) {
+export function ToolActivityPanel({
+  onClose,
+  standalone = false,
+  state = "running",
+  focusRequest,
+}) {
   const empty = state === "empty";
   const turns = empty ? [] : state === "completed" ? completedToolActivityTurns : toolActivityTurns;
   const initialTurn = 0;
@@ -94,8 +99,34 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
   const [selectedTool, setSelectedTool] = useState(initialTool);
   const [expandedTurns, setExpandedTurns] = useState(() => new Set([initialTurn]));
   const [visibleOutputLines, setVisibleOutputLines] = useState(2);
+  const selectedRowRef = useRef(null);
+  const detailRef = useRef(null);
+  const headingRef = useRef(null);
+  const handledFocusRequest = useRef(null);
   const turn = turns[selectedTurn] ?? turns[0];
   const tool = turn?.tools[selectedTool] ?? turn?.tools[0];
+  useEffect(() => {
+    if (!focusRequest) return;
+    const turnIndex = turns.findIndex((entry) => entry.id === focusRequest.turnId);
+    if (turnIndex < 0 || !turns[turnIndex].tools[focusRequest.toolIndex]) return;
+    setSelectedTurn(turnIndex);
+    setSelectedTool(focusRequest.toolIndex);
+    setExpandedTurns((current) => new Set([...current, turnIndex]));
+  }, [focusRequest, turns]);
+  useEffect(() => {
+    if (
+      !focusRequest ||
+      handledFocusRequest.current === focusRequest ||
+      turn?.id !== focusRequest.turnId ||
+      selectedTool !== focusRequest.toolIndex ||
+      !expandedTurns.has(selectedTurn)
+    )
+      return;
+    handledFocusRequest.current = focusRequest;
+    selectedRowRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    headingRef.current?.focus({ preventScroll: true });
+    if (detailRef.current) detailRef.current.scrollTop = 0;
+  }, [focusRequest, selectedTurn, selectedTool, expandedTurns, turn?.id]);
   useEffect(() => {
     setVisibleOutputLines(2);
     if (!tool?.live) return undefined;
@@ -183,6 +214,16 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
                       <button
                         type="button"
                         key={entry.title}
+                        ref={
+                          selectedTurn === turnIndex && selectedTool === toolIndex
+                            ? selectedRowRef
+                            : null
+                        }
+                        aria-current={
+                          selectedTurn === turnIndex && selectedTool === toolIndex
+                            ? "true"
+                            : undefined
+                        }
                         className={`workspace-tool-tree-row is-${entry.tone} ${selectedTurn === turnIndex && selectedTool === toolIndex ? "is-selected" : ""}`}
                         onClick={() => {
                           setSelectedTurn(turnIndex);
@@ -203,8 +244,13 @@ export function ToolActivityPanel({ onClose, standalone = false, state = "runnin
               </div>
             ))}
           </div>
-          <div className="workspace-tool-detail">
-            <div className="workspace-tool-detail-heading">
+          <div className="workspace-tool-detail" ref={detailRef}>
+            <div
+              className="workspace-tool-detail-heading"
+              ref={headingRef}
+              tabIndex={-1}
+              aria-label={tool.title}
+            >
               <div>
                 <code>
                   {turn.title} · {tool.state.toUpperCase()}

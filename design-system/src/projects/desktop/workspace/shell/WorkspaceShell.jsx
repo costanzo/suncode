@@ -222,13 +222,14 @@ export function WorkspaceWindow({
   const [recentContent, setRecentContent] = useState(initialRecentContent);
   const [rightRegion, setRightRegion] = useState("review");
   const [traceFocusVersion, setTraceFocusVersion] = useState(0);
+  const [toolFocusRequest, setToolFocusRequest] = useState(null);
   const [drawer, setDrawer] = useState(
     initialDrawer === "git" && !gitAvailable ? null : initialDrawer,
   );
   const [archiveRequest, setArchiveRequest] = useState(null);
   useEffect(() => {
     if (!browserUseEnabled) {
-      setRightRegion((current) => current === "preview" ? null : current);
+      setRightRegion((current) => (current === "preview" ? null : current));
     }
   }, [browserUseEnabled]);
   const activePrimarySession =
@@ -330,7 +331,10 @@ export function WorkspaceWindow({
                 example={conversationExample}
                 state={activeSessionArchived ? "archived" : conversationState}
                 onViewChanges={gitAvailable ? () => setDrawer("git") : undefined}
-                onOpenToolActivity={() => setDrawer("tools")}
+                onOpenToolActivity={(turnId, toolIndex) => {
+                  setToolFocusRequest({ turnId, toolIndex });
+                  setDrawer("tools");
+                }}
               />
             )}
             {rightRegion === "review" && (
@@ -369,7 +373,9 @@ export function WorkspaceWindow({
               onClose={() => setDrawer(null)}
             />
           )}
-          {drawer === "tools" && <ToolActivityPanel onClose={() => setDrawer(null)} />}
+          {drawer === "tools" && (
+            <ToolActivityPanel onClose={() => setDrawer(null)} focusRequest={toolFocusRequest} />
+          )}
           {drawer === "terminal" && <TerminalPanel onClose={() => setDrawer(null)} />}
         </div>
         <aside className="workspace-gutter workspace-gutter-right">

@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SunCode.Desktop.Models;
 using SunCode.Desktop.ViewModels;
 
@@ -26,11 +27,30 @@ public sealed partial class ToolActivityViewer : UserControl
 
     private DesktopViewModel ViewModel => (DesktopViewModel)DataContext!;
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ObserveViewModel();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_observedViewModel is not null)
+        {
+            _observedViewModel.PropertyChanged -= ViewModelPropertyChanged;
+            _observedViewModel.DetailFocusRequested -= RevealSelectedTool;
+        }
+        if (_observedTool is not null) _observedTool.PropertyChanged -= ToolPropertyChanged;
+        _observedViewModel = null;
+        _observedTool = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
     private void ToolSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.OfType<ToolActivityItem>().FirstOrDefault() is { } tool)
         {
-            ViewModel.ToolActivity.Select(tool);
+            if (!ReferenceEquals(ViewModel.ToolActivity.SelectedTool, tool)) ViewModel.ToolActivity.Select(tool);
         }
         else if (e.AddedItems.OfType<ToolActivityTurnItem>().FirstOrDefault() is { } turn)
         {
@@ -41,10 +61,36 @@ public sealed partial class ToolActivityViewer : UserControl
 
     private void ObserveViewModel()
     {
-        if (_observedViewModel is not null) _observedViewModel.PropertyChanged -= ViewModelPropertyChanged;
+        if (_observedViewModel is not null)
+        {
+            _observedViewModel.PropertyChanged -= ViewModelPropertyChanged;
+            _observedViewModel.DetailFocusRequested -= RevealSelectedTool;
+        }
         _observedViewModel = (DataContext as DesktopViewModel)?.ToolActivity;
-        if (_observedViewModel is not null) _observedViewModel.PropertyChanged += ViewModelPropertyChanged;
+        if (_observedViewModel is not null)
+        {
+            _observedViewModel.PropertyChanged += ViewModelPropertyChanged;
+            _observedViewModel.DetailFocusRequested += RevealSelectedTool;
+        }
         ObserveSelectedTool();
+    }
+
+    private void RevealSelectedTool()
+    {
+        var activity = _observedViewModel;
+        var tool = activity?.SelectedTool;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (tool is null || !ReferenceEquals(_observedViewModel, activity)
+                || !ReferenceEquals(activity?.SelectedTool, tool) || !IsEffectivelyVisible) return;
+            UpdateLayout();
+            ToolTree.SelectedItem = tool;
+            var row = ToolTree.GetVisualDescendants().OfType<TreeViewItem>()
+                .FirstOrDefault(item => ReferenceEquals(item.DataContext, tool));
+            row?.BringIntoView();
+            ToolDetailHeading.Focus();
+            ToolDetailScroll.Offset = default;
+        }, DispatcherPriority.Loaded);
     }
 
     private void ViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

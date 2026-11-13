@@ -298,10 +298,8 @@ public sealed partial class DesktopViewModel : ObservableObject, IDisposable, IV
             OnPropertyChanged(nameof(CanChooseReasoningEffort));
         }
     }
-    // Drawer visibility lives in Layout; these keep the event-projection partials unchanged.
-    private bool GitVisible { get => Layout.GitVisible; set => Layout.GitVisible = value; }
-    private bool ProviderTraceVisible { get => Layout.ProviderTraceVisible; set => Layout.ProviderTraceVisible = value; }
-    private bool ToolActivityVisible { get => Layout.ToolActivityVisible; set => Layout.ToolActivityVisible = value; }
+    // Provider events consult the drawer state owned by Layout.
+    private bool ProviderTraceVisible => Layout.ProviderTraceVisible;
     public ChildSessionItem? SelectedChildSession
     {
         get => _selectedChildSession;

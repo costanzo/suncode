@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader, Section } from "../../../../shared/PagePrimitives.jsx";
 import { WorkspaceGuideState } from "../WorkspaceGuide.jsx";
 import { ToolActivityPanel } from "../panels/tool-activity/index.js";
+import { Button } from "../../../../components/universal/button/index.js";
 
 const guides = {
   running: {
@@ -65,6 +66,7 @@ const guides = {
 
 export function WorkspaceToolActivityPage() {
   const [openGuide, setOpenGuide] = useState(null);
+  const [focusRequest, setFocusRequest] = useState(null);
   const states = [
     {
       id: "empty",
@@ -95,6 +97,19 @@ export function WorkspaceToolActivityPage() {
         description="Turn-scoped tool calls, live output, status, and inspectable operation details."
       />
       <Section id="tool-activity-panel" title="Turn and tool progress">
+        <div className="stack">
+          <div className="row">
+            <Button onClick={() => setFocusRequest({ turnId: "0198e82c", toolIndex: 1 })}>
+              View running tool
+            </Button>
+            <span>
+              Select another call or collapse the turn, then jump back to the running call.
+            </span>
+          </div>
+          <ToolActivityPanel standalone focusRequest={focusRequest} />
+        </div>
+      </Section>
+      <Section id="tool-activity-states" title="States">
         <div className="workspace-state-grid workspace-drawer-state-grid">
           {states.map((state) => (
             <WorkspaceGuideState
