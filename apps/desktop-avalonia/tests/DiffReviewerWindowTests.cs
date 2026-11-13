@@ -142,6 +142,54 @@ public sealed class DiffReviewerWindowTests(AvaloniaUiFixture ui)
             Assert.NotEmpty(before.Text);
             await model.SelectAsync(model.Roots.Single(node => node.Entry.Path == "src").Children[0]);
             Assert.NotEmpty(before.Text);
+
+            // A long directory chain consumes one displayed level at every supported sidebar width.
+            var originalFiles = service.Files;
+            const string deepPath = "app/src/main/java/com/example/payment/wechat/management/controller/CheckPaymentController.java";
+            service.Files = [new(deepPath, "modified", false, true, false)];
+            await model.RefreshAsync(deepPath);
+            var treeScroll = tree.GetVisualDescendants().OfType<ScrollViewer>().First();
+            foreach (var treeWidth in new[] { 180, 240, 360 })
+            {
+                window.FindControl<Grid>("ReviewBody")!.ColumnDefinitions[0].Width = new GridLength(treeWidth);
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                Assert.Equal(2, tree.GetVisualDescendants().OfType<TreeViewItem>().Count());
+                var label = tree.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.IsVisible && text.Text == "CheckPaymentController.java");
+                Assert.True(label.Bounds.Width >= label.TextLayout.Width);
+                Assert.Same(Avalonia.Media.TextTrimming.None, label.TextTrimming);
+                Assert.False(Assert.Single(label.TextLayout.TextLines).HasCollapsed);
+                Assert.Equal("CheckPaymentController.java", ToolTip.GetTip((Grid)label.Parent!));
+                var folderLabel = tree.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.IsVisible && text.Text == model.Roots[0].Entry.Name);
+                Assert.True(folderLabel.Bounds.Width >= folderLabel.TextLayout.Width);
+                Assert.False(Assert.Single(folderLabel.TextLayout.TextLines).HasCollapsed);
+                Assert.True(treeScroll.Extent.Width > treeScroll.Viewport.Width);
+                treeScroll.Offset = new Vector(treeScroll.Extent.Width - treeScroll.Viewport.Width, 0);
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                Assert.True(treeScroll.Offset.X > 0);
+                var folderRight = folderLabel.TranslatePoint(new Point(folderLabel.Bounds.Width, 0), treeScroll)!.Value.X;
+                Assert.InRange(folderRight, 0, treeScroll.Viewport.Width);
+                treeScroll.Offset = default;
+                var item = label.FindAncestorOfType<TreeViewItem>()!;
+                item.Focus();
+                window.KeyPress(Key.Left, RawInputModifiers.None, PhysicalKey.ArrowLeft, null);
+                Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                Assert.Same(model.Roots[0], Assert.IsType<TreeViewItem>(window.FocusManager!.GetFocusedElement()).DataContext);
+            }
+
+            // Genuine branches retain complete labels and can overflow horizontally.
+            service.Files = Enumerable.Range(1, 12).Select(depth =>
+                new GitChange(string.Join('/', Enumerable.Range(1, depth).Select(level => $"level{level}")) + "/file.txt",
+                    "modified", false, true, false)).ToArray();
+            await model.RefreshAsync();
+            Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+            Assert.True(treeScroll.Extent.Width > treeScroll.Viewport.Width);
+            var fileLabels = tree.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsVisible && text.Text == "file.txt").ToArray();
+            Assert.Equal(12, fileLabels.Length);
+            Assert.All(fileLabels, label => Assert.True(label.Bounds.Width >= label.TextLayout.Width));
+            service.Files = originalFiles;
             owner.Close();
             Assert.False(window.IsVisible);
 

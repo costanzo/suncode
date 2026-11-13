@@ -46,6 +46,7 @@ export function DiffReviewerPage() {
             >
               {[
                 ["ready", "Changes"],
+                ["deep", "Deep paths"],
                 ["loading", "Loading"],
                 ["error", "Read failure"],
                 ["clean", "No changes"],
@@ -154,7 +155,11 @@ export function DiffReviewerPage() {
           </li>
           <li>
             The changed-file tree contains changed paths and their parent folders. File selection
-            opens the comparison at its first difference.
+            opens the comparison at its first difference. Consecutive single-child directories share
+            one slash-separated row. Branches retain their hierarchy, and files have separate rows.
+            Folder and file labels display their complete text on one line. The list scrolls
+            horizontally when its contents exceed the sidebar width. File tooltips show the complete
+            filename, and folder tooltips show the full path.
           </li>
           <li>
             Previous and next navigate contiguous difference blocks in the current file. Buttons

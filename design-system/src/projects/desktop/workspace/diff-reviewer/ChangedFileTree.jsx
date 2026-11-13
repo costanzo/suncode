@@ -5,20 +5,35 @@ import { statusNames } from "./data.js";
 
 function fileTree(files) {
   const nodes = new Map();
+  const roots = [];
   for (const file of files) {
     const parts = file.path.split("/");
     parts.forEach((name, index) => {
       const path = parts.slice(0, index + 1).join("/");
-      nodes.set(path, {
-        path,
-        name,
-        depth: index,
-        parent: parts.slice(0, index).join("/"),
-        file: index === parts.length - 1 ? file : null,
-      });
+      if (!nodes.has(path)) {
+        const node = { path, name, children: [], file: index === parts.length - 1 ? file : null };
+        nodes.set(path, node);
+        const parent = nodes.get(parts.slice(0, index).join("/"));
+        (parent?.children ?? roots).push(node);
+      }
     });
   }
-  return [...nodes.values()].sort((a, b) => a.path.localeCompare(b.path, "en"));
+  const compact = [];
+  function visit(siblings, parent = "", depth = 0) {
+    for (let node of siblings.sort((a, b) => a.path.localeCompare(b.path, "en"))) {
+      const names = [node.name];
+      const directoryPaths = node.file ? [] : [node.path];
+      while (node.children.length === 1 && !node.children[0].file) {
+        node = node.children[0];
+        names.push(node.name);
+        directoryPaths.push(node.path);
+      }
+      compact.push({ ...node, name: names.join("/"), directoryPaths, parent, depth });
+      visit(node.children, node.path, depth + 1);
+    }
+  }
+  visit(roots);
+  return compact;
 }
 
 export function ChangedFileTree({ files, selectedPath, onSelect }) {
@@ -26,22 +41,24 @@ export function ChangedFileTree({ files, selectedPath, onSelect }) {
   const [collapsed, setCollapsed] = useState(new Set());
   const [focusedPath, setFocusedPath] = useState(selectedPath);
   const tree = useRef(null);
+  const isCollapsed = (node) => node.directoryPaths.some((path) => collapsed.has(path));
   const visible = nodes.filter(
     (node) =>
       !nodes.some(
-        (parent) =>
-          !parent.file && collapsed.has(parent.path) && node.path.startsWith(`${parent.path}/`),
+        (parent) => !parent.file && isCollapsed(parent) && node.path.startsWith(`${parent.path}/`),
       ),
   );
   const tabPath = visible.some((node) => node.path === focusedPath)
     ? focusedPath
     : visible[0]?.path;
 
-  function toggle(path, expanded) {
+  function toggle(node, expanded) {
     setCollapsed((current) => {
       const next = new Set(current);
-      if (expanded) next.delete(path);
-      else next.add(path);
+      for (const path of node.directoryPaths) {
+        if (expanded) next.delete(path);
+        else next.add(path);
+      }
       return next;
     });
   }
@@ -63,11 +80,11 @@ export function ChangedFileTree({ files, selectedPath, onSelect }) {
         next = visible.at(-1);
         break;
       case "ArrowRight":
-        if (!node.file && collapsed.has(node.path)) toggle(node.path, true);
+        if (!node.file && isCollapsed(node)) toggle(node, true);
         else if (!node.file) next = visible[index + 1];
         break;
       case "ArrowLeft":
-        if (!node.file && !collapsed.has(node.path)) toggle(node.path, false);
+        if (!node.file && !isCollapsed(node)) toggle(node, false);
         else next = visible.find((item) => item.path === node.parent);
         break;
       default:
@@ -89,53 +106,49 @@ export function ChangedFileTree({ files, selectedPath, onSelect }) {
       role="tree"
       aria-label="Changed files"
     >
-      {visible.map((node) => (
-        <button
-          type="button"
-          role="treeitem"
-          key={node.path}
-          data-path={node.path}
-          className={`workspace-tree-row ${selectedPath === node.path ? "is-selected" : ""}`}
-          style={{ "--tree-depth": node.depth }}
-          aria-level={node.depth + 1}
-          aria-expanded={node.file ? undefined : !collapsed.has(node.path)}
-          aria-selected={selectedPath === node.path}
-          aria-label={node.file ? `${node.path}, ${statusNames[node.file.status]}` : node.name}
-          tabIndex={tabPath === node.path ? 0 : -1}
-          title={node.file?.oldPath ? `${node.path}\nRenamed from ${node.file.oldPath}` : node.path}
-          onFocus={() => setFocusedPath(node.path)}
-          onKeyDown={(event) => onKeyDown(event, node)}
-          onClick={() =>
-            node.file ? onSelect(node.path) : toggle(node.path, collapsed.has(node.path))
-          }
-        >
-          {node.file ? (
-            <span />
-          ) : (
-            <Icon
-              name="chevron-right"
-              size={10}
-              className={collapsed.has(node.path) ? "" : "is-open"}
-            />
-          )}
-          {node.file ? (
-            <FileIcon type={node.file.icon} size={14} />
-          ) : (
-            <Icon name="folder" size={14} />
-          )}
-          <span className="workspace-tree-copy">
-            <strong>{node.name}</strong>
-          </span>
-          {node.file && (
-            <span
-              className={`diff-reviewer-status is-${node.file.status === "?" ? "untracked" : node.file.status}`}
-              aria-hidden="true"
-            >
-              {node.file.status}
+      <div className="diff-reviewer-tree-content">
+        {visible.map((node) => (
+          <button
+            type="button"
+            role="treeitem"
+            key={node.path}
+            data-path={node.path}
+            className={`workspace-tree-row ${selectedPath === node.path ? "is-selected" : ""}`}
+            style={{ "--tree-depth": node.depth }}
+            aria-level={node.depth + 1}
+            aria-expanded={node.file ? undefined : !isCollapsed(node)}
+            aria-selected={selectedPath === node.path}
+            aria-label={node.file ? `${node.path}, ${statusNames[node.file.status]}` : node.path}
+            tabIndex={tabPath === node.path ? 0 : -1}
+            title={node.file ? node.name : node.path}
+            onFocus={() => setFocusedPath(node.path)}
+            onKeyDown={(event) => onKeyDown(event, node)}
+            onClick={() => (node.file ? onSelect(node.path) : toggle(node, isCollapsed(node)))}
+          >
+            {node.file ? (
+              <span />
+            ) : (
+              <Icon name="chevron-right" size={10} className={isCollapsed(node) ? "" : "is-open"} />
+            )}
+            {node.file ? (
+              <FileIcon type={node.file.icon} size={14} />
+            ) : (
+              <Icon name="folder" size={14} />
+            )}
+            <span className="workspace-tree-copy">
+              <strong>{node.name}</strong>
             </span>
-          )}
-        </button>
-      ))}
+            {node.file && (
+              <span
+                className={`diff-reviewer-status is-${node.file.status === "?" ? "untracked" : node.file.status}`}
+                aria-hidden="true"
+              >
+                {node.file.status}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

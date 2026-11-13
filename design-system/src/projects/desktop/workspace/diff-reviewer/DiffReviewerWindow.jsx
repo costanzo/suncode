@@ -3,7 +3,7 @@ import { NativeWindowFrame } from "../../../../platforms/desktop/components/titl
 import { Icon } from "../../../../shared/Icon.jsx";
 import { ChangedFileTree } from "./ChangedFileTree.jsx";
 import { DiffDocument } from "./DiffDocument.jsx";
-import { comparisons, comparisonsByRange, comparisonSides } from "./data.js";
+import { comparisons, comparisonsByRange, comparisonSides, deepComparisons } from "./data.js";
 
 function Action({ icon, label, disabled, onClick }) {
   return (
@@ -27,9 +27,13 @@ export function DiffReviewerWindow({
   onClose,
 }) {
   const [scope, setScope] = useState("all");
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState(initialState === "deep" ? "ready" : initialState);
+  const filesByRange =
+    initialState === "deep"
+      ? { all: deepComparisons, staged: deepComparisons, unstaged: deepComparisons }
+      : comparisonsByRange;
   const [selectedPath, setSelectedPath] = useState(
-    initialState === "binary" ? comparisons.at(-1).path : comparisons[0].path,
+    initialState === "binary" ? comparisons.at(-1).path : filesByRange.all[0].path,
   );
   const [activeChange, setActiveChange] = useState(0);
   const [expanded, setExpanded] = useState(new Set());
@@ -51,7 +55,7 @@ export function DiffReviewerWindow({
     [],
   );
 
-  const files = state === "clean" ? [] : comparisonsByRange[scope];
+  const files = state === "clean" ? [] : filesByRange[scope];
   const file = state === "unselected" ? null : files.find((item) => item.path === selectedPath);
   const displayed =
     state === "limited" && file ? { ...file, blocks: file.blocks.slice(0, 3), changes: 1 } : file;
@@ -73,7 +77,7 @@ export function DiffReviewerWindow({
 
   function changeScope(value) {
     setScope(value);
-    const nextFiles = comparisonsByRange[value];
+    const nextFiles = filesByRange[value];
     selectFile(nextFiles.find((item) => item.path === selectedPath)?.path ?? nextFiles[0]?.path);
     if (state === "clean") setState("clean");
   }

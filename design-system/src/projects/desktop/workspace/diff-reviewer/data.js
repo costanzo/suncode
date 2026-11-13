@@ -225,6 +225,15 @@ export const comparisonsByRange = {
     .map((file) => (file === comparisons[0] ? cssComparisonForRange("unstaged") : file)),
 };
 
+export const deepComparisons = [
+  "ceps-applet-web/src/main/java/com/electricity/payment/wechat/management/controller/CheckPaymentController.java",
+  "apps/desktop-avalonia/Resources/Localization/Strings.en-US.axaml",
+  "apps/desktop-avalonia/Resources/Localization/Strings.zh-CN.axaml",
+  "apps/desktop-avalonia/ViewModels/Desktop/DesktopViewModel.ProviderRetryCountdown.cs",
+  "apps/cli/src/main.rs",
+  "README.md",
+].map((path) => ({ ...comparisons[0], path, icon: path.endsWith(".java") ? "java" : "file" }));
+
 export const statusNames = {
   M: "Modified",
   A: "Added",

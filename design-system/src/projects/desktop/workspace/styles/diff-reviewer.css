@@ -92,10 +92,22 @@
   overflow: auto;
 }
 .diff-reviewer-tree .workspace-tree-row {
-  grid-template-columns: var(--space-3) var(--space-4) minmax(0, 1fr) var(--space-4);
+  grid-template-columns: var(--space-3) var(--space-4) max-content var(--space-4);
   width: 100%;
   min-height: var(--space-6);
   font-size: var(--diff-reviewer-caption-size);
+}
+.diff-reviewer-tree-content {
+  width: max-content;
+  min-width: 100%;
+}
+.diff-reviewer-tree .workspace-tree-copy {
+  overflow: visible;
+}
+.diff-reviewer-tree .workspace-tree-copy strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 .diff-reviewer-status {
   text-align: center;

@@ -11,7 +11,9 @@ public sealed class DiffReviewerNode(ExplorerNode entry, GitFileItem? file = nul
     public ExplorerNode Entry { get; } = entry;
     public GitFileItem? File { get; } = file;
     public ObservableCollection<DiffReviewerNode> Children { get; } = [];
+    internal IReadOnlyList<string> DirectoryPaths { get; init; } = entry.IsDirectory ? [entry.Path] : [];
     public string Status => File?.StatusLetter ?? string.Empty;
+    public string ToolTipText => File is null ? Entry.Path : Entry.Name;
     public bool IsAdded => File?.IsSuccess ?? false;
     public bool IsDeleted => File?.IsDanger ?? false;
     public bool IsModified => File?.IsWarning ?? false;
@@ -177,8 +179,10 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
 
     private void BuildTree(IReadOnlyList<GitChange> files)
     {
-        var expansion = Flatten(Roots).ToDictionary(node => node.Entry.Path, node => node.Entry.IsExpanded, StringComparer.Ordinal);
+        var expansion = Flatten(Roots).SelectMany(node => node.DirectoryPaths.Select(path => (path, node.Entry.IsExpanded)))
+            .ToDictionary(item => item.path, item => item.IsExpanded, StringComparer.Ordinal);
         var nodes = new Dictionary<string, DiffReviewerNode>(StringComparer.Ordinal);
+        var roots = new ObservableCollection<DiffReviewerNode>();
         Roots.Clear();
         FileCount = 0;
         foreach (var file in files.Where(file => ScopeAll || (ScopeStaged ? file.Staged : file.Unstaged)).OrderBy(file => file.Path, StringComparer.Ordinal))
@@ -199,11 +203,36 @@ public sealed class DiffReviewerViewModel : ObservableObject, IDisposable
                     node = new(entry, isFile ? new GitFileItem(file.Path, file.Status, file.Staged, file.Unstaged,
                         file.Conflicted, file.Additions, file.Deletions, file.OldPath ?? string.Empty, file.Binary) : null);
                     nodes.Add(path, node);
-                    (parent?.Children ?? Roots).Add(node);
+                    (parent?.Children ?? roots).Add(node);
                 }
                 parent = node;
             }
         }
+        foreach (var root in roots) Roots.Add(CompactDirectories(root));
+    }
+
+    private static DiffReviewerNode CompactDirectories(DiffReviewerNode node)
+    {
+        if (node.File is not null) return node;
+        var names = new List<string> { node.Entry.Name };
+        var paths = new List<string> { node.Entry.Path };
+        var expanded = node.Entry.IsExpanded;
+        while (node.Children.Count == 1 && node.Children[0].Entry.IsDirectory)
+        {
+            node = node.Children[0];
+            names.Add(node.Entry.Name);
+            paths.Add(node.Entry.Path);
+            expanded &= node.Entry.IsExpanded;
+        }
+        var entry = new ExplorerNode(string.Join('/', names), node.Entry.Path, "directory")
+        {
+            IsLoaded = true,
+            IsExpanded = expanded
+        };
+        entry.Children.Clear();
+        var compact = new DiffReviewerNode(entry) { DirectoryPaths = paths };
+        foreach (var child in node.Children) compact.Children.Add(CompactDirectories(child));
+        return compact;
     }
 
     private static IEnumerable<DiffReviewerNode> Flatten(IEnumerable<DiffReviewerNode> nodes)

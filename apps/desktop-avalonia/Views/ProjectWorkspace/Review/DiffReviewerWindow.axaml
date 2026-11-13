@@ -76,16 +76,16 @@
             <TextBlock Grid.Column="1" Text="{Binding FileCountText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
           </Grid>
         </Border>
-        <TreeView Grid.Row="1" x:Name="ChangedFilesTree" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedNode}" IsEnabled="{Binding CanSelect}" Background="Transparent" BorderThickness="0" Padding="4,8" AutomationProperties.Name="{DynamicResource LocDiffChangedFiles}">
+        <TreeView Grid.Row="1" x:Name="ChangedFilesTree" ScrollViewer.HorizontalScrollBarVisibility="Auto" ItemsSource="{Binding Roots}" SelectedItem="{Binding SelectedNode}" IsEnabled="{Binding CanSelect}" Background="Transparent" BorderThickness="0" Padding="4,8" AutomationProperties.Name="{DynamicResource LocDiffChangedFiles}">
           <TreeView.DataTemplates>
             <TreeDataTemplate DataType="vm:DiffReviewerNode" ItemsSource="{Binding Children}">
-              <Grid ColumnDefinitions="14,*,16" ColumnSpacing="6" Height="24" ToolTip.Tip="{Binding Entry.Path}"
+              <Grid ColumnDefinitions="14,Auto,16" ColumnSpacing="6" Height="24" HorizontalAlignment="Left" ToolTip.Tip="{Binding ToolTipText}"
                     Classes.file-blue="{Binding Entry.IsFileIconBlue}" Classes.file-yellow="{Binding Entry.IsFileIconYellow}" Classes.file-muted="{Binding Entry.IsFileIconMuted}"
                     Classes.file-green="{Binding Entry.IsFileIconGreen}" Classes.file-purple="{Binding Entry.IsFileIconPurple}" Classes.file-pink="{Binding Entry.IsFileIconPink}"
                     Classes.file-red="{Binding Entry.IsFileIconRed}" Classes.file-orange="{Binding Entry.IsFileIconOrange}" Classes.file-ink="{Binding Entry.IsFileIconInk}">
                 <svg:Svg Width="14" Height="14" Path="/Assets/icons/folder.svg" Css="{DynamicResource IconSvgCss}" IsVisible="{Binding Entry.IsDirectory}" />
                 <TextBlock Classes="diff-file-icon" Text="{Binding Entry.FileIconGlyph}" IsVisible="{Binding Entry.IsFile}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding Entry.Name}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Entry.Name}" FontSize="11" VerticalAlignment="Center" TextTrimming="None" TextWrapping="NoWrap" />
                 <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DiffReviewerWarningBrush}" IsVisible="{Binding IsModified}" />
                 <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DiffReviewerAddedBrush}" IsVisible="{Binding IsAdded}" />
                 <TextBlock Grid.Column="2" Text="{Binding Status}" Classes="mono" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}" IsVisible="{Binding IsDeleted}" />
