@@ -32,7 +32,8 @@ const explorerGuides = {
         "Select files in either the project or dependency tree to inspect them in the editor.",
       ],
       style: [
-        "Dependency rows use a lightly tinted background distinct from project rows.",
+        "Project and dependency rows share a transparent resting background. Hover and selection use the shared full-row surfaces, including the disclosure and icon columns.",
+        "Single-line dependency roots use the same 24px row rhythm as folders. Their 24px-wide actions fit the 22px content height with 4px padding and a matching minimum height.",
         "Root path subtitles use 9px monospace text and muted contrast.",
         "Folders, Markdown, code, and configuration files receive different 14px icons.",
       ],

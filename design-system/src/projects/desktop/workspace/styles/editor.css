@@ -402,14 +402,6 @@
   color: var(--warning);
 }
 
-.workspace-tree-row.is-dependency:not(.is-selected) {
-  background: color-mix(in srgb, var(--surface-inset) 68%, var(--surface));
-}
-
-.workspace-tree-row.is-dependency:not(.is-selected):hover {
-  background: var(--surface-hover);
-}
-
 .workspace-tree-row.is-dependency-root .workspace-tree-copy strong,
 .workspace-tree-row[aria-level="1"] .workspace-tree-copy strong {
   font-weight: 650;

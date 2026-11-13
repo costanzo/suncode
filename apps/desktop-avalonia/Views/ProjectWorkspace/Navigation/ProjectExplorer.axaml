@@ -71,9 +71,6 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
-    <Style Selector="Grid.explorer-row.dependency">
-      <Setter Property="Background" Value="{DynamicResource FieldBrush}" />
-    </Style>
     <Style Selector="Grid.explorer-row.root svg|Svg">
       <Setter Property="Css" Value="{DynamicResource AccentSvgCss}" />
     </Style>
@@ -199,7 +196,7 @@
                 <TextBlock Classes="explorer-name" Text="{Binding Name}" TextWrapping="NoWrap" TextTrimming="None" VerticalAlignment="Center" />
                 <TextBlock Classes="explorer-path" Text="{Binding PathSubtitle}" IsVisible="{Binding ShowPathSubtitle}" TextWrapping="NoWrap" TextTrimming="None" />
               </StackPanel>
-              <Button Grid.Column="2" Classes="quiet" Width="24" Height="24" Padding="5" IsVisible="{Binding CanRemove}" ToolTip.Tip="{DynamicResource LocDependencyActions}" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
+              <Button Grid.Column="2" Classes="quiet" Width="24" Height="22" MinHeight="22" Padding="4" VerticalAlignment="Center" IsVisible="{Binding CanRemove}" ToolTip.Tip="{DynamicResource LocDependencyActions}" AutomationProperties.Name="{Binding Name, StringFormat=Actions for dependency {0}}">
                 <Button.Flyout>
                   <MenuFlyout>
                     <MenuItem Header="Delete" CommandParameter="{Binding}" Click="DeleteDependency" />

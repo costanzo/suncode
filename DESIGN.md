@@ -233,7 +233,11 @@ Controls use a compact 6px radius. Utility containers and approval surfaces use 
 - **Source and scope:** Technical resource lists use the VS Code default Seti file glyphs for supported file types. The shared `FileIcon` review component is the source inventory; folders remain part of the monochrome interface-icon family.
 - **Matching:** Exact file names take priority over compound extensions; compound extensions take priority over a detected language or the generic-file glyph. Matching is case-insensitive.
 - **Color:** A file glyph may use its Seti type color only to identify content class. It never communicates approval, health, warning, failure, or selection state, and its adjacent filename remains the primary identifier.
-- **Geometry:** File glyphs are 14px in Explorer rows and align to the fixed 24px row rhythm. The same glyph retains its color in rest, hover, focus, disabled, and selected rows.
+- **Geometry:** File glyphs are 14px in Explorer rows and align to the fixed 24px row rhythm. Single-line dependency project headers follow the same rhythm. Their action button is 24px wide and 22px high with a 22px minimum height and 4px padding, fitting inside the row's 22px content area and 1px vertical margins. A visible dependency path subtitle adds only its content height. The same glyph retains its color in rest, hover, focus, disabled, and selected rows.
+
+### Explorer Rows
+
+Project and dependency rows share a transparent resting background. Hover and selection use the shared hover and active surfaces across the full row, including the disclosure and icon columns. Dependency identity comes from the tree hierarchy and root semantic styling.
 
 ### Cards / Containers
 
