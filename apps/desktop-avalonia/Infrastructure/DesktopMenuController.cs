@@ -332,9 +332,6 @@ internal sealed class DesktopMenuController
         {
             if (Model?.SelectedSession is { } selected) Workspace?.ShowPermanentDeleteDialog(selected);
         }, () => SessionReady && Model is { IsBusy: false, SelectedSession.IsArchived: true });
-        Separator(session);
-        Action(session, "RetryLastTurn", "Retry Last Turn", () => _ = RunAsync(() => Model!.RetryLastTurnAsync()),
-            () => IdleSession && Model?.Messages.Count > 0 && Model?.HasPendingApproval == false && Model?.HasPendingQuestion == false);
     }
 
     private void BuildAgent()

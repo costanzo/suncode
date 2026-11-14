@@ -15,7 +15,7 @@
   - In the background, both transports are closed.
 - **Recovery.** The last event ID per Session is persisted and sent as `Last-Event-ID`. A `410` clears the cursor, refreshes the Session, and reconnects for a fresh snapshot. Other failures use bounded exponential backoff with jitter.
 - **Offline cache.** Hosts, Projects, Sessions, and event cursors are cached in SharedPreferences (Android) or UserDefaults (iOS) and restored at startup before network recovery. Streamed `assistant.delta` updates apply to memory immediately and are persisted with a debounce.
-- **Actions.** Users can create a Session (the app opens it from the returned ID), send messages, cancel or retry turns, and resolve approvals and questions. Archiving Sessions and revoking devices are not available.
+- **Actions.** Users can create a Session (the app opens it from the returned ID), send messages, cancel turns, and resolve approvals and questions. Archiving Sessions and revoking devices are not available.
 - **Localization.** Settings offers English (`en-US`) and 简体中文 (`zh-CN`); missing or unsupported values fall back to `en-US`. The choice applies immediately to every phone and tablet surface and open dialog, and persists in SharedPreferences or UserDefaults. Server data, model output, project names, paths, and protocol identifiers are not translated. There is no OS-language auto-detection.
 
 The `FakeMobileRepository` exists only for Compose previews. Both platform entry points use the live `RemoteMobileRepository`, and the endpoint comes from the pairing QR code.

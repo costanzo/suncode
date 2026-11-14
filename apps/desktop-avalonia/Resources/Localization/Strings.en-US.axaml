@@ -30,7 +30,6 @@
   <x:String x:Key="LocMenuArchiveSession">Archive Session…</x:String>
   <x:String x:Key="LocMenuRestoreSession">Restore Archived Session…</x:String>
   <x:String x:Key="LocMenuDeleteSession">Delete Archived Session Permanently…</x:String>
-  <x:String x:Key="LocMenuRetryLastTurn">Retry Last Turn</x:String>
   <x:String x:Key="LocMenuStopTurn">Stop Current Turn</x:String>
   <x:String x:Key="LocMenuModel">Model</x:String>
   <x:String x:Key="LocMenuReasoningEffort">Reasoning Effort</x:String>
@@ -483,7 +482,6 @@
   <x:String x:Key="LocReason">Reason</x:String>
   <x:String x:Key="LocNetworkUnavailable">Network unavailable</x:String>
   <x:String x:Key="LocTurn">Turn</x:String>
-  <x:String x:Key="LocRetryTurn">Retry turn</x:String>
   <x:String x:Key="LocTodo">TODO</x:String>
   <x:String x:Key="LocInput">Input</x:String>
   <x:String x:Key="LocOutput">Output</x:String>

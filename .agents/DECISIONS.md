@@ -2,6 +2,15 @@
 
 Newest first. Historical context is retained only when it still explains a current constraint.
 
+## ADR-20261114-no-manual-turn-retry-ui
+
+- Date: 2026-11-14
+- Status: Accepted
+- Context: Desktop, Web, and the design system exposed a Retry turn action on failed turns, and Desktop also had a Retry Last Turn menu item. Core already retries temporary provider failures automatically, and sending a new message continues the session from the same persisted context, so the extra action duplicated the composer.
+- Decision: Clients do not expose a manual turn-retry action. A failed turn shows its failure summary and request details; the user continues by sending a new message. The SDK `retry_last_turn` method, its C/C# bindings, and the remote-control `retry` operation remain as programmatic APIs.
+- Consequences: Failed-turn UI is simpler and has no separate retry state. Removing the SDK and protocol surface would be a separate contract change.
+- Details: `DESIGN.md` Review failure navigation, `contracts/agent-sdk/README.md`
+
 ## ADR-20261113-editable-project-dependencies
 
 - Date: 2026-11-13
@@ -168,7 +177,7 @@ Newest first. Historical context is retained only when it still explains a curre
 - Date: 2026-10-13
 - Status: Accepted
 - Context: A temporary provider failure ended an otherwise valid turn. Retrying a whole turn could repeat completed tools, while independent adapter retries would hide attempts and multiply the retry budget.
-- Decision: Core retries one immutable agent-loop provider request at most twice, with bounded exponential backoff, jitter, and `Retry-After` minimums. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
+- Decision: Core retries one immutable agent-loop provider request at most four times (raised from two on 2026-11-14 when the manual retry UI was removed), with bounded exponential backoff, jitter, and `Retry-After` minimums. A wait that cannot fit the turn budget fails with the provider's original error. LLM adapters classify temporary HTTP/transport failures and disable implicit HTTP-client retries. Only failures before text/tool output qualify. Cancellation and the original turn deadline apply across requests and waits. Each attempt has an independent durable exchange trace; a live-only event drives the Conversation wait status. Context overflow remains separate forced-compaction recovery, and summary generation retains its local fallback.
 - Consequences: Recovery does not replay tools or consume another agent iteration. Partial output and permanent/configuration failures remain terminal; snapshot resync shows ordinary turn state rather than reconstructing a transient scheduled wait. The SDK event addition requires no ABI change.
 - Details: `specs/agent-phase-1.md`, `contracts/agent-sdk/README.md`, `agent/crates/core/src/agent/run.rs`, `agent/crates/llm/src/errors.rs`
 

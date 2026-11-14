@@ -4,6 +4,10 @@
 use super::support::*;
 use super::*;
 
+/// Additional attempts after the first; with 1s doubling backoff this spans
+/// roughly 15s of waiting, still bounded by the turn deadline.
+const MAX_PROVIDER_RETRIES: u32 = 4;
+
 pub(super) fn provider_retry_allowed(error: &BusinessError) -> bool {
     error.retryable
         && matches!(error.code.as_str(), "transient" | "provider_protocol")
@@ -66,7 +70,7 @@ impl TurnLoop<'_> {
         llm_messages: &[suncode_llm::Message],
         tool_definitions: &[suncode_llm::ToolDefinition],
     ) -> Result<suncode_llm::Completion, BusinessError> {
-        for attempt in 0..=2_u32 {
+        for attempt in 0..=MAX_PROVIDER_RETRIES {
             if self.token.is_cancelled() {
                 return Err(BusinessError::new("cancelled", "Turn was cancelled"));
             }
@@ -200,7 +204,7 @@ impl TurnLoop<'_> {
                     provider_request_id: error.provider_request_id.clone(),
                 }),
             )?;
-            if attempt == 2 || !provider_retry_allowed(&error) {
+            if attempt == MAX_PROVIDER_RETRIES || !provider_retry_allowed(&error) {
                 return Err(error);
             }
             let jitter = suncode_common::random::below(251);
@@ -209,11 +213,10 @@ impl TurnLoop<'_> {
                 .max(error.details["retry_after_ms"].as_u64().unwrap_or(0));
             let remaining = Duration::from_millis(self.context.turn_timeout_ms)
                 .saturating_sub(started.elapsed());
+            // Surface the provider's own failure so the user sees the real
+            // cause (for example a rate limit) instead of a generic timeout.
             if Duration::from_millis(delay_ms) >= remaining {
-                return Err(BusinessError::new(
-                    "turn_timeout",
-                    "Provider retry cannot fit within the turn's remaining budget",
-                ));
+                return Err(error);
             }
             self.services.emit_live(
                 &self.context.session_id,
@@ -221,7 +224,7 @@ impl TurnLoop<'_> {
                     exchange_id,
                     turn_id: self.context.turn_id.clone(),
                     retry_attempt: attempt + 1,
-                    max_retries: 2,
+                    max_retries: MAX_PROVIDER_RETRIES,
                     delay_ms,
                     error_code: error.code.clone(),
                 }),

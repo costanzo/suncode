@@ -30,7 +30,6 @@
   <x:String x:Key="LocMenuArchiveSession">归档会话…</x:String>
   <x:String x:Key="LocMenuRestoreSession">恢复已归档会话…</x:String>
   <x:String x:Key="LocMenuDeleteSession">永久删除已归档会话…</x:String>
-  <x:String x:Key="LocMenuRetryLastTurn">重试上一轮</x:String>
   <x:String x:Key="LocMenuStopTurn">停止当前轮次</x:String>
   <x:String x:Key="LocMenuModel">模型</x:String>
   <x:String x:Key="LocMenuReasoningEffort">推理强度</x:String>
@@ -484,7 +483,6 @@
   <x:String x:Key="LocReason">原因</x:String>
   <x:String x:Key="LocNetworkUnavailable">网络不可用</x:String>
   <x:String x:Key="LocTurn">运行</x:String>
-  <x:String x:Key="LocRetryTurn">重试运行</x:String>
   <x:String x:Key="LocTodo">待办事项</x:String>
   <x:String x:Key="LocInput">输入</x:String>
   <x:String x:Key="LocOutput">输出</x:String>

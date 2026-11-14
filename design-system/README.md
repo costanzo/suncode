@@ -54,7 +54,7 @@ Desktop Workspace additionally exposes an Editor child route for Explorer file s
 
 Desktop Workspace also exposes Diff Reviewer at `#/projects/desktop/workspace/diff-reviewer`, parallel to Source control. This route previews a standalone native-framed window with a changed-file Explorer tree and side-by-side read-only comparison, difference navigation, foldable unchanged context, and synchronized vertical scrolling. It includes loading, failure, no-changes, no-selection, binary, reading-limit, constrained, and macOS/Windows frame specimens. The Avalonia client implements the per-project non-modal reviewer, including source selection/copy, light/dark themes, and English/Simplified Chinese. Root `DESIGN.md` defines its interaction contract, and [the feature record](../.agents/features/diff-reviewer/README.md) records focused verification and the pending installed OS window smoke checks.
 
-The Review route also includes an interactive Failure details specimen. Activating the error summary opens the failed provider call and focuses its error region. Preview controls cover loading, a missing request, and a local detail-read failure with retry. Retry turn remains a separate action. The full Workspace composition connects its failed Review state to the Provider trace drawer.
+The Review route also includes an interactive Failure details specimen. Activating the error summary opens the failed provider call and focuses its error region. Preview controls cover loading, a missing request, and a local detail-read failure with retry. The full Workspace composition connects its failed Review state to the Provider trace drawer.
 
 ## Asset Rules
 

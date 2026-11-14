@@ -31,7 +31,6 @@ export function Conversation() {
     reviewOpen,
     toggleReview,
     cancelTurn,
-    retryTurn,
     loading,
     error,
     lastEventId,
@@ -42,7 +41,6 @@ export function Conversation() {
       reviewOpen: state.reviewOpen,
       toggleReview: state.toggleReview,
       cancelTurn: state.cancelTurn,
-      retryTurn: state.retryTurn,
       loading: state.loading,
       error: state.error,
       lastEventId: state.lastEventId,
@@ -129,10 +127,7 @@ export function Conversation() {
         {snapshot.state === "failed" && (
           <div className="approval-card">
             <strong>Turn failed</strong>
-            <p>The Desktop reported a failed turn. Retry it when you are ready.</p>
-            <button className="primary-button" type="button" onClick={() => void retryTurn()}>
-              Retry turn
-            </button>
+            <p>The Desktop reported a failed turn. Send a message to continue.</p>
           </div>
         )}
       </div>

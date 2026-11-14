@@ -273,11 +273,6 @@ export class RemoteApi {
       method: "POST",
     });
   }
-  retry(sessionId: string) {
-    return this.request<void>(hostPath(this.hostId(), "sessions", sessionId, "retry"), {
-      method: "POST",
-    });
-  }
   logout() {
     return this.request<void>("/v1/mobile/auth/logout", { method: "POST", encrypted: false });
   }

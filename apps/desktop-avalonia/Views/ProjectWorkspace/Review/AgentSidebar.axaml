@@ -310,7 +310,6 @@
               <TextBlock Text="{DynamicResource LocTurn}" Classes="eyebrow" />
               <TextBlock Grid.Column="1" Text="{Binding ReviewFailure.TurnId}" Classes="mono" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" TextAlignment="Right" TextTrimming="CharacterEllipsis" />
             </Grid>
-            <Button Classes="compact primary" Content="{DynamicResource LocRetryTurn}" Click="RetryTurn" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
         <Border x:Name="TodoCard" Classes="process-card" Padding="11" CornerRadius="6" IsVisible="{Binding IsReviewTodosVisible}">

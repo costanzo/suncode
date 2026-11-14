@@ -24,7 +24,6 @@ export function ReviewPanel({
   onApprovalDecision,
   onInspectFailure,
   inspectingFailure = false,
-  onRetryTurn,
   todos = currentTurnTodos,
 }) {
   const [questionResolution, setQuestionResolution] = useState(null);
@@ -140,9 +139,6 @@ export function ReviewPanel({
               </dd>
             </div>
           </dl>
-          <Button variant="primary" size="sm" onClick={onRetryTurn}>
-            Retry turn
-          </Button>
         </div>
       )}
       {compacting && (

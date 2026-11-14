@@ -1037,8 +1037,8 @@ async fn provider_retry_exhaustion_is_bounded() {
         .await
         .unwrap_err();
     assert_eq!(error.code, "transient");
-    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 3);
-    assert_eq!(store.provider_exchanges(&session).unwrap().len(), 3);
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 5);
+    assert_eq!(store.provider_exchanges(&session).unwrap().len(), 5);
     server.abort();
 }
 
@@ -1107,7 +1107,8 @@ async fn provider_retry_cannot_outlive_turn_budget() {
         .submit(&session, "retry-budget", "hello", None, None)
         .await
         .unwrap_err();
-    assert_eq!(error.code, "turn_timeout");
+    // The unrecoverable wait reports the provider failure, not a timeout.
+    assert_eq!(error.code, "transient");
     assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
     server.abort();
 }

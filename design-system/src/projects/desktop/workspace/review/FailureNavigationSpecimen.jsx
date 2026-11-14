@@ -6,7 +6,6 @@ import { ProviderTracePanel } from "../panels/provider-trace/ProviderTracePanel.
 export function FailureNavigationSpecimen() {
   const [outcome, setOutcome] = useState("failed");
   const [drawer, setDrawer] = useState(null);
-  const [result, setResult] = useState("");
   const timer = useRef(null);
   const summary = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -15,7 +14,6 @@ export function FailureNavigationSpecimen() {
     clearTimeout(timer.current);
     setOutcome(value);
     setDrawer(null);
-    setResult("");
   }
 
   function inspect() {
@@ -36,14 +34,12 @@ export function FailureNavigationSpecimen() {
           </select>
         </label>
         <Button onClick={() => reset()}>Reset example</Button>
-        <span role="status">{result}</span>
       </div>
       <ReviewPanel
         standalone
         state="failed"
         onInspectFailure={inspect}
         inspectingFailure={drawer === "loading"}
-        onRetryTurn={() => setResult("New turn submitted · illustrative example")}
       />
       {drawer && (
         <ProviderTracePanel

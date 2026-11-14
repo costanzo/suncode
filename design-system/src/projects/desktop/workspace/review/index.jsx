@@ -144,7 +144,7 @@ const reviewGuides = {
     tabs: {
       actions: [
         "Activate the failure summary to open its provider call and focus the error details.",
-        "Use Retry turn to submit a new attempt after correcting the issue.",
+        "Send a new message from the composer to continue after correcting the issue.",
         "Inspect Source Control separately to review any changes made before failure.",
       ],
       style: [
@@ -155,7 +155,7 @@ const reviewGuides = {
       logic: [
         "The turn ended before completion and no further tool calls will run.",
         "A failure is terminal for this turn but does not delete the session.",
-        "Retry starts a new turn; existing history and any safe checkpoint remain inspectable.",
+        "Temporary provider failures are retried automatically before the turn fails; existing history and any safe checkpoint remain inspectable.",
       ],
     },
   },
@@ -237,7 +237,7 @@ export function WorkspaceReviewPage() {
       <Section
         id="failure-navigation"
         title="Failure details"
-        description="Activate the error summary to open the failed call. Retry turn remains a separate action. Use the controls to review loading and unavailable details."
+        description="Activate the error summary to open the failed call. Use the controls to review loading and unavailable details."
       >
         <FailureNavigationSpecimen />
       </Section>

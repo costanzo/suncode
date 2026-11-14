@@ -41,7 +41,6 @@ interface WebStore {
   resolveApproval: (action: "allow_once" | "allow_session" | "deny") => Promise<void>;
   replyQuestion: (answer: string) => Promise<void>;
   cancelTurn: () => Promise<void>;
-  retryTurn: () => Promise<void>;
   unpair: () => Promise<void>;
   /** Opens the selected Session's stream and returns its cleanup. */
   connectStream: () => () => void;
@@ -258,9 +257,6 @@ export const useWebStore = create<WebStore>((set, get) => {
     },
     cancelTurn: async () => {
       await withSession((sessionId) => api.cancel(sessionId));
-    },
-    retryTurn: async () => {
-      await withSession((sessionId) => api.retry(sessionId));
     },
     unpair: async () => {
       const { credential } = get();
