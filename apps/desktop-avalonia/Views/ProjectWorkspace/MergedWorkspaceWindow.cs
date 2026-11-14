@@ -9,6 +9,8 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
     internal const double TearOffDistance = 28;
     private readonly MergedWorkspaceTabs _tabs = new();
     private readonly ContentControl _content = new();
+    // Inactive views still need a live styling parent when pending UI work runs.
+    private readonly Panel _inactiveContent = new() { IsVisible = false };
     private readonly Dictionary<string, WorkspaceWindow> _projectWindows = [];
     private readonly Dictionary<string, Action> _sessionEnteredHandlers = [];
     private string? _activeProjectId;
@@ -28,7 +30,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         _tabs.ProjectSelected += SelectProject;
         _tabs.ProjectCloseRequested += projectId => ProjectCloseRequested?.Invoke(projectId);
         _tabs.ProjectTornOff += (projectId, pointer) => ProjectTornOff?.Invoke(projectId, pointer);
-        Content = _content;
+        Content = new Grid { Children = { _inactiveContent, _content } };
         Closed += (_, _) =>
         {
             if (!_suppressCloseNotification) HostClosed?.Invoke(this);
@@ -48,6 +50,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         source.Workspace.SetTrafficLightFocus(IsActive);
         source.UpdateLayout();
         source.Content = null;
+        _inactiveContent.Children.Add(source.Workspace);
         var title = source.DataContext is DesktopViewModel viewModel && !string.IsNullOrWhiteSpace(viewModel.ProjectTitle)
             ? viewModel.ProjectTitle
             : projectId;
@@ -70,7 +73,12 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
         if (!ReferenceEquals(_content.Content, source.Workspace))
         {
             if (_content.Content is ProjectWorkspace previousWorkspace)
+            {
                 previousWorkspace.SetMergedTabs(null);
+                _content.Content = null;
+                _inactiveContent.Children.Add(previousWorkspace);
+            }
+            _inactiveContent.Children.Remove(source.Workspace);
             _content.Content = source.Workspace;
             source.Workspace.SetMergedTabs(_tabs);
         }
@@ -94,6 +102,7 @@ internal sealed class MergedWorkspaceWindow : WorkspaceWindow
             UpdateLayout();
             _content.Content = null;
         }
+        _inactiveContent.Children.Remove(source.Workspace);
         _projectWindows.Remove(projectId);
         _tabs.Remove(projectId);
         if (_sessionEnteredHandlers.Remove(projectId, out var handler) && source.DataContext is DesktopViewModel viewModel)
